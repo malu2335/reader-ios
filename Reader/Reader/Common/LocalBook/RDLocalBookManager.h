@@ -16,7 +16,8 @@ extern NSString * const RDLocalBookImportedNotification;
 //请求打开导入文件选择器(空书架等入口发出,书架控制器响应)
 extern NSString * const RDLocalBookImportRequestNotification;
 
-typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, NSString * _Nullable errorMessage);
+/// book:成功或重复时返回书籍; errorMessage:失败原因; isDuplicate:内容哈希已存在于书架
+typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, NSString * _Nullable errorMessage, BOOL isDuplicate);
 
 @interface RDLocalBookManager : NSObject
 
@@ -24,7 +25,7 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 
 + (BOOL)isSupportedFileURL:(NSURL *)url;
 
-/// 异步导入(后台解析,主线程回调);重复导入同一文件返回已有记录
+/// 异步导入(后台解析,主线程回调)。按文件内容 MD5 去重:同一文件不重复入库。
 + (void)importBookAtURL:(NSURL *)url complete:(nullable RDLocalBookImportCompletion)complete;
 
 /// 本地书的绝对文件路径

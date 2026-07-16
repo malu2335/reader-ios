@@ -7,6 +7,7 @@
 //
 
 #import "RDReadToolPageView.h"
+#import "RDDisplayBoost.h"
 
 @interface RDReadToolPageView ()
 @property (nonatomic,strong) UIButton *realBtn;
@@ -31,7 +32,8 @@
 {
     if (!_realBtn) {
         _realBtn = [[UIButton alloc] init];
-        [_realBtn setTitle:@"仿真翻页" forState:UIControlStateNormal];
+        // 仿真卷页由系统 UIPageViewController PageCurl 实现,在 ProMotion 上通常仍为 ~60Hz
+        [_realBtn setTitle:@"仿真" forState:UIControlStateNormal];
         [_realBtn setTitleColor:RDBlackColor forState:UIControlStateNormal];
         [_realBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
         [_realBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
@@ -47,7 +49,9 @@
 {
     if (!_sliderBtn) {
         _sliderBtn = [[UIButton alloc] init];
-        [_sliderBtn setTitle:@"左右滑动" forState:UIControlStateNormal];
+        // 滑动翻页走 UIScrollView,可在高刷屏跑满 120Hz
+        NSString *title = [RDDisplayBoost isHighRefreshDisplay] ? @"滑动·高刷" : @"左右滑动";
+        [_sliderBtn setTitle:title forState:UIControlStateNormal];
         [_sliderBtn setTitleColor:RDBlackColor forState:UIControlStateNormal];
         [_sliderBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
         [_sliderBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];

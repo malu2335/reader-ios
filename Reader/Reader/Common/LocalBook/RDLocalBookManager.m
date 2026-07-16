@@ -52,33 +52,37 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
 
 + (void)importBookAtURL:(NSURL *)url complete:(RDLocalBookImportCompletion)complete
 {
-    void (^finish)(RDBookDetailModel *, NSString *) = ^(RDBookDetailModel *book, NSString *message) {
+    void (^finish)(RDBookDetailModel *, NSString *, BOOL) = ^(RDBookDetailModel *book, NSString *message, BOOL isDuplicate) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (book) {
+            // 重复书不刷通知,避免书架无意义闪烁;新书才通知
+            if (book && !isDuplicate) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:book];
+            } else if (book && isDuplicate) {
+                // 重新上架到书架时仍需刷新
                 [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:book];
             }
             if (complete) {
-                complete(book, message);
+                complete(book, message, isDuplicate);
             }
         });
     };
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         if (![self isSupportedFileURL:url]) {
-            finish(nil, @"暂不支持该文件格式");
+            finish(nil, @"暂不支持该文件格式", NO);
             return;
         }
         BOOL scoped = [url startAccessingSecurityScopedResource];
         NSString *displayName = url.lastPathComponent.stringByDeletingPathExtension;
         NSString *ext = url.pathExtension.lowercaseString;
 
-        // 流式 MD5,避免大文件整包进内存算哈希
+        // 流式 MD5 → 稳定 bookId,作为内容级重复检测
         NSInteger bookId = [self bookIdForFileURL:url];
         if (bookId == 0) {
             if (scoped) {
                 [url stopAccessingSecurityScopedResource];
             }
-            finish(nil, @"文件为空或无法读取");
+            finish(nil, @"文件为空或无法读取", NO);
             return;
         }
         RDBookDetailModel *existing = [RDReadRecordManager getReadRecordWithBookId:bookId];
@@ -87,11 +91,17 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
             if (scoped) {
                 [url stopAccessingSecurityScopedResource];
             }
+            BOOL reAdded = NO;
             if (!existing.onBookshelf) {
                 existing.onBookshelf = YES;
                 [RDReadRecordManager updateBookshelfState:existing];
+                reAdded = YES;
             }
-            finish(existing, nil);
+            // 明确标记重复(reAdded 时消息区分)
+            NSString *dupMsg = reAdded
+                ? [NSString stringWithFormat:@"《%@》已重新加入书架", existing.title ?: displayName]
+                : [NSString stringWithFormat:@"《%@》已在书架,跳过重复导入", existing.title ?: displayName];
+            finish(existing, dupMsg, YES);
             return;
         }
 
@@ -108,7 +118,7 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
                 if (scoped) {
                     [url stopAccessingSecurityScopedResource];
                 }
-                finish(nil, @"保存文件失败");
+                finish(nil, @"保存文件失败", NO);
                 return;
             }
         }
@@ -136,7 +146,7 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
 
         if (!result) {
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
-            finish(nil, parseError ?: @"解析失败");
+            finish(nil, parseError ?: @"解析失败", NO);
             return;
         }
 
@@ -172,7 +182,7 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
         }
 
         [RDReadRecordManager insertOrReplaceModel:book];
-        finish(book, nil);
+        finish(book, nil, NO);
     });
 }
 

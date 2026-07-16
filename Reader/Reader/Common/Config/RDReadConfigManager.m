@@ -8,6 +8,10 @@
 
 #import "RDReadConfigManager.h"
 #import "RDModelAgent.h"
+#import "RDDisplayBoost.h"
+
+static NSString * const kPromotedSliderPageOnProMotionKey = @"RDPromotedSliderPageOnProMotion_v1";
+
 @implementation RDReadConfigManager
 + (RDReadConfigManager *)sharedInstance {
     static RDReadConfigManager *sharedInstance = nil;
@@ -19,11 +23,18 @@
             sharedInstance = [[self alloc] init];
             sharedInstance.fontSize = 16;
             sharedInstance.lineSpace = sharedInstance.fontSize-6;
-//            sharedInstance.firstLineHeadIndent = sharedInstance.fontSize * 2;
             sharedInstance.brightness = kConfigMaxBrightnessValue;
             // 默认使用纸色主题,契合整体「安静纸质」视觉
             sharedInstance.theme = RDYellowTheme;
-            sharedInstance.pageType = RDRealTypePage;
+            // 高刷默认滑动翻页(可跑 120Hz);仿真卷页系统层常锁 60Hz
+            sharedInstance.pageType = [RDDisplayBoost preferredPageTypeForDisplay];
+        } else if ([RDDisplayBoost isHighRefreshDisplay]
+                   && sharedInstance.pageType == RDRealTypePage
+                   && ![[NSUserDefaults standardUserDefaults] boolForKey:kPromotedSliderPageOnProMotionKey]) {
+            // 仅升级一次:旧默认仿真 → 滑动,用户可在阅读设置改回仿真
+            sharedInstance.pageType = RDSliderPage;
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPromotedSliderPageOnProMotionKey];
+            [sharedInstance archive];
         }
     });
 

@@ -82,23 +82,51 @@
     [self showLoading:@"正在导入..." cancel:nil];
     __block NSInteger pending = urls.count;
     __block NSInteger succeed = 0;
+    __block NSInteger duplicated = 0;
     __block NSString *lastError = nil;
+    __block NSString *lastDupMsg = nil;
+    __block NSString *lastNewTitle = nil;
     for (NSURL *url in urls) {
-        [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage) {
+        [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage, BOOL isDuplicate) {
             pending--;
-            if (book) {
+            if (isDuplicate) {
+                duplicated++;
+                lastDupMsg = errorMessage;
+            } else if (book) {
                 succeed++;
-            }
-            else if (errorMessage) {
+                lastNewTitle = book.title;
+            } else if (errorMessage) {
                 lastError = errorMessage;
             }
             if (pending == 0) {
                 [self hideLoading];
-                if (succeed > 0 && !lastError) {
-                    [self showText:[NSString stringWithFormat:@"已导入 %@ 本书", @(succeed)]];
-                }
-                else if (lastError) {
-                    [self showText:succeed > 0 ? [NSString stringWithFormat:@"导入 %@ 本,失败:%@", @(succeed), lastError] : lastError];
+                if (urls.count == 1) {
+                    // 单文件:直接展示重复/成功/失败文案
+                    if (duplicated > 0) {
+                        [self showText:lastDupMsg ?: @"该书已在书架"];
+                    } else if (succeed > 0) {
+                        [self showText:[NSString stringWithFormat:@"《%@》已加入书架", lastNewTitle ?: @"书籍"]];
+                    } else {
+                        [self showText:lastError ?: @"导入失败"];
+                    }
+                } else {
+                    NSMutableString *msg = [NSMutableString string];
+                    if (succeed > 0) {
+                        [msg appendFormat:@"新导入 %@ 本", @(succeed)];
+                    }
+                    if (duplicated > 0) {
+                        if (msg.length) {
+                            [msg appendString:@","];
+                        }
+                        [msg appendFormat:@"重复 %@ 本", @(duplicated)];
+                    }
+                    if (lastError) {
+                        if (msg.length) {
+                            [msg appendString:@","];
+                        }
+                        [msg appendFormat:@"失败:%@", lastError];
+                    }
+                    [self showText:msg.length ? msg : @"导入完成"];
                 }
                 [self p_reload];
             }

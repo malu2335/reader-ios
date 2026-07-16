@@ -350,16 +350,22 @@
                 style = UIPageViewControllerTransitionStyleScroll;
                 break;
         }
-        _pageViewController = [[UIPageViewController alloc] initWithTransitionStyle:style navigationOrientation:UIPageViewControllerNavigationOrientationHorizontal options:nil];
+        // 滑动翻页: inter-page spacing 0,全屏页,配合 ProMotion 更顺
+        NSDictionary *options = nil;
+        if (style == UIPageViewControllerTransitionStyleScroll) {
+            options = @{UIPageViewControllerOptionInterPageSpacingKey: @0};
+        }
+        _pageViewController = [[UIPageViewController alloc] initWithTransitionStyle:style
+                                                              navigationOrientation:UIPageViewControllerNavigationOrientationHorizontal
+                                                                            options:options];
         _pageViewController.delegate = self;
         if (pageType != RDNoneTypePage) {
             _pageViewController.dataSource = self;
             _pageViewController.doubleSided = (style == UIPageViewControllerTransitionStylePageCurl);
         }
         [self.view addSubview:_pageViewController.view];
-        // 翻页手势在 ProMotion 上采样更密;对齐滚动层与像素密度
-        [RDDisplayBoost applyToView:_pageViewController.view];
-        _pageViewController.view.layer.allowsGroupOpacity = NO;
+        // ProMotion:配置内嵌 ScrollView,关闭栅格化
+        [RDDisplayBoost applyToPageViewController:_pageViewController];
     }
     return _pageViewController;
 }

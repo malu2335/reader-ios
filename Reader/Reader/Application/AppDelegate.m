@@ -56,8 +56,15 @@ configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
     if (!url.isFileURL || ![RDLocalBookManager isSupportedFileURL:url]) {
         return NO;
     }
-    [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage) {
-        NSString *text = book ? [NSString stringWithFormat:@"《%@》已加入书架", book.title] : errorMessage;
+    [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage, BOOL isDuplicate) {
+        NSString *text = nil;
+        if (isDuplicate) {
+            text = errorMessage.length ? errorMessage : [NSString stringWithFormat:@"《%@》已在书架", book.title ?: @""];
+        } else if (book) {
+            text = [NSString stringWithFormat:@"《%@》已加入书架", book.title];
+        } else {
+            text = errorMessage;
+        }
         if (text.length > 0) {
             [RDToastView showText:text delay:1.5 inView:[RDUtilities applicationKeyWindow]];
         }

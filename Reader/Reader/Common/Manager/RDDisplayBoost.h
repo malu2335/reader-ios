@@ -6,6 +6,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "RDEnums.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -25,6 +26,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 推荐的菜单/面板动画时长:高刷下略短,观感更跟手
 + (NSTimeInterval)panelAnimationDuration;
+
+/// 高刷屏推荐翻页类型(滑动 120Hz;仿真卷页系统侧多为 60Hz)
++ (RDPageType)preferredPageTypeForDisplay;
+
+/// 针对 UIPageViewController 内嵌滚动层做高刷配置
++ (void)applyToPageViewController:(UIPageViewController *)pageVC;
 
 @end
 
