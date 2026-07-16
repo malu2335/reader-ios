@@ -8,6 +8,7 @@
 @interface RDReadSpeechBar ()
 @property (nonatomic,strong) UIButton *playBtn;
 @property (nonatomic,strong) UIButton *rateBtn;
+@property (nonatomic,strong) UIButton *voiceBtn;
 @property (nonatomic,strong) UIButton *exitBtn;
 @end
 
@@ -27,6 +28,7 @@
         self.layer.shadowOpacity = 1;
         [self addSubview:self.playBtn];
         [self addSubview:self.rateBtn];
+        [self addSubview:self.voiceBtn];
         [self addSubview:self.exitBtn];
     }
     return self;
@@ -52,6 +54,21 @@
     return _rateBtn;
 }
 
+- (UIButton *)voiceBtn
+{
+    if (!_voiceBtn) {
+        _voiceBtn = [[UIButton alloc] init];
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightMedium];
+        UIImage *icon = [[UIImage systemImageNamed:@"waveform" withConfiguration:config] imageWithTintColor:RDGrayColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+        [_voiceBtn setImage:icon forState:UIControlStateNormal];
+        [_voiceBtn setTitle:@" 音" forState:UIControlStateNormal];
+        [_voiceBtn setTitleColor:RDGrayColor forState:UIControlStateNormal];
+        _voiceBtn.titleLabel.font = RDBoldFont12;
+        [_voiceBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _voiceBtn;
+}
+
 - (UIButton *)exitBtn
 {
     if (!_exitBtn) {
@@ -72,6 +89,9 @@
     else if (sender == self.rateBtn && self.onRate) {
         self.onRate();
     }
+    else if (sender == self.voiceBtn && self.onVoice) {
+        self.onVoice();
+    }
     else if (sender == self.exitBtn && self.onExit) {
         self.onExit();
     }
@@ -86,9 +106,20 @@
     [self.rateBtn setTitle:[NSString stringWithFormat:@"%.2gx", rate] forState:UIControlStateNormal];
 }
 
+- (void)updateVoiceName:(NSString *)name
+{
+    if (name.length == 0) {
+        [self.voiceBtn setTitle:@" 音" forState:UIControlStateNormal];
+        return;
+    }
+    // 控制条宽度有限,只取前 2 字
+    NSString *shortName = name.length > 2 ? [name substringToIndex:2] : name;
+    [self.voiceBtn setTitle:[NSString stringWithFormat:@" %@", shortName] forState:UIControlStateNormal];
+}
+
 - (void)showInView:(UIView *)view
 {
-    CGFloat width = 200, height = 50;
+    CGFloat width = 260, height = 50;
     self.frame = CGRectMake((view.width - width) / 2, view.height - height - [UIView safeBottomBar] - 24, width, height);
     self.alpha = 0;
     [view addSubview:self];
@@ -100,10 +131,11 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    CGFloat third = self.width / 3;
-    self.playBtn.frame = CGRectMake(0, 0, third, self.height);
-    self.rateBtn.frame = CGRectMake(third, 0, third, self.height);
-    self.exitBtn.frame = CGRectMake(third * 2, 0, third, self.height);
+    CGFloat unit = self.width / 4;
+    self.playBtn.frame = CGRectMake(0, 0, unit, self.height);
+    self.rateBtn.frame = CGRectMake(unit, 0, unit, self.height);
+    self.voiceBtn.frame = CGRectMake(unit * 2, 0, unit, self.height);
+    self.exitBtn.frame = CGRectMake(unit * 3, 0, unit, self.height);
 }
 
 @end

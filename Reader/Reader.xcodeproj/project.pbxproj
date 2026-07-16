@@ -21,6 +21,8 @@
 		6F0ABC75BCD98B764AA25095 /* RDFontManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */; };
 		37BA1734531113410E2840C9 /* RDSpeechManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 97D50F2E3B94F19031CB429E /* RDSpeechManager.m */; };
 		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
+		A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV01FILEREF0001 /* RDVoiceManager.m */; };
+		A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV02FILEREF0001 /* RDVoicePickerController.m */; };
 		3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */ = {isa = PBXBuildFile; fileRef = A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */; };
 		AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */; };
 		2818FE29C73406DBFD255D66 /* RDLocalBookParseResult.m in Sources */ = {isa = PBXBuildFile; fileRef = 986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */; };
@@ -212,6 +214,10 @@
 		97D50F2E3B94F19031CB429E /* RDSpeechManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSpeechManager.m; sourceTree = "<group>"; };
 		B48A0DD5A1CCD411CFE4D5BC /* RDReadSpeechBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadSpeechBar.h; sourceTree = "<group>"; };
 		9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadSpeechBar.m; sourceTree = "<group>"; };
+		A11B001TV01FILEREF0001 /* RDVoiceManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoiceManager.m; sourceTree = "<group>"; };
+		A11B001TV01FILEREF0002 /* RDVoiceManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoiceManager.h; sourceTree = "<group>"; };
+		A11B001TV02FILEREF0001 /* RDVoicePickerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoicePickerController.m; sourceTree = "<group>"; };
+		A11B001TV02FILEREF0002 /* RDVoicePickerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoicePickerController.h; sourceTree = "<group>"; };
 		4C5E8A70982106BEB8323759 /* RDSettingController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSettingController.h; sourceTree = "<group>"; };
 		A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSettingController.m; sourceTree = "<group>"; };
 		0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookTextUtil.h; sourceTree = "<group>"; };
@@ -580,6 +586,8 @@
 				97D50F2E3B94F19031CB429E /* RDSpeechManager.m */,
 				B48A0DD5A1CCD411CFE4D5BC /* RDReadSpeechBar.h */,
 				9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */,
+				A11B001TV01FILEREF0002 /* RDVoiceManager.h */,
+				A11B001TV01FILEREF0001 /* RDVoiceManager.m */,
 			);
 			path = Speech;
 			sourceTree = "<group>";
@@ -595,6 +603,8 @@
 				A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */,
 				A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */,
 				A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */,
+				A11B001TV02FILEREF0002 /* RDVoicePickerController.h */,
+				A11B001TV02FILEREF0001 /* RDVoicePickerController.m */,
 			);
 			path = Setting;
 			sourceTree = "<group>";
@@ -1604,6 +1614,8 @@
 				6F0ABC75BCD98B764AA25095 /* RDFontManager.m in Sources */,
 				37BA1734531113410E2840C9 /* RDSpeechManager.m in Sources */,
 				CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */,
+				A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */,
+				A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */,
 				3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */,
 				AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */,
 				2818FE29C73406DBFD255D66 /* RDLocalBookParseResult.m in Sources */,

@@ -29,6 +29,8 @@
 #import "RDAIClient.h"
 #import "RDDisplayBoost.h"
 #import "RDShareCardBuilder.h"
+#import "RDVoiceManager.h"
+#import "RDVoicePickerController.h"
 
 @implementation UIPageViewController (EnlargeTapRegion)
 -(BOOL) gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch{
@@ -839,6 +841,7 @@
         [self.speechBar showInView:self.view];
     }
     [self.speechBar updatePlaying:YES rate:manager.rateMultiplier];
+    [self.speechBar updateVoiceName:[[RDVoiceManager sharedInstance] preferredDisplayName]];
 }
 
 -(RDReadSpeechBar *)speechBar
@@ -859,9 +862,14 @@
             [manager cycleRate];
             [RDToastView showText:@"新语速将从下一章开始生效" delay:1.2 inView:weakSelf.view];
         };
+        _speechBar.onVoice = ^{
+            RDVoicePickerController *vc = [[RDVoicePickerController alloc] init];
+            [weakSelf.navigationController pushViewController:vc animated:YES];
+        };
         _speechBar.onExit = ^{
             [manager stop];
         };
+        [_speechBar updateVoiceName:[[RDVoiceManager sharedInstance] preferredDisplayName]];
     }
     return _speechBar;
 }

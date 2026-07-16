@@ -14,6 +14,8 @@
 #import "RDAIConfigController.h"
 #import "RDAIConfig.h"
 #import "RDReplaceRulesController.h"
+#import "RDVoicePickerController.h"
+#import "RDVoiceManager.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "AppDelegate.h"
 #import "RDMainController.h"
@@ -26,6 +28,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowAIConfig,
     RDSettingRowPurify,
     RDSettingRowDictionary,
+    RDSettingRowTTSVoice,
     RDSettingRowBackup,
     RDSettingRowRestore,
     RDSettingRowVersion,
@@ -44,7 +47,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     [super viewDidLoad];
     // 书籍 / 阅读增强 / 备份 / 关于
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
-                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowDictionary)],
+                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowDictionary), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowVersion)]];
     [self.view addSubview:self.topView];
@@ -196,6 +199,11 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.detailTextLabel.text = @"阅读中查词";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
+        case RDSettingRowTTSVoice:
+            cell.textLabel.text = @"朗读语音";
+            cell.detailTextLabel.text = [[RDVoiceManager sharedInstance] preferredDisplayName];
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
         case RDSettingRowBackup:
             cell.textLabel.text = @"备份到文件";
             cell.detailTextLabel.text = @"书籍 · 进度 · 设置 · AI(不含密钥)";
@@ -261,6 +269,10 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [weakSelf presentViewController:dict animated:YES completion:nil];
         }]];
         [self presentViewController:alert animated:YES completion:nil];
+    }
+    else if (row == RDSettingRowTTSVoice) {
+        RDVoicePickerController *vc = [[RDVoicePickerController alloc] init];
+        [self.navigationController pushViewController:vc animated:YES];
     }
     else if (row == RDSettingRowBackup) {
         [self p_backup];

@@ -8,6 +8,7 @@
 #import "RDBookDetailModel.h"
 #import "RDCharpterModel.h"
 #import "RDCharpterDataManager.h"
+#import "RDVoiceManager.h"
 
 @interface RDSpeechManager ()<AVSpeechSynthesizerDelegate>
 @property (nonatomic,strong) AVSpeechSynthesizer *synthesizer;
@@ -67,7 +68,7 @@ IMP_SINGLETON(RDSpeechManager)
         return;
     }
     AVSpeechUtterance *utterance = [AVSpeechUtterance speechUtteranceWithString:text];
-    utterance.voice = [AVSpeechSynthesisVoice voiceWithLanguage:@"zh-CN"];
+    utterance.voice = [[RDVoiceManager sharedInstance] resolvedVoice];
     utterance.rate = [self currentRate];
     [self.synthesizer speakUtterance:utterance];
 }
