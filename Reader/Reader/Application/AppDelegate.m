@@ -8,63 +8,43 @@
 
 #import "AppDelegate.h"
 #import "RDMainController.h"
-#import "UIView+rd_dispalyInfo.h"
-#import "RDNavigationController.h"
-
 #import "SDWebImageWebPCoder.h"
 #import "RDLocalBookManager.h"
 #import "RDFontManager.h"
 #import "RDBookDetailModel.h"
 
-
 @interface AppDelegate ()
-
-@property(nonatomic, strong) RDMainController *mainController;
+@property (nonatomic, strong, readwrite) RDMainController *mainController;
 @end
 
 @implementation AppDelegate
 
-
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    // 仅进程级初始化;窗口由 SceneDelegate 创建
     SDImageWebPCoder *webPCoder = [SDImageWebPCoder sharedCoder];
     [[SDImageCodersManager sharedManager] addCoder:webPCoder];
-
-    //注册用户导入的阅读字体(进程级,需每次启动重注册)
     [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
-
-    UIWindowScene *windowScene = nil;
-    for (UIScene *scene in application.connectedScenes) {
-        if ([scene isKindOfClass:[UIWindowScene class]]) {
-            windowScene = (UIWindowScene *)scene;
-            break;
-        }
-    }
-    if (windowScene) {
-        self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
-    } else {
-        self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    }
-    self.window.backgroundColor = RDBackgroudColor;
-    if (@available(iOS 13.0, *)) {
-        //禁用dark model
-        self.window.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
-    }
-    
-    RDNavigationController *navigationController = [[RDNavigationController alloc] initWithRootViewController:self.mainController];
-    self.window.rootViewController = navigationController;
-    [self.window makeKeyAndVisible];
-    
-    
     return YES;
 }
-- (void)applicationWillEnterForeground:(UIApplication *)application {
 
-    [self reloadData];
+#pragma mark - UISceneSession lifecycle
 
+- (UISceneConfiguration *)application:(UIApplication *)application
+configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
+                               options:(UISceneConnectionOptions *)options
+{
+    UISceneConfiguration *config = [[UISceneConfiguration alloc] initWithName:@"Default Configuration"
+                                                                  sessionRole:connectingSceneSession.role];
+    config.delegateClass = NSClassFromString(@"SceneDelegate");
+    return config;
 }
 
-//「用其他应用打开」导入本地书籍
+- (void)application:(UIApplication *)application didDiscardSceneSessions:(NSSet<UISceneSession *> *)sceneSessions
+{
+}
+
+// 兼容旧路径 / 部分系统回调仍可能走到此处
 - (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
 {
     if (!url.isFileURL || ![RDLocalBookManager isSupportedFileURL:url]) {
@@ -79,17 +59,17 @@
     return YES;
 }
 
-
-- (RDMainController *)mainController {
+- (RDMainController *)mainController
+{
     if (!_mainController) {
         _mainController = [[RDMainController alloc] init];
-
-
     }
     return _mainController;
 }
 
--(void)reloadData{
-    //纯本地阅读器:无需拉取配置或检查书籍更新
+- (void)reloadData
+{
+    // 纯本地阅读器:无需拉取配置或检查书籍更新
 }
+
 @end
