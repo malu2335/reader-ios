@@ -25,6 +25,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// 在串行队列异步执行
 - (void)performAsync:(void (^)(WCTDatabase *db))block;
 
+/// 将 WAL 合并进主库并尽量截断 -wal(后台调用,减少下次启动 recover frames)
+- (void)checkpointWALAsync;
+
+/// 进入后台/退出前尽量同步 checkpoint
+- (void)checkpointWALSync;
+
 @end
 
 NS_ASSUME_NONNULL_END

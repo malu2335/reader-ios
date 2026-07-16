@@ -240,8 +240,13 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [self showText:errorMessage ?: @"备份失败"];
             return;
         }
-        //分享出去:存到「文件」、AirDrop 或其他 App
-        NSURL *fileURL = [NSURL fileURLWithPath:zipPath];
+        if (![[NSFileManager defaultManager] fileExistsAtPath:zipPath]) {
+            [self showText:@"备份文件不存在"];
+            return;
+        }
+        // 写在 Caches/Exports 下的 fileURL;比 tmp 更适合系统分享
+        NSURL *fileURL = [NSURL fileURLWithPath:zipPath isDirectory:NO];
+        [fileURL setResourceValue:@(YES) forKey:NSURLIsExcludedFromBackupKey error:nil];
         UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[fileURL] applicationActivities:nil];
         activity.popoverPresentationController.sourceView = self.view;
         activity.popoverPresentationController.sourceRect = CGRectMake(self.view.width / 2, self.view.height / 2, 1, 1);

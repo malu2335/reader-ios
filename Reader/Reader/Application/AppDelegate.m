@@ -12,6 +12,7 @@
 #import "RDLocalBookManager.h"
 #import "RDFontManager.h"
 #import "RDBookDetailModel.h"
+#import "RDDatabaseLifecycle.h"
 
 @interface AppDelegate ()
 @property (nonatomic, strong, readwrite) RDMainController *mainController;
@@ -75,6 +76,17 @@ configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
 - (void)reloadData
 {
     // 纯本地阅读器:无需拉取配置或检查书籍更新
+}
+
+- (void)applicationDidEnterBackground:(UIApplication *)application
+{
+    // 截断 WAL,避免下次冷启动 recover 上百 frames
+    [RDDatabaseLifecycle checkpointWALSync];
+}
+
+- (void)applicationWillTerminate:(UIApplication *)application
+{
+    [RDDatabaseLifecycle checkpointWALSync];
 }
 
 @end

@@ -180,6 +180,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A11B001DB01FILEREF0002 /* RDDatabaseLifecycle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDatabaseLifecycle.h; sourceTree = "<group>"; };
 		A11B001DP01FILEREF0001 /* RDDisplayBoost.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDDisplayBoost.m; sourceTree = "<group>"; };
 		A11B001DP01FILEREF0002 /* RDDisplayBoost.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDisplayBoost.h; sourceTree = "<group>"; };
 		A11B001SC01FILEREF0001 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
@@ -1134,6 +1135,7 @@
 				29F97D3A240CEB8000909240 /* RDHistoryRecordManager.h */,
 				29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */,
 				ABF5D50C23B83BE5008E3163 /* RDDatabaseManager.h */,
+				A11B001DB01FILEREF0002 /* RDDatabaseLifecycle.h */,
 				ABF5D50D23B83BE5008E3163 /* RDDatabaseManager.mm */,
 			);
 			path = Database;

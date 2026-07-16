@@ -89,11 +89,14 @@ static NSString * const kBackupBooksDir = @"books";
             return;
         }
 
-        //备份文件名对齐 legado:backupYYYY-MM-dd.zip
+        // 写到 Caches/Exports,比 tmp 更适合 UIActivity 分享,减少 share mode / file provider 报错
         NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
         formatter.dateFormat = @"yyyy-MM-dd";
         NSString *zipName = [NSString stringWithFormat:@"backup%@.zip", [formatter stringFromDate:[NSDate date]]];
-        NSString *zipPath = [NSTemporaryDirectory() stringByAppendingPathComponent:zipName];
+        NSString *exportDir = [PATH_CACHES stringByAppendingPathComponent:@"Exports"];
+        [[NSFileManager defaultManager] createDirectoryAtPath:exportDir withIntermediateDirectories:YES attributes:nil error:nil];
+        NSString *zipPath = [exportDir stringByAppendingPathComponent:zipName];
+        [[NSFileManager defaultManager] removeItemAtPath:zipPath error:nil];
 
         RDZipWriter *writer = [[RDZipWriter alloc] initWithPath:zipPath];
         if (!writer) {

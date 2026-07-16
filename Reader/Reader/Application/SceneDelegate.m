@@ -10,6 +10,7 @@
 #import "RDLocalBookManager.h"
 #import "RDBookDetailModel.h"
 #import "RDDisplayBoost.h"
+#import "RDDatabaseLifecycle.h"
 
 @implementation SceneDelegate
 
@@ -51,9 +52,14 @@
     }
 }
 
+- (void)sceneDidEnterBackground:(UIScene *)scene
+{
+    [RDDatabaseLifecycle checkpointWALAsync];
+}
+
 - (void)sceneDidDisconnect:(UIScene *)scene
 {
-    // 多 scene 时清理;当前单 window 无需特殊处理
+    [RDDatabaseLifecycle checkpointWALAsync];
 }
 
 - (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts
