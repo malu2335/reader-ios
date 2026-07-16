@@ -15,6 +15,9 @@
 		A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI03FILEREF0001 /* RDAIConfigController.m */; };
 		A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */; };
 		A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BK01FILEREF0001 /* RDBackupManager.m */; };
+		A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP01FILEREF0001 /* RDReplaceRule.m */; };
+		A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */; };
+		A11B001RP03BUILDFILE001 /* RDReplaceRulesController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */; };
 		6F0ABC75BCD98B764AA25095 /* RDFontManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */; };
 		37BA1734531113410E2840C9 /* RDSpeechManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 97D50F2E3B94F19031CB429E /* RDSpeechManager.m */; };
 		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
@@ -197,6 +200,12 @@
 		A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIProfileEditController.h; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0001 /* RDBackupManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBackupManager.m; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0002 /* RDBackupManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBackupManager.h; sourceTree = "<group>"; };
+		A11B001RP01FILEREF0001 /* RDReplaceRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRule.m; sourceTree = "<group>"; };
+		A11B001RP01FILEREF0002 /* RDReplaceRule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReplaceRule.h; sourceTree = "<group>"; };
+		A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDShareCardBuilder.m; sourceTree = "<group>"; };
+		A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDShareCardBuilder.h; sourceTree = "<group>"; };
+		A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRulesController.m; sourceTree = "<group>"; };
+		A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReplaceRulesController.h; sourceTree = "<group>"; };
 		AFDDB0A9ED452884DA4E076F /* RDFontManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDFontManager.h; sourceTree = "<group>"; };
 		1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDFontManager.m; sourceTree = "<group>"; };
 		1F63E6488007EA8327F65620 /* RDSpeechManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSpeechManager.h; sourceTree = "<group>"; };
@@ -584,6 +593,8 @@
 				A11B001AI03FILEREF0001 /* RDAIConfigController.m */,
 				A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */,
 				A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */,
+				A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */,
+				A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */,
 			);
 			path = Setting;
 			sourceTree = "<group>";
@@ -609,6 +620,10 @@
 				0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */,
 				F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */,
 				230E80FE544127BFB49E5639 /* RDPdfReadController.m */,
+				A11B001RP01FILEREF0002 /* RDReplaceRule.h */,
+				A11B001RP01FILEREF0001 /* RDReplaceRule.m */,
+				A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */,
+				A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */,
 			);
 			path = LocalBook;
 			sourceTree = "<group>";
@@ -1578,6 +1593,9 @@
 				A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */,
 				A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */,
 				A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */,
+				A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */,
+				A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */,
+				A11B001RP03BUILDFILE001 /* RDReplaceRulesController.m in Sources */,
 				2992BB7323B225E400C599B1 /* RDCatalogController.m in Sources */,
 				292513E8236929BC00090883 /* RDBookDetailController.m in Sources */,
 				29CE2BA023FD2D2D001B0D03 /* RDSearchHistoryCell.m in Sources */,

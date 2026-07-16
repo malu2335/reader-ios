@@ -28,6 +28,7 @@
 #import "RDReadTranslateHelper.h"
 #import "RDAIClient.h"
 #import "RDDisplayBoost.h"
+#import "RDShareCardBuilder.h"
 
 @implementation UIPageViewController (EnlargeTapRegion)
 -(BOOL) gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch{
@@ -714,6 +715,99 @@
                                     pageText:currentController.content.string
                                  chapterText:currentController.charpterContent.string
                                   rawContent:currentController.charpterModel.content];
+}
+
+#pragma mark - 分享金句 / 词典
+
+-(void)shareQuoteAction
+{
+    if (self.menuView.superview) {
+        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
+    }
+    RDReadController *currentController = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    NSString *quote = currentController.content.string;
+    if (quote.length == 0) {
+        quote = currentController.charpterContent.string;
+    }
+    if (quote.length == 0) {
+        quote = self.bookDetail.charpterModel.content;
+    }
+    // 截取首句/前段作为金句
+    if (quote.length > 0) {
+        NSArray *parts = [quote componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"。！？\n"]];
+        NSMutableString *picked = [NSMutableString string];
+        for (NSString *p in parts) {
+            NSString *t = [p stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            if (t.length < 4) {
+                continue;
+            }
+            if (picked.length) {
+                [picked appendString:@"。"];
+            }
+            [picked appendString:t];
+            if (picked.length > 60) {
+                break;
+            }
+        }
+        if (picked.length) {
+            quote = [picked stringByAppendingString:@"。"];
+        } else if (quote.length > 120) {
+            quote = [[quote substringToIndex:120] stringByAppendingString:@"…"];
+        }
+    }
+    if (quote.length == 0) {
+        quote = [NSString stringWithFormat:@"正在阅读《%@》", self.bookDetail.title ?: @"好书"];
+    }
+
+    RDShareCardGenre genre = [RDShareCardBuilder genreForBook:self.bookDetail];
+    UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote book:self.bookDetail genre:genre];
+    NSString *text = [RDShareCardBuilder shareTextWithQuote:quote book:self.bookDetail];
+    NSArray *items = card ? @[text, card] : @[text];
+    UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
+    avc.popoverPresentationController.sourceView = self.view;
+    avc.popoverPresentationController.sourceRect = CGRectMake(self.view.width/2, self.view.height/2, 1, 1);
+    [self presentViewController:avc animated:YES completion:nil];
+}
+
+-(void)dictionaryAction
+{
+    if (self.menuView.superview) {
+        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
+    }
+    __weak typeof(self) weakSelf = self;
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"查词典"
+                                                                   message:@"输入词语,调用系统词典(需已下载词典包)"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+        tf.placeholder = @"词语 / 单词";
+        tf.clearButtonMode = UITextFieldViewModeWhileEditing;
+        // 预填当前页首词便于快速查
+        RDReadController *cur = (RDReadController *)weakSelf.pageViewController.viewControllers.firstObject;
+        NSString *page = cur.content.string;
+        if (page.length > 0) {
+            NSArray *tokens = [page componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            for (NSString *t in tokens) {
+                if (t.length >= 1 && t.length <= 8) {
+                    tf.text = t;
+                    break;
+                }
+            }
+        }
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"查询" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        NSString *word = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (word.length == 0) {
+            return;
+        }
+        if (![UIReferenceLibraryViewController dictionaryHasDefinitionForTerm:word]) {
+            [RDToastView showText:@"词典中未找到,可到系统「设置-通用-词典」下载" delay:2 inView:weakSelf.view];
+            return;
+        }
+        UIReferenceLibraryViewController *dict = [[UIReferenceLibraryViewController alloc] initWithTerm:word];
+        [weakSelf presentViewController:dict animated:YES completion:nil];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - 听书

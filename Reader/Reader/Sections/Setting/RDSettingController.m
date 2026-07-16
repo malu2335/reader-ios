@@ -13,6 +13,7 @@
 #import "RDBackupManager.h"
 #import "RDAIConfigController.h"
 #import "RDAIConfig.h"
+#import "RDReplaceRulesController.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "AppDelegate.h"
 #import "RDMainController.h"
@@ -23,6 +24,8 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowStorage,
     RDSettingRowClear,
     RDSettingRowAIConfig,
+    RDSettingRowPurify,
+    RDSettingRowDictionary,
     RDSettingRowBackup,
     RDSettingRowRestore,
     RDSettingRowVersion,
@@ -39,9 +42,9 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    //书籍一组,AI 一组,备份一组,关于一组
+    // 书籍 / 阅读增强 / 备份 / 关于
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
-                      @[@(RDSettingRowAIConfig)],
+                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowDictionary)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowVersion)]];
     [self.view addSubview:self.topView];
@@ -183,6 +186,16 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         }
+        case RDSettingRowPurify:
+            cell.textLabel.text = @"正文净化";
+            cell.detailTextLabel.text = @"替换规则 · legado";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
+        case RDSettingRowDictionary:
+            cell.textLabel.text = @"系统词典";
+            cell.detailTextLabel.text = @"阅读中查词";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
         case RDSettingRowBackup:
             cell.textLabel.text = @"备份到文件";
             cell.detailTextLabel.text = @"书籍 · 进度 · 设置 · AI(不含密钥)";
@@ -220,6 +233,34 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     else if (row == RDSettingRowAIConfig) {
         RDAIConfigController *ai = [[RDAIConfigController alloc] init];
         [self.navigationController pushViewController:ai animated:YES];
+    }
+    else if (row == RDSettingRowPurify) {
+        RDReplaceRulesController *vc = [[RDReplaceRulesController alloc] init];
+        [self.navigationController pushViewController:vc animated:YES];
+    }
+    else if (row == RDSettingRowDictionary) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"查词"
+                                                                       message:@"输入词语,将调用系统词典(需系统已下载对应词典包)"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+            tf.placeholder = @"词语";
+            tf.clearButtonMode = UITextFieldViewModeWhileEditing;
+        }];
+        __weak typeof(self) weakSelf = self;
+        [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+        [alert addAction:[UIAlertAction actionWithTitle:@"查询" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+            NSString *word = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            if (word.length == 0) {
+                return;
+            }
+            if (![UIReferenceLibraryViewController dictionaryHasDefinitionForTerm:word]) {
+                [weakSelf showText:@"系统词典中未找到该词,可在「设置-通用-词典」下载词典"];
+                return;
+            }
+            UIReferenceLibraryViewController *dict = [[UIReferenceLibraryViewController alloc] initWithTerm:word];
+            [weakSelf presentViewController:dict animated:YES completion:nil];
+        }]];
+        [self presentViewController:alert animated:YES completion:nil];
     }
     else if (row == RDSettingRowBackup) {
         [self p_backup];

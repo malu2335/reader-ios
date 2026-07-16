@@ -2,15 +2,20 @@
 //  RDReadTopBar.m
 //  Reader
 //
+//  阅读页顶栏:返回 + 分享金句 + 词典 + AI 翻译 + 听书
+//
 
 #import "RDReadTopBar.h"
 #import "RDLayoutButton.h"
 
 @interface RDReadTopBar ()
-@property(nonatomic, strong) RDLayoutButton *backBtn;
-@property (nonatomic,strong) UIButton *speechBtn;
-@property (nonatomic,strong) UIButton *translateBtn;
+@property (nonatomic, strong) RDLayoutButton *backBtn;
+@property (nonatomic, strong) UIButton *speechBtn;
+@property (nonatomic, strong) UIButton *translateBtn;
+@property (nonatomic, strong) UIButton *shareBtn;
+@property (nonatomic, strong) UIButton *dictBtn;
 @end
+
 @implementation RDReadTopBar
 
 -(instancetype)initWithFrame:(CGRect)frame
@@ -18,10 +23,11 @@
     self = [super initWithFrame:frame];
     if (self) {
         [self addSubview:self.backBtn];
+        [self addSubview:self.dictBtn];
+        [self addSubview:self.shareBtn];
         [self addSubview:self.translateBtn];
         [self addSubview:self.speechBtn];
         [self setBackgroundColor:RDReadBg];
-
     }
     return self;
 }
@@ -35,21 +41,26 @@
         _backBtn = button;
         [_backBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
     }
-
     return _backBtn;
+}
+
+- (UIButton *)p_iconButtonWithSymbol:(NSString *)name title:(NSString *)title
+{
+    UIButton *btn = [[UIButton alloc] init];
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightRegular];
+    UIImage *icon = [[UIImage systemImageNamed:name withConfiguration:config] imageWithTintColor:RDBlackColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [btn setImage:icon forState:UIControlStateNormal];
+    [btn setTitle:[NSString stringWithFormat:@" %@", title] forState:UIControlStateNormal];
+    [btn setTitleColor:RDBlackColor forState:UIControlStateNormal];
+    btn.titleLabel.font = RDFont13;
+    [btn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
+    return btn;
 }
 
 - (UIButton *)translateBtn
 {
     if (!_translateBtn) {
-        _translateBtn = [[UIButton alloc] init];
-        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightRegular];
-        UIImage *icon = [[UIImage systemImageNamed:@"globe" withConfiguration:config] imageWithTintColor:RDBlackColor renderingMode:UIImageRenderingModeAlwaysOriginal];
-        [_translateBtn setImage:icon forState:UIControlStateNormal];
-        [_translateBtn setTitle:@" 翻译" forState:UIControlStateNormal];
-        [_translateBtn setTitleColor:RDBlackColor forState:UIControlStateNormal];
-        _translateBtn.titleLabel.font = RDFont15;
-        [_translateBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
+        _translateBtn = [self p_iconButtonWithSymbol:@"globe" title:@"译"];
     }
     return _translateBtn;
 }
@@ -57,16 +68,25 @@
 - (UIButton *)speechBtn
 {
     if (!_speechBtn) {
-        _speechBtn = [[UIButton alloc] init];
-        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightRegular];
-        UIImage *icon = [[UIImage systemImageNamed:@"headphones" withConfiguration:config] imageWithTintColor:RDBlackColor renderingMode:UIImageRenderingModeAlwaysOriginal];
-        [_speechBtn setImage:icon forState:UIControlStateNormal];
-        [_speechBtn setTitle:@" 听书" forState:UIControlStateNormal];
-        [_speechBtn setTitleColor:RDBlackColor forState:UIControlStateNormal];
-        _speechBtn.titleLabel.font = RDFont15;
-        [_speechBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
+        _speechBtn = [self p_iconButtonWithSymbol:@"headphones" title:@"听"];
     }
     return _speechBtn;
+}
+
+- (UIButton *)shareBtn
+{
+    if (!_shareBtn) {
+        _shareBtn = [self p_iconButtonWithSymbol:@"square.and.arrow.up" title:@"享"];
+    }
+    return _shareBtn;
+}
+
+- (UIButton *)dictBtn
+{
+    if (!_dictBtn) {
+        _dictBtn = [self p_iconButtonWithSymbol:@"character.book.closed" title:@"词"];
+    }
+    return _dictBtn;
 }
 
 -(void)click:(UIButton *)sender
@@ -76,7 +96,7 @@
             [self.delegate backAction];
         }
     }
-    else if (sender == self.speechBtn){
+    else if (sender == self.speechBtn) {
         if ([self.delegate respondsToSelector:@selector(speechAction)]) {
             [self.delegate speechAction];
         }
@@ -86,6 +106,16 @@
             [self.delegate translateAction];
         }
     }
+    else if (sender == self.shareBtn) {
+        if ([self.delegate respondsToSelector:@selector(shareQuoteAction)]) {
+            [self.delegate shareQuoteAction];
+        }
+    }
+    else if (sender == self.dictBtn) {
+        if ([self.delegate respondsToSelector:@selector(dictionaryAction)]) {
+            [self.delegate dictionaryAction];
+        }
+    }
 }
 
 -(void)layoutSubviews
@@ -93,9 +123,16 @@
     [super layoutSubviews];
     CGFloat height = [UIView navigationBar];
     CGFloat y = [UIView statusBar];
-    self.speechBtn.frame = CGRectMake(0, y, 72, height);
-    self.speechBtn.right = self.width - 8;
-    self.translateBtn.frame = CGRectMake(0, y, 72, height);
-    self.translateBtn.right = self.speechBtn.left - 4;
+    CGFloat btnW = 52;
+    CGFloat gap = 2;
+    self.speechBtn.frame = CGRectMake(0, y, btnW, height);
+    self.speechBtn.right = self.width - 4;
+    self.translateBtn.frame = CGRectMake(0, y, btnW, height);
+    self.translateBtn.right = self.speechBtn.left - gap;
+    self.shareBtn.frame = CGRectMake(0, y, btnW, height);
+    self.shareBtn.right = self.translateBtn.left - gap;
+    self.dictBtn.frame = CGRectMake(0, y, btnW, height);
+    self.dictBtn.right = self.shareBtn.left - gap;
 }
+
 @end

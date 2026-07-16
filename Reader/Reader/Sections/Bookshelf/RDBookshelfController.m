@@ -148,6 +148,12 @@
         _tableView.estimatedRowHeight = 0;
         _tableView.estimatedSectionHeaderHeight = 0;
         _tableView.estimatedSectionFooterHeight = 0;
+        // 第一行不要贴顶:顶部留白 + 底部分页安全区
+        _tableView.contentInset = UIEdgeInsetsMake(18, 0, 24, 0);
+        _tableView.scrollIndicatorInsets = _tableView.contentInset;
+        if (@available(iOS 15.0, *)) {
+            _tableView.sectionHeaderTopPadding = 0;
+        }
     }
     return _tableView;
 }
@@ -234,7 +240,33 @@
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    // 有书时展示「共 N 本 · 长按管理」提示头
+    id first = self.dataSource.firstObject;
+    if ([first isKindOfClass:NSArray.class]) {
+        return 36;
+    }
     return CGFLOAT_MIN;
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
+{
+    id first = self.dataSource.firstObject;
+    if (![first isKindOfClass:NSArray.class]) {
+        return nil;
+    }
+    NSInteger count = 0;
+    for (id row in self.dataSource) {
+        if ([row isKindOfClass:NSArray.class]) {
+            count += [(NSArray *)row count];
+        }
+    }
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, tableView.width, 36)];
+    UILabel *lab = [[UILabel alloc] initWithFrame:CGRectMake(22, 4, tableView.width - 44, 28)];
+    lab.font = RDFont13;
+    lab.textColor = RDLightGrayColor;
+    lab.text = [NSString stringWithFormat:@"共 %@ 本 · 长按书籍可分享、改名、删除", @(count)];
+    [header addSubview:lab];
+    return header;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {

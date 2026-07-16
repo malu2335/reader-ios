@@ -9,11 +9,14 @@
 #import "RDReadParser.h"
 #import <CoreText/CoreText.h>
 #import "RDFontManager.h"
+#import "RDReplaceRule.h"
 
 @implementation RDReadParser
 
 +(void)paginateWithContent:(NSString *)content charpter:(NSString *)charpter bounds:(CGRect)bounds complete:(void(^)(NSAttributedString *content,NSArray *pages))complete
 {
+    // legado 风格净化:分页前应用启用中的替换规则
+    NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:content ?: @""];
     
     NSMutableArray *pageArray = [NSMutableArray array];
     CTFramesetterRef frameSetter;
@@ -23,7 +26,7 @@
     NSDictionary *charpterAttribute = [RDReadParser paraserChapterFontArrribute:[RDReadConfigManager sharedInstance]];
     [attrString setAttributes:charpterAttribute range:NSMakeRange(0, attrString.length)];
     
-    NSMutableAttributedString *contentAttr = [[NSMutableAttributedString  alloc] initWithString:content];
+    NSMutableAttributedString *contentAttr = [[NSMutableAttributedString  alloc] initWithString:cleaned];
     NSDictionary *contentAttribute = [RDReadParser paraserFontArrribute:[RDReadConfigManager sharedInstance]];
     [contentAttr setAttributes:contentAttribute range:NSMakeRange(0, contentAttr.length)];
     
