@@ -42,22 +42,19 @@
 }
 
 -(void)initSetup{
-    self.viewControllers = @[({
-        RDBookshelfController *bookshelfController = [[RDBookshelfController alloc] init];
-        bookshelfController;
-    }),({
-        RDSettingController *settingController = [[RDSettingController alloc] init];
-        settingController;
-    })];
+    // 首屏只创建书架,设置页延后到首次点 Tab 时再实例化(见 tabBarController:shouldSelectViewController:)
+    RDBookshelfController *bookshelfController = [[RDBookshelfController alloc] init];
+    UIViewController *settingsPlaceholder = [[UIViewController alloc] init];
+    settingsPlaceholder.view.backgroundColor = RDBackgroudColor;
+    self.viewControllers = @[bookshelfController, settingsPlaceholder];
 
-    //设置 tab 使用系统齿轮图标,与书架切图统一按主题着色
     UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
     UIImage *gear = [UIImage systemImageNamed:@"gearshape" withConfiguration:symbolConfig];
     UIImage *gearFill = [UIImage systemImageNamed:@"gearshape.fill" withConfiguration:symbolConfig];
 
     NSArray *normalIcons = @[[UIImage imageNamed:@"tabbar_unselect"], gear];
     NSArray *selectedIcons = @[[UIImage imageNamed:@"tabbar_select"], gearFill];
-    NSArray *titleArray = @[@"书架",@"设置"];
+    NSArray *titleArray = @[@"书架", @"设置"];
     for (int i = 0; i < self.tabBar.items.count; ++i) {
         RDVTabBarItem *item = self.tabBar.items[i];
         item.backgroundColor = RDSurfaceColor;
@@ -67,20 +64,53 @@
         NSDictionary *tabBarTitleSelectedDic = @{NSForegroundColorAttributeName: RDAccentColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
         item.selectedTitleAttributes = tabBarTitleSelectedDic;
         item.unselectedTitleAttributes = tabBarTitleUnselectedDic;
-        //旧图标是绿色/冷灰切图,按纸质主题重新着色
         UIImage *selectedImage = [selectedIcons[i] imageWithTintColor:RDAccentColor];
         UIImage *normalImage = [normalIcons[i] imageWithTintColor:RDLightGrayColor];
         [item setFinishedSelectedImage:selectedImage withFinishedUnselectedImage:normalImage];
         [item removeTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchDown];
         [item addTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchUpInside];
-        
-        
     }
-    //添加分割线
     UIView *separatorView = [[UIView alloc] initWithFrame:CGRectMake(0, -1 / [UIScreen mainScreen].scale, self.tabBar.width, 1 / [UIScreen mainScreen].scale)];
     separatorView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     separatorView.backgroundColor = RDSeparatorColor;
     [self.tabBar addSubview:separatorView];
+}
+
+- (BOOL)tabBarController:(RDVTabBarController *)tabBarController shouldSelectViewController:(UIViewController *)viewController
+{
+    // 首次点「设置」时替换占位 VC
+    NSArray *vcs = self.viewControllers;
+    if (vcs.count >= 2 && viewController == vcs[1] && ![viewController isKindOfClass:RDSettingController.class]) {
+        RDSettingController *setting = [[RDSettingController alloc] init];
+        NSMutableArray *next = [vcs mutableCopy];
+        next[1] = setting;
+        self.viewControllers = next;
+        // 重新套用 tab 标题/图标(viewControllers 重置会刷 item)
+        [self p_reapplyTabBarChrome];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self setSelectedIndex:RDMainSetting];
+        });
+        return NO;
+    }
+    return YES;
+}
+
+- (void)p_reapplyTabBarChrome
+{
+    UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
+    UIImage *gear = [UIImage systemImageNamed:@"gearshape" withConfiguration:symbolConfig];
+    UIImage *gearFill = [UIImage systemImageNamed:@"gearshape.fill" withConfiguration:symbolConfig];
+    NSArray *normalIcons = @[[UIImage imageNamed:@"tabbar_unselect"], gear];
+    NSArray *selectedIcons = @[[UIImage imageNamed:@"tabbar_select"], gearFill];
+    NSArray *titleArray = @[@"书架", @"设置"];
+    for (int i = 0; i < self.tabBar.items.count; ++i) {
+        RDVTabBarItem *item = self.tabBar.items[i];
+        item.title = [titleArray objectAtIndexSafely:i];
+        item.selectedTitleAttributes = @{NSForegroundColorAttributeName: RDAccentColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
+        item.unselectedTitleAttributes = @{NSForegroundColorAttributeName: RDLightGrayColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
+        [item setFinishedSelectedImage:[selectedIcons[i] imageWithTintColor:RDAccentColor]
+           withFinishedUnselectedImage:[normalIcons[i] imageWithTintColor:RDLightGrayColor]];
+    }
 }
 
 

@@ -10,7 +10,6 @@
 #import "AppDelegate.h"
 #import "RDMainController.h"
 #import "RDGlobalModel.h"
-#import "GBDeviceInfo.h"
 
 
 @implementation RDUtilities
@@ -115,7 +114,7 @@
 
 + (BOOL)iPad
 {
-    GBDeviceInfo *info = [GBDeviceInfo deviceInfo];
-    return info.family == GBDeviceFamilyiPad;
+    // 启动/列表热路径避免 GBDeviceInfo 解析设备树
+    return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
 }
 @end

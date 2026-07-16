@@ -31,9 +31,12 @@
     appDelegate.window = window;
     [window makeKeyAndVisible];
 
-    // 冷启动「用其他应用打开」
+    // 冷启动「用其他应用打开」延后到首帧后,避免挡住 makeKeyAndVisible
     if (connectionOptions.URLContexts.count > 0) {
-        [self scene:scene openURLContexts:connectionOptions.URLContexts];
+        NSSet *contexts = connectionOptions.URLContexts;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self scene:scene openURLContexts:contexts];
+        });
     }
 }
 

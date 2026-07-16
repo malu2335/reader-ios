@@ -10,6 +10,7 @@
 #import "RDCharpterModel.h"
 #import "RDCharpterModel+WCTTableCoding.h"
 #import "RDBookDetailModel.h"
+
 static NSString * const kPrimaryIdMigratedKey = @"RDChapterPrimaryIdMigrated_v1";
 static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
 
@@ -31,19 +32,22 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         dispatch_queue_set_specific(sharedInstance.dbQueue, kRDBQueueSpecificKey, kRDBQueueSpecificKey, NULL);
 
         NSString *dbPath = [PATH_DOCUMENT stringByAppendingPathComponent:kBookDatabase];
+        // 只做打开 + 建表,不做全表迁移/目录遍历,避免阻塞首屏
         sharedInstance.database = [[WCTDatabase alloc] initWithPath:dbPath];
         [sharedInstance.database createTableAndIndexesOfName:kCharpterTable withClass:RDCharpterModel.class];
         [sharedInstance.database createTableAndIndexesOfName:kReadRecordTable withClass:RDBookDetailModel.class];
         [sharedInstance.database createTableAndIndexesOfName:kHistoryRecordTable withClass:RDBookDetailModel.class];
 
-        // 文件保护:未解锁设备时不可读
-        [sharedInstance p_applyDataProtectionToPath:dbPath];
-        NSString *localBooks = [PATH_DOCUMENT stringByAppendingPathComponent:@"LocalBooks"];
-        [sharedInstance p_applyDataProtectionToPath:localBooks];
-        NSString *aiDir = [PATH_DOCUMENT stringByAppendingPathComponent:@"AIConfig"];
-        [sharedInstance p_applyDataProtectionToPath:aiDir];
+        // DB 文件本身保护开销小
+        NSDictionary *attrs = @{NSFileProtectionKey: NSFileProtectionCompleteUntilFirstUserAuthentication};
+        [[NSFileManager defaultManager] setAttributes:attrs ofItemAtPath:dbPath error:nil];
 
-        [sharedInstance p_migratePrimaryIdsIfNeeded];
+        // 迁移与大目录保护放到后台,不挡启动
+        dispatch_async(sharedInstance.dbQueue, ^{
+            [sharedInstance p_migratePrimaryIdsIfNeeded];
+            [sharedInstance p_applyDataProtectionToPath:[PATH_DOCUMENT stringByAppendingPathComponent:@"LocalBooks"]];
+            [sharedInstance p_applyDataProtectionToPath:[PATH_DOCUMENT stringByAppendingPathComponent:@"AIConfig"]];
+        });
     });
 
     return sharedInstance;
@@ -84,44 +88,42 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
     }
     NSDictionary *attrs = @{NSFileProtectionKey: NSFileProtectionCompleteUntilFirstUserAuthentication};
     [fm setAttributes:attrs ofItemAtPath:path error:nil];
-    // 目录则尽量保护子项
     BOOL isDir = NO;
     if ([fm fileExistsAtPath:path isDirectory:&isDir] && isDir) {
-        NSDirectoryEnumerator *en = [fm enumeratorAtPath:path];
-        for (NSString *rel in en) {
+        // 仅保护顶层文件,避免启动后仍长时间扫整棵 LocalBooks
+        NSArray *children = [fm contentsOfDirectoryAtPath:path error:nil];
+        for (NSString *rel in children) {
             NSString *full = [path stringByAppendingPathComponent:rel];
             [fm setAttributes:attrs ofItemAtPath:full error:nil];
         }
     }
 }
 
-/// 将旧 primaryId(bookId 与 charpterId 数字拼接)迁移为 bookId_charpterId
+/// 将旧 primaryId 迁移为 bookId_charpterId(后台执行,仅一次)
 - (void)p_migratePrimaryIdsIfNeeded
 {
     if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrimaryIdMigratedKey]) {
         return;
     }
-    [self performSync:^(WCTDatabase *db) {
-        NSArray <RDCharpterModel *>*all = [db getAllObjectsOfClass:RDCharpterModel.class fromTable:kCharpterTable];
-        if (all.count == 0) {
-            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
-            return;
-        }
-        [db runTransaction:^BOOL{
-            for (RDCharpterModel *chapter in all) {
-                NSString *desired = [NSString stringWithFormat:@"%@_%@", @(chapter.bookId), @(chapter.charpterId)];
-                if ([chapter.primaryId isEqualToString:desired]) {
-                    continue;
-                }
-                // 删旧主键行再插入新主键
-                [db deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.primaryId.is(chapter.primaryId)];
-                chapter.primaryId = desired;
-                [db insertOrReplaceObject:chapter into:kCharpterTable];
-            }
-            return YES;
-        }];
+    // 已在 dbQueue 上
+    NSArray <RDCharpterModel *>*all = [self.database getAllObjectsOfClass:RDCharpterModel.class fromTable:kCharpterTable];
+    if (all.count == 0) {
         [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
+        return;
+    }
+    [self.database runTransaction:^BOOL{
+        for (RDCharpterModel *chapter in all) {
+            NSString *desired = [NSString stringWithFormat:@"%@_%@", @(chapter.bookId), @(chapter.charpterId)];
+            if ([chapter.primaryId isEqualToString:desired]) {
+                continue;
+            }
+            [self.database deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.primaryId.is(chapter.primaryId)];
+            chapter.primaryId = desired;
+            [self.database insertOrReplaceObject:chapter into:kCharpterTable];
+        }
+        return YES;
     }];
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
 }
 
 @end

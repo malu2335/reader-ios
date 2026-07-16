@@ -21,10 +21,15 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // 仅进程级初始化;窗口由 SceneDelegate 创建
-    SDImageWebPCoder *webPCoder = [SDImageWebPCoder sharedCoder];
-    [[SDImageCodersManager sharedManager] addCoder:webPCoder];
-    [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
+    // 启动关键路径尽量轻量:WebP / 自定义字体放到首帧之后异步完成
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        SDImageWebPCoder *webPCoder = [SDImageWebPCoder sharedCoder];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[SDImageCodersManager sharedManager] addCoder:webPCoder];
+        });
+        // 字体注册可在后台线程;列表缓存在 FontManager 内
+        [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
+    });
     return YES;
 }
 

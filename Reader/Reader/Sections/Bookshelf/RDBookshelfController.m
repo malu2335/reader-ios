@@ -37,12 +37,13 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(importAction)
                                                  name:RDLocalBookImportRequestNotification object:nil];
 
-    //如果异常退出是阅读状态，那么直接打开书籍
-    RDBookDetailModel *book = [RDCacheModel sharedInstance].book;
-    if(book){
-         [RDReadHelper beginReadWithBookDetail:book animation:NO];
-    }
-
+    // 先出书架 UI,首帧后再恢复上次阅读,避免启动直接卡在读库/分页
+    dispatch_async(dispatch_get_main_queue(), ^{
+        RDBookDetailModel *book = [RDCacheModel sharedInstance].book;
+        if (book) {
+            [RDReadHelper beginReadWithBookDetail:book animation:NO];
+        }
+    });
 }
 
 -(void)dealloc
@@ -215,28 +216,36 @@
 
 -(void)p_reload
 {
-    [self.dataSource removeAllObjects];
-    [self.bookSource removeAllObjects];
-
-    NSArray *books = [RDReadRecordManager getAllOnBookshelf];
-
-    if (books.count == 0) {
-        [self.dataSource addObject:@"RDBookshelfNoneCell"];
-    }
-    else{
-        NSMutableArray *array;
-        for (int i=0; i<books.count; i++) {
-            if (i%kItemCount == 0) {
-                array = [NSMutableArray array];
-                [self.bookSource addObject:array];
+    // 读库放到后台,主线程只做组装与刷新,缩短启动与返回书架卡顿
+    NSInteger columns = kItemCount;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSArray *books = [RDReadRecordManager getAllOnBookshelf];
+        NSMutableArray *rows = [NSMutableArray array];
+        NSMutableArray *groups = [NSMutableArray array];
+        if (books.count == 0) {
+            [rows addObject:@"RDBookshelfNoneCell"];
+        } else {
+            NSMutableArray *array = nil;
+            for (NSInteger i = 0; i < (NSInteger)books.count; i++) {
+                if (i % columns == 0) {
+                    array = [NSMutableArray array];
+                    [groups addObject:array];
+                }
+                [array addObject:books[i]];
             }
-            [array addObject:books[i]];
+            [rows addObjectsFromArray:groups];
         }
-        [self.dataSource addObjectsFromArray:self.bookSource];
-    }
-    
-    
-    [self.tableView reloadData];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!self.isViewLoaded) {
+                return;
+            }
+            [self.dataSource removeAllObjects];
+            [self.bookSource removeAllObjects];
+            [self.bookSource addObjectsFromArray:groups];
+            [self.dataSource addObjectsFromArray:rows];
+            [self.tableView reloadData];
+        });
+    });
 }
 
 -(void)viewDidLayoutSubviews
