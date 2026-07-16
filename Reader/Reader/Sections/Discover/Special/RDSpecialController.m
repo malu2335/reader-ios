@@ -40,7 +40,7 @@
         layout.minimumLineSpacing = 0; // 水平方向的间距
         layout.sectionInset = UIEdgeInsetsMake(0, 15, 0, 15);
         _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
-        _collectionView.backgroundColor = [UIColor whiteColor];
+        _collectionView.backgroundColor = RDBackgroudColor;
         _collectionView.dataSource = self;
         _collectionView.delegate = self;
         _collectionView.mj_header = [RDRefreshHeader headerWithRefreshingTarget:self refreshingAction:@selector(headerFresh)];

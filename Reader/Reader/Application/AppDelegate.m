@@ -12,12 +12,9 @@
 #import "RDNavigationController.h"
 
 #import "SDWebImageWebPCoder.h"
-#import "RDCheckApi.h"
-#import "RDReadRecordManager.h"
-#import "RDCharpterApi.h"
-#import "RDCharpterDataManager.h"
-#import "RDConfigModel.h"
-#import "RDConfigApi.h"
+#import "RDLocalBookManager.h"
+#import "RDFontManager.h"
+#import "RDBookDetailModel.h"
 
 
 @interface AppDelegate ()
@@ -33,9 +30,22 @@
     SDImageWebPCoder *webPCoder = [SDImageWebPCoder sharedCoder];
     [[SDImageCodersManager sharedManager] addCoder:webPCoder];
 
-    
-    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    self.window.backgroundColor = [UIColor whiteColor];
+    //注册用户导入的阅读字体(进程级,需每次启动重注册)
+    [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
+
+    UIWindowScene *windowScene = nil;
+    for (UIScene *scene in application.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            windowScene = (UIWindowScene *)scene;
+            break;
+        }
+    }
+    if (windowScene) {
+        self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
+    } else {
+        self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+    }
+    self.window.backgroundColor = RDBackgroudColor;
     if (@available(iOS 13.0, *)) {
         //禁用dark model
         self.window.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
@@ -49,9 +59,24 @@
     return YES;
 }
 - (void)applicationWillEnterForeground:(UIApplication *)application {
-    
+
     [self reloadData];
-    
+
+}
+
+//「用其他应用打开」导入本地书籍
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+{
+    if (!url.isFileURL || ![RDLocalBookManager isSupportedFileURL:url]) {
+        return NO;
+    }
+    [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage) {
+        NSString *text = book ? [NSString stringWithFormat:@"《%@》已加入书架", book.title] : errorMessage;
+        if (text.length > 0) {
+            [RDToastView showText:text delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+        }
+    }];
+    return YES;
 }
 
 
@@ -65,42 +90,6 @@
 }
 
 -(void)reloadData{
-    RDConfigApi *configApi = [[RDConfigApi alloc] init];
-    [configApi startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-        if (!error) {
-            RDConfigModel *configModel = [configApi configModel];
-            [[RDConfigModel getModel] copyFrom:configModel];
-            [[RDConfigModel getModel] archive];
-        }
-    }];
-    
-    
-    NSArray *array = [RDReadRecordManager getAllOnBookshelfPram];
-    if (array.count == 0) {
-        return;
-    }
-    RDCheckApi *api = [[RDCheckApi alloc] init];
-    api.books = array;
-    [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-        if (!error) {
-            NSArray *array =  [api updateBooks];
-            for (NSDictionary *dic in array) {
-                RDCharpterApi *api = [[RDCharpterApi alloc] init];
-                api.bookId = [dic[@"bookId"] integerValue];
-                api.chapterId = [dic[@"chapterId"] integerValue];
-                [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-                    if (!error) {
-                        NSArray *charpters = [api charpters];
-                        [RDReadRecordManager updateOnBookselfUpdateWithBookId:api.bookId update:YES];
-                        dispatch_async(dispatch_get_global_queue(0, 0), ^{
-                            [RDCharpterDataManager insertObjectsWithCharpters:charpters];
-                        });
-                    }
-                }];
-            }
-            
-        }
-    }];
-    
+    //纯本地阅读器:无需拉取配置或检查书籍更新
 }
 @end

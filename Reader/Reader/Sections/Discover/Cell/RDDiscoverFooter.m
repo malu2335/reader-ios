@@ -74,7 +74,7 @@
 {
     if (!_bottomSeparate) {
         _bottomSeparate = [[UIView alloc] init];
-        _bottomSeparate.backgroundColor = [UIColor colorWithHexValue:0xfafafa];
+        _bottomSeparate.backgroundColor = RDLightSeparatorColor;
     }
     return _bottomSeparate;
 }

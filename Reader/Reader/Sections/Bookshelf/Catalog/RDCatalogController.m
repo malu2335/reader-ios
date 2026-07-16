@@ -75,7 +75,7 @@
         _tableView.delegate = self;
         _tableView.dataSource = self;
         _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-        _tableView.backgroundColor = [UIColor whiteColor];
+        _tableView.backgroundColor = RDBackgroudColor;
     }
     return _tableView;
 }
@@ -84,7 +84,7 @@
     if (!_header) {
         _header = [[RDReadCatalogHeader alloc] init];
         _header.delegate = self;
-        _header.backgroundColor = [UIColor whiteColor];
+        _header.backgroundColor = RDBackgroudColor;
         _header.nameLabel.font = RDFont15;
     }
     return _header;
@@ -95,7 +95,7 @@
         cell = [[RDReadCatalogCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"RDReadCatalogCell"];
         cell.delegate = self;
     }
-    cell.contentView.backgroundColor = [UIColor whiteColor];
+    cell.contentView.backgroundColor = RDBackgroudColor;
     cell.model = self.dataSource[indexPath.row];
     return cell;
 }

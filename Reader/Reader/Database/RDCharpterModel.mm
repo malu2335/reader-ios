@@ -29,8 +29,7 @@ WCDB_PRIMARY(RDCharpterModel, primaryId)
 WCDB_INDEX(RDCharpterModel, "_bookId_charpterId_index", bookId)
 WCDB_INDEX(RDCharpterModel, "_bookId_charpterId_index", charpterId)
 
-WCDB_INDEX(RDCharpterModel, "_bookId_content_index", bookId)
-WCDB_INDEX(RDCharpterModel, "_bookId_content_index", content)
+// 不再对 content 建索引:大文本写入放大、空间膨胀
 
 + (NSDictionary *)modelCustomPropertyMapper {
     return @{@"charpterId" : @"id"};
@@ -39,7 +38,8 @@ WCDB_INDEX(RDCharpterModel, "_bookId_content_index", content)
 -(NSString *)primaryId
 {
     if (!_primaryId) {
-        _primaryId = [NSString stringWithFormat:@"%@%@",@(_bookId),@(_charpterId)];
+        // 分隔符避免 bookId/charpterId 数字拼接碰撞(如 -12+3 与 -1+23)
+        _primaryId = [NSString stringWithFormat:@"%@_%@", @(_bookId), @(_charpterId)];
     }
     return _primaryId;
 }
@@ -50,11 +50,13 @@ WCDB_INDEX(RDCharpterModel, "_bookId_content_index", content)
     }
     if ([object isKindOfClass:self.class]) {
         RDCharpterModel *model = object;
-           if (self.charpterId == model.charpterId && self.charpterId!=0) {
-               return YES;
-           }
+        return self.bookId == model.bookId && self.charpterId == model.charpterId;
     }
-   
     return NO;
+}
+
+- (NSUInteger)hash
+{
+    return (NSUInteger)self.bookId * 31u + (NSUInteger)self.charpterId;
 }
 @end

@@ -1,7 +1,6 @@
 # Uncomment the next line to define a global platform for your project
-platform :ios, '9.0'
+platform :ios, '15.0'
 inhibit_all_warnings!
-source 'https://github.com/CocoaPods/Specs.git'
 target 'Reader' do
   pod 'YYModel', '~> 1.0.4'
   pod 'SDWebImage', '~> 5.6.0'
@@ -20,10 +19,58 @@ target 'Reader' do
   pod 'RDVTabBarController'
   pod 'FDFullscreenPopGesture', '1.1'
   pod 'MBProgressHUD'
-  pod 'WCDB', '~> 1.0.7'
   pod 'UITextView+Placeholder'
   pod 'UICKeyChainStore', '2.1.2'
-  pod 'GBDeviceInfo', '~> 6.3.0'
   pod 'NJKWebViewProgress'
 
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      # Xcode 15+ 默认开启脚本沙箱会导致 CocoaPods 脚本阶段失败
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+    end
+  end
+
+  # 新 SDK 将 netinet6/in6.h 视为私有模块头，AFNetworking 3.x 的显式引入需移除(netinet/in.h 已包含)
+  ['AFHTTPSessionManager.m', 'AFNetworkReachabilityManager.m'].each do |file|
+    af_file = File.join(installer.sandbox.root.to_s, 'AFNetworking', 'AFNetworking', file)
+    next unless File.exist?(af_file)
+    content = File.read(af_file)
+    patched = content.gsub(/#import <netinet6\/in6\.h>\n/, '')
+    if patched != content
+      File.chmod(0644, af_file)
+      File.write(af_file, patched)
+    end
+  end
+
+  # Xcode 26 clang 将链式比较判为错误，YYText 上游笔误(`<` 应为 `?`)需要修补
+  yytext_layout = File.join(installer.sandbox.root.to_s, 'YYText', 'YYText', 'Component', 'YYTextLayout.m')
+  if File.exist?(yytext_layout)
+    content = File.read(yytext_layout)
+    patched = content.gsub(/< fabs\(right - point\.([xy])\) < \(right \? prev : next\);/, '< fabs(right - point.\1) ? prev : next;')
+    if patched != content
+      File.chmod(0644, yytext_layout)
+      File.write(yytext_layout, patched)
+    end
+  end
+
+  # Xcode 26 / libc++ 对 std::list<const T> 进行严格检查，WCDB 1.x 旧代码会触发编译错误
+  wcdb_root = File.join(installer.sandbox.root.to_s, 'WCDB', 'objc', 'WCDB')
+  if Dir.exist?(wcdb_root)
+    Dir.glob(File.join(wcdb_root, '**', '*.{h,hpp,mm,cpp}')).each do |file|
+      content = File.read(file)
+      patched = content.gsub(/std::list<const\s+([^>]+)>/, 'std::list<\1>')
+      patched = patched.gsub(/std::initializer_list<const\s+([^>]+)>/, 'std::initializer_list<\1>')
+      if patched != content
+        begin
+          File.chmod(0644, file)
+        rescue StandardError
+        end
+        File.write(file, patched)
+      end
+    end
+  end
 end

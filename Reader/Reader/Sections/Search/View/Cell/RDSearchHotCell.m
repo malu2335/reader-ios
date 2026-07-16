@@ -43,7 +43,7 @@
     _index = index;
     self.numLabel.text = @(index).stringValue;
     if (index < 4) {
-        self.numLabel.textColor = [UIColor colorWithHexValue:0xff533a];
+        self.numLabel.textColor = RDAccentColor;
     }
     else{
         self.numLabel.textColor = RDLightGrayColor;

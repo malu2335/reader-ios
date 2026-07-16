@@ -2,19 +2,14 @@
 //  RDReadTopBar.m
 //  Reader
 //
-//  Created by yuenov on 2019/11/13.
-//  Copyright © 2019 yuenov. All rights reserved.
-//
 
 #import "RDReadTopBar.h"
 #import "RDLayoutButton.h"
-#import "RDReadRecordManager.h"
+
 @interface RDReadTopBar ()
-@property (nonatomic,strong) RDLayoutButton *download;
-@property (nonatomic,strong) RDLayoutButton *question;
 @property(nonatomic, strong) RDLayoutButton *backBtn;
-@property (nonatomic,strong) RDLayoutButton *add;
-@property (nonatomic,strong) RDLayoutButton *reload;
+@property (nonatomic,strong) UIButton *speechBtn;
+@property (nonatomic,strong) UIButton *translateBtn;
 @end
 @implementation RDReadTopBar
 
@@ -22,55 +17,13 @@
 {
     self = [super initWithFrame:frame];
     if (self) {
-        [self addSubview:self.download];
-        [self addSubview:self.question];
         [self addSubview:self.backBtn];
-        [self addSubview:self.add];
-        [self addSubview:self.reload];
+        [self addSubview:self.translateBtn];
+        [self addSubview:self.speechBtn];
         [self setBackgroundColor:RDReadBg];
-        
+
     }
     return self;
-}
-
--(void)setRecord:(RDBookDetailModel *)record
-{
-    _record = record;
-    self.add.hidden = self.record.onBookshelf;
-}
-
--(RDLayoutButton *)download
-{
-    if (!_download) {
-        _download = [[RDLayoutButton alloc] init];
-        [_download setImage:[UIImage imageNamed:@"book_download_black"] forState:UIControlStateNormal];
-        _download.imageSize = CGSizeMake(20, 20);
-        [_download addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
-    }
-    return _download;
-}
-
--(RDLayoutButton *)question
-{
-    if (!_question) {
-        _question = [[RDLayoutButton alloc] init];
-        [_question setImage:[UIImage imageNamed:@"book_help"] forState:UIControlStateNormal];
-        _question.imageSize = CGSizeMake(20, 20);
-        [_question addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
-    }
-    return _question;
-}
-
-
--(RDLayoutButton *)add
-{
-    if (!_add) {
-        _add = [[RDLayoutButton alloc] init];
-        [_add setImage:[UIImage imageNamed:@"book_add_black"] forState:UIControlStateNormal];
-        _add.imageSize = CGSizeMake(22, 22);
-        [_add addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
-    }
-    return _add;
 }
 
 - (RDLayoutButton *)backBtn {
@@ -86,42 +39,51 @@
     return _backBtn;
 }
 
--(RDLayoutButton *)reload
+- (UIButton *)translateBtn
 {
-    if (!_reload) {
-        _reload = [[RDLayoutButton alloc] init];
-        [_reload setImage:[UIImage imageNamed:@"button_reload_thin"] forState:UIControlStateNormal];
-        _reload.imageSize = CGSizeMake(20, 20);
-        [_reload addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
+    if (!_translateBtn) {
+        _translateBtn = [[UIButton alloc] init];
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightRegular];
+        UIImage *icon = [[UIImage systemImageNamed:@"globe" withConfiguration:config] imageWithTintColor:RDBlackColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+        [_translateBtn setImage:icon forState:UIControlStateNormal];
+        [_translateBtn setTitle:@" 翻译" forState:UIControlStateNormal];
+        [_translateBtn setTitleColor:RDBlackColor forState:UIControlStateNormal];
+        _translateBtn.titleLabel.font = RDFont15;
+        [_translateBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
     }
-    return _reload;
+    return _translateBtn;
 }
--(void)click:(RDLayoutButton *)sender
+
+- (UIButton *)speechBtn
+{
+    if (!_speechBtn) {
+        _speechBtn = [[UIButton alloc] init];
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightRegular];
+        UIImage *icon = [[UIImage systemImageNamed:@"headphones" withConfiguration:config] imageWithTintColor:RDBlackColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+        [_speechBtn setImage:icon forState:UIControlStateNormal];
+        [_speechBtn setTitle:@" 听书" forState:UIControlStateNormal];
+        [_speechBtn setTitleColor:RDBlackColor forState:UIControlStateNormal];
+        _speechBtn.titleLabel.font = RDFont15;
+        [_speechBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _speechBtn;
+}
+
+-(void)click:(UIButton *)sender
 {
     if (sender == self.backBtn) {
         if ([self.delegate respondsToSelector:@selector(backAction)]) {
             [self.delegate backAction];
         }
     }
-    else if (sender == self.question){
-        if ([self.delegate respondsToSelector:@selector(qusetionAction)]) {
-            [self.delegate qusetionAction];
+    else if (sender == self.speechBtn){
+        if ([self.delegate respondsToSelector:@selector(speechAction)]) {
+            [self.delegate speechAction];
         }
     }
-    else if (sender == self.download){
-        if ([self.delegate respondsToSelector:@selector(downloadAction)]) {
-            [self.delegate downloadAction];
-        }
-    }
-    else if (sender == self.add){
-        self.add.hidden = YES;
-        self.record.onBookshelf = YES;
-        [RDReadRecordManager updateBookshelfState:self.record];
-        [RDToastView showText:@"已添加到书架" delay:1 inView:[RDUtilities getCurrentVC].view];
-    }
-    else if (sender == self.reload){
-        if ([self.delegate respondsToSelector:@selector(reloadAction)]) {
-            [self.delegate reloadAction];
+    else if (sender == self.translateBtn) {
+        if ([self.delegate respondsToSelector:@selector(translateAction)]) {
+            [self.delegate translateAction];
         }
     }
 }
@@ -130,13 +92,10 @@
 {
     [super layoutSubviews];
     CGFloat height = [UIView navigationBar];
-    self.question.frame = CGRectMake(0, [UIView statusBar], height, height);
-    self.question.right = self.width;
-    self.download.frame = CGRectMake(0, [UIView statusBar], height, height);
-    self.download.right = self.question.left;
-    self.reload.frame = CGRectMake(0, [UIView statusBar], height, height);
-    self.reload.right = self.download.left;
-    self.add.frame = CGRectMake(0, [UIView statusBar], height, height);
-    self.add.right = self.reload.left;
+    CGFloat y = [UIView statusBar];
+    self.speechBtn.frame = CGRectMake(0, y, 72, height);
+    self.speechBtn.right = self.width - 8;
+    self.translateBtn.frame = CGRectMake(0, y, 72, height);
+    self.translateBtn.right = self.speechBtn.left - 4;
 }
 @end

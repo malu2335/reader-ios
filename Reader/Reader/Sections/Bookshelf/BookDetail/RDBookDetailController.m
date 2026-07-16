@@ -155,7 +155,7 @@
         _tableView.showsHorizontalScrollIndicator = NO;
         _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
         _tableView.estimatedRowHeight = 350;
-        _tableView.backgroundColor = [UIColor colorWithHexValue:0xf5f7fa];
+        _tableView.backgroundColor = RDBackgroudColor;
     }
     return _tableView;
 }

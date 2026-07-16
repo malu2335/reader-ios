@@ -95,7 +95,7 @@
         NSRegularExpression *regex = [[NSRegularExpression alloc]initWithPattern:[NSString stringWithFormat:@"[%@]",word] options:NSRegularExpressionCaseInsensitive error:nil];
         [regex enumerateMatchesInString:self.book.title options:NSMatchingReportProgress range:NSMakeRange(0, [self.book.title length]) usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
             [attributedString addAttribute:(NSString*)NSForegroundColorAttributeName
-                                      value:(id)[UIColor colorWithHexValue:0xf4855f]
+                                      value:(id)RDAccentColor
                                       range:result.range];
         } ];
         self.bookName.attributedText = attributedString;

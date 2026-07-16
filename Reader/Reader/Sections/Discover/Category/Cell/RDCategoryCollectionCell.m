@@ -21,7 +21,7 @@
     self = [super initWithFrame:frame];
     if (self) {
         [self.contentView addSubview:self.nameLabel];
-        self.contentView.backgroundColor = [UIColor whiteColor];
+        self.contentView.backgroundColor = RDBackgroudColor;
     }
     return self;
 }

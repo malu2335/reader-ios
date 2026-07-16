@@ -14,6 +14,7 @@
 #import "RDReadCatalogCell.h"
 
 #define kToolBarHeight (50+[UIView safeBottomBar])
+#define kSetViewHeight 180
 
 @interface RDMenuView () <RDReadToolBarDelegate,RDReadCatalogViewDelegate,RDReadProgressViewDelegate,RDReadTopBarDelegate,RDReadSetViewDelegate>
 @property (nonatomic,strong) RDReadSetView *setView;
@@ -92,7 +93,7 @@
 -(RDReadSetView *)setView
 {
     if (!_setView) {
-        _setView = [[RDReadSetView alloc] initWithFrame:CGRectMake(0, ScreenSize.height, ScreenSize.width, 120)];
+        _setView = [[RDReadSetView alloc] initWithFrame:CGRectMake(0, ScreenSize.height, ScreenSize.width, kSetViewHeight)];
         _setView.backgroundColor = RDReadBg;
         _setView.delegate = self;
     }
@@ -260,7 +261,7 @@
 -(void)didSetting
 {
     if (self.showView && self.showView!=self.setView) {
-        self.setView.frame = CGRectMake(0, self.height-kToolBarHeight-120, ScreenWidth, 120);
+        self.setView.frame = CGRectMake(0, self.height-kToolBarHeight-kSetViewHeight, ScreenWidth, kSetViewHeight);
         if (self.showView == self.catalogView) {
             [self.catalogView dismiss];
         }
@@ -272,12 +273,12 @@
     else{
         if (self.showView == self.setView) {
            [UIView animateWithDuration:0.3 animations:^{
-               self.setView.frame = CGRectMake(0, ScreenHeight, ScreenWidth, 120);
+               self.setView.frame = CGRectMake(0, ScreenHeight, ScreenWidth, kSetViewHeight);
            }];
            self.showView = nil;
         }else{
             [UIView animateWithDuration:0.3 animations:^{
-                           self.setView.frame = CGRectMake(0, self.height-kToolBarHeight-120, ScreenWidth, 120);
+                           self.setView.frame = CGRectMake(0, self.height-kToolBarHeight-kSetViewHeight, ScreenWidth, kSetViewHeight);
                        }];
                        self.showView = self.setView;
         }
@@ -308,23 +309,18 @@
     }
 }
 
--(void)qusetionAction
+-(void)speechAction
 {
-    if ([self.delegate respondsToSelector:@selector(qusetionAction)]) {
-        [self.delegate qusetionAction];
+    if ([self.delegate respondsToSelector:@selector(speechAction)]) {
+        [self.delegate speechAction];
     }
 }
 
--(void)downloadAction
+-(void)translateAction
 {
-    if ([self.delegate respondsToSelector:@selector(downloadAction)]) {
-        [self.delegate downloadAction];
-    }
-}
-
--(void)reloadAction{
-    if ([self.delegate respondsToSelector:@selector(reloadAction)]) {
-        [self.delegate reloadAction];
+    // topBar.delegate = self,必须转发否则「翻译」会因 respondsToSelector 静默失败
+    if ([self.delegate respondsToSelector:@selector(translateAction)]) {
+        [self.delegate translateAction];
     }
 }
 

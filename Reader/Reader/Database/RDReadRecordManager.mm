@@ -2,9 +2,6 @@
 //  RDReadRecordManager.m
 //  Reader
 //
-//  Created by yuenov on 2020/1/31.
-//  Copyright © 2020 yuenov. All rights reserved.
-//
 
 #import "RDReadRecordManager.h"
 #import "RDBookDetailModel.h"
@@ -12,60 +9,83 @@
 #import "RDDatabaseManager.h"
 #import "RDCharpterDataManager.h"
 #import "RDCharpterModel.h"
+
 @implementation RDReadRecordManager
 
 +(void)insertOrReplaceModel:(RDBookDetailModel *)model
 {
     model.readTime = [NSDate date].timeIntervalSince1970;
-    [[RDDatabaseManager sharedInstance].database insertOrReplaceObject:model into:kReadRecordTable];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db insertOrReplaceObject:model into:kReadRecordTable];
+    }];
 }
 
 +(void)updateBookshelfState:(RDBookDetailModel *)model
 {
     model.readTime = [NSDate date].timeIntervalSince1970;
-    [[RDDatabaseManager sharedInstance].database updateRowsInTable:kReadRecordTable onProperties:{RDBookDetailModel.onBookshelf,RDBookDetailModel.readTime} withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db updateRowsInTable:kReadRecordTable onProperties:{RDBookDetailModel.onBookshelf,RDBookDetailModel.readTime} withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
+    }];
 }
 
 +(void)updateReadTime:(RDBookDetailModel *)model
 {
     model.readTime = [NSDate date].timeIntervalSince1970;
-    [[RDDatabaseManager sharedInstance].database updateRowsInTable:kReadRecordTable onProperties:RDBookDetailModel.readTime withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db updateRowsInTable:kReadRecordTable onProperties:RDBookDetailModel.readTime withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
+    }];
 }
 
 +(RDBookDetailModel *)getReadRecordWithBookId:(NSInteger)bookid
 {
-    return [[RDDatabaseManager sharedInstance].database getOneObjectOfClass:RDBookDetailModel.class fromTable:kReadRecordTable where:RDBookDetailModel.bookId.is(bookid)];
+    __block RDBookDetailModel *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getOneObjectOfClass:RDBookDetailModel.class fromTable:kReadRecordTable where:RDBookDetailModel.bookId.is(bookid)];
+    }];
+    return result;
 }
 
 +(NSArray *)getAllOnBookshelf
 {
-    return [[RDDatabaseManager sharedInstance].database getObjectsOfClass:RDBookDetailModel.class fromTable:kReadRecordTable where:RDBookDetailModel.onBookshelf.is(YES) orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getObjectsOfClass:RDBookDetailModel.class fromTable:kReadRecordTable where:RDBookDetailModel.onBookshelf.is(YES) orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
+    }];
+    return result;
 }
 
 +(NSArray *)getAllOnBookshelfPram
 {
-    NSMutableArray *array = [NSMutableArray array];
-    [[RDDatabaseManager sharedInstance].database runTransaction:^BOOL{
-        NSArray *books = [self getAllOnBookshelf];
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        NSMutableArray *array = [NSMutableArray array];
+        NSArray *books = [db getObjectsOfClass:RDBookDetailModel.class fromTable:kReadRecordTable where:RDBookDetailModel.onBookshelf.is(YES) orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
         for (RDBookDetailModel *book in books) {
+            if (book.isLocalBook) {
+                continue;
+            }
             RDCharpterModel *chapter = [RDCharpterDataManager getLastChapterWithBookId:book.bookId];
             if (!chapter || chapter.bookId==0) {
                 continue;
             }
             [array addObjectSafely:chapter];
         }
-        
-        return YES;
+        result = array.copy;
     }];
-    return array.copy;
+    return result;
 }
 
 +(void)removeBookFromBookShelfWithBookId:(NSInteger)bookid
 {
-    [[RDDatabaseManager sharedInstance].database deleteObjectsFromTable:kReadRecordTable where:RDBookDetailModel.bookId.is(bookid)];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db deleteObjectsFromTable:kReadRecordTable where:RDBookDetailModel.bookId.is(bookid)];
+    }];
 }
+
 +(void)updateOnBookselfUpdateWithBookId:(NSInteger)bookid update:(BOOL)update
 {
-    [[RDDatabaseManager sharedInstance].database updateRowsInTable:kReadRecordTable onProperty:RDBookDetailModel.bookUpdate withValue:@(update) where:RDBookDetailModel.bookId.is(bookid)];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db updateRowsInTable:kReadRecordTable onProperty:RDBookDetailModel.bookUpdate withValue:@(update) where:RDBookDetailModel.bookId.is(bookid)];
+    }];
 }
 @end

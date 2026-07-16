@@ -8,6 +8,7 @@
 
 #import "RDReadParser.h"
 #import <CoreText/CoreText.h>
+#import "RDFontManager.h"
 
 @implementation RDReadParser
 
@@ -98,7 +99,7 @@
 {
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
     dict[NSForegroundColorAttributeName] = config.fontColor;
-    dict[NSFontAttributeName] = [UIFont systemFontOfSize:config.fontSize];
+    dict[NSFontAttributeName] = [RDFontManager readFontWithName:config.fontName size:config.fontSize];
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
     paragraphStyle.lineSpacing = config.lineSpace;
 //    paragraphStyle.alignment = NSTextAlignmentJustified;
@@ -113,7 +114,7 @@
 {
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
     dict[NSForegroundColorAttributeName] = config.fontColor;
-    dict[NSFontAttributeName] = [UIFont systemFontOfSize:config.chapterFontSize];
+    dict[NSFontAttributeName] = [RDFontManager readFontWithName:config.fontName size:config.chapterFontSize];
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
     paragraphStyle.lineSpacing = config.chapterLineSpace;
     paragraphStyle.alignment = NSTextAlignmentJustified;

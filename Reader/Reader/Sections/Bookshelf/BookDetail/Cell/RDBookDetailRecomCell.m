@@ -245,7 +245,7 @@
 {
     if (!_bottomSeparate) {
         _bottomSeparate = [[UIView alloc] init];
-        _bottomSeparate.backgroundColor = [UIColor colorWithHexValue:0xf5f7fa];
+        _bottomSeparate.backgroundColor = RDBackgroudColor;
     }
     return _bottomSeparate;
 }

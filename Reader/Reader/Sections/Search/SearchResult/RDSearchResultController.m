@@ -26,7 +26,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [UIColor whiteColor];
+    self.view.backgroundColor = RDBackgroudColor;
     [self.view addSubview:self.tableView];
     [self.view addSubview:self.bottomView];
     
@@ -94,7 +94,7 @@
         _tableView.delegate = self;
         _tableView.dataSource = self;
         _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-        _tableView.backgroundColor = [UIColor whiteColor];
+        _tableView.backgroundColor = RDBackgroudColor;
     }
     return _tableView;
 }

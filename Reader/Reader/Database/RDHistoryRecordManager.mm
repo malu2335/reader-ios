@@ -10,30 +10,45 @@
 #import "RDBookDetailModel.h"
 #import "RDBookDetailModel+WCTTableCoding.h"
 #import "RDDatabaseManager.h"
+
 @implementation RDHistoryRecordManager
+
 +(void)insertOrReplaceModel:(RDBookDetailModel *)model
 {
-    model.readTime = [NSDate date].timeIntervalSince1970;
-    [[RDDatabaseManager sharedInstance].database insertOrReplaceObject:model into:kHistoryRecordTable];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db insertOrReplaceObject:model into:kHistoryRecordTable];
+    }];
 }
 
 +(NSInteger)getHisoryCount
 {
-   return  [[[RDDatabaseManager sharedInstance].database getOneValueOnResult:RDBookDetailModel.AnyProperty.count() fromTable:kHistoryRecordTable] integerValue];
+    __block NSInteger count = 0;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        count = [[db getOneValueOnResult:RDBookDetailModel.AnyProperty.count() fromTable:kHistoryRecordTable] integerValue];
+    }];
+    return count;
 }
 
 +(NSArray *)getAllHistory
 {
-   return [[RDDatabaseManager sharedInstance].database getObjectsOfClass:RDBookDetailModel.class fromTable:kHistoryRecordTable  orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getObjectsOfClass:RDBookDetailModel.class fromTable:kHistoryRecordTable orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
+    }];
+    return result;
 }
 
-+(void)deleteHistoryWithBookId:(NSInteger )bookId
++(void)deleteHistoryWithBookId:(NSInteger)bookId
 {
-    [[RDDatabaseManager sharedInstance].database deleteObjectsFromTable:kHistoryRecordTable where:RDBookDetailModel.bookId.is(bookId)];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db deleteObjectsFromTable:kHistoryRecordTable where:RDBookDetailModel.bookId.is(bookId)];
+    }];
 }
 
 +(void)deleteAllHistory
 {
-    [[RDDatabaseManager sharedInstance].database deleteAllObjectsFromTable:kHistoryRecordTable];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db deleteAllObjectsFromTable:kHistoryRecordTable];
+    }];
 }
 @end

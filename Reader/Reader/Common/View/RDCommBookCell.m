@@ -90,8 +90,8 @@
     }
     else{
         self.labels[0].text = @"连载";
-        self.labels[0].textColor = [UIColor colorWithHexValue:0x76aae4];
-        self.labels[0].layer.borderColor = [UIColor colorWithHexValue:0x76aae4].CGColor;
+        self.labels[0].textColor = RDAccentColor;
+        self.labels[0].layer.borderColor = RDAccentColor.CGColor;
     }
     self.labels[1].hidden = !(category.length>0);
     self.labels[1].text = category;

@@ -10,9 +10,7 @@
 
 typedef NS_ENUM(NSInteger,RDMainBarItemType){
     RDMainBookShelf = 0,
-    RDMainDiscover,
-    RDMainLibrary,
-    RDMainMe
+    RDMainSetting
 };
 
 @interface RDMainController : RDVTabBarController <RDVTabBarControllerDelegate>

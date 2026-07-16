@@ -2,83 +2,130 @@
 //  RDCharpterDataManager.m
 //  Reader
 //
-//  Created by yuenov on 2019/12/29.
-//  Copyright © 2019 yuenov. All rights reserved.
-//
 
 #import "RDCharpterDataManager.h"
 #import "RDDatabaseManager.h"
 #import "RDCharpterModel.h"
 #import "RDCharpterModel+WCTTableCoding.h"
+
 @implementation RDCharpterDataManager
 
-
 +(NSArray *)getBriefCharptersWithBookId:(NSInteger)bookid{
-    return [[RDDatabaseManager sharedInstance].database getObjectsOnResults:{RDCharpterModel.charpterId,RDCharpterModel.name,RDCharpterModel.bookId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid) orderBy:RDCharpterModel.charpterId.order(WCTOrderedAscending)];
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getObjectsOnResults:{RDCharpterModel.charpterId,RDCharpterModel.name,RDCharpterModel.bookId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid) orderBy:RDCharpterModel.charpterId.order(WCTOrderedAscending)];
+    }];
+    return result;
 }
-
 
 +(BOOL)isExsitWithBookId:(NSInteger)bookid
 {
-    RDCharpterModel *model = [[RDDatabaseManager sharedInstance].database getOneObjectOnResults:{RDCharpterModel.primaryId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)];
-    return model?YES:NO;
+    __block BOOL exist = NO;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        RDCharpterModel *model = [db getOneObjectOnResults:{RDCharpterModel.primaryId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)];
+        exist = model != nil;
+    }];
+    return exist;
 }
 
 +(BOOL)isExsitWithBookId:(NSInteger)bookid charpterId:(NSInteger)charpterId
 {
-    RDCharpterModel *model = [[RDDatabaseManager sharedInstance].database getOneObjectOnResults:{RDCharpterModel.primaryId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)&&RDCharpterModel.charpterId.is(charpterId)];
-    return model?YES:NO;
+    __block BOOL exist = NO;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        RDCharpterModel *model = [db getOneObjectOnResults:{RDCharpterModel.primaryId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)&&RDCharpterModel.charpterId.is(charpterId)];
+        exist = model != nil;
+    }];
+    return exist;
 }
 
 +(RDCharpterModel *)getCharpterWithBookId:(NSInteger)bookId charpterId:(NSInteger)charpterId
 {
-    return [[RDDatabaseManager sharedInstance].database getOneObjectOfClass:RDCharpterModel.class fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)&&RDCharpterModel.charpterId.is(charpterId)];
+    __block RDCharpterModel *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getOneObjectOfClass:RDCharpterModel.class fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)&&RDCharpterModel.charpterId.is(charpterId)];
+    }];
+    return result;
 }
 
 +(NSInteger)getFirstCharpterIdWirhBookId:(NSInteger)bookId
 {
-    return [[[RDDatabaseManager sharedInstance].database getOneValueOnResult:RDCharpterModel.charpterId.min() fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)] integerValue];
+    __block NSInteger cid = 0;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        cid = [[db getOneValueOnResult:RDCharpterModel.charpterId.min() fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)] integerValue];
+    }];
+    return cid;
 }
+
 +(void)updateCharpterContentWithModel:(RDCharpterModel *)model
 {
-    [[RDDatabaseManager sharedInstance].database updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:model where:RDCharpterModel.bookId.is(model.bookId)&&RDCharpterModel.charpterId.is(model.charpterId)];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:model where:RDCharpterModel.bookId.is(model.bookId)&&RDCharpterModel.charpterId.is(model.charpterId)];
+    }];
 }
+
 +(void)insertObjectWithCharpters:(RDCharpterModel *)charpter
 {
-    [[RDDatabaseManager sharedInstance].database insertOrReplaceObject:charpter into:kCharpterTable];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        charpter.primaryId = [NSString stringWithFormat:@"%@_%@", @(charpter.bookId), @(charpter.charpterId)];
+        [db insertOrReplaceObject:charpter into:kCharpterTable];
+    }];
 }
+
 +(void)insertObjectsWithCharpters:(NSArray *)charpters
 {
     if (charpters.count == 0) {
         return;
     }
-    [[RDDatabaseManager sharedInstance].database runTransaction:^BOOL{
-        for (RDCharpterModel *charpterModel in charpters) {
-            RDCharpterModel *model = [self getCharpterWithBookId:charpterModel.bookId charpterId:charpterModel.charpterId];
-            if (model) {
-                if (charpterModel.content.length>0) {
-                    [self updateCharpterContentWithModel:charpterModel];
+    NSInteger bookId = [charpters.firstObject bookId];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        NSArray *existing = [db getObjectsOnResults:{RDCharpterModel.charpterId, RDCharpterModel.primaryId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)];
+        NSMutableSet *existingIds = [NSMutableSet set];
+        for (RDCharpterModel *m in existing) {
+            [existingIds addObject:@(m.charpterId)];
+        }
+        [db runTransaction:^BOOL{
+            NSMutableArray *toInsert = [NSMutableArray array];
+            for (RDCharpterModel *charpterModel in charpters) {
+                charpterModel.primaryId = [NSString stringWithFormat:@"%@_%@", @(charpterModel.bookId), @(charpterModel.charpterId)];
+                if ([existingIds containsObject:@(charpterModel.charpterId)]) {
+                    if (charpterModel.content.length > 0) {
+                        [db updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:charpterModel where:RDCharpterModel.bookId.is(charpterModel.bookId)&&RDCharpterModel.charpterId.is(charpterModel.charpterId)];
+                    }
+                } else {
+                    [toInsert addObject:charpterModel];
+                    [existingIds addObject:@(charpterModel.charpterId)];
                 }
             }
-            else{
-                [self insertObjectWithCharpters:charpterModel];
+            if (toInsert.count > 0) {
+                [db insertOrReplaceObjects:toInsert into:kCharpterTable];
             }
-        }
-        return YES;
+            return YES;
+        }];
     }];
 }
+
 +(NSArray *)getAllNoContentCharpterWithBookId:(NSInteger)bookid
 {
-   return [[RDDatabaseManager sharedInstance].database getObjectsOfClass:RDCharpterModel.class fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)&&RDCharpterModel.content.isNull()];
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getObjectsOfClass:RDCharpterModel.class fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)&&RDCharpterModel.content.isNull()];
+    }];
+    return result;
 }
 
 +(RDCharpterModel *)getLastChapterWithBookId:(NSInteger)bookId
 {
-    return [[RDDatabaseManager sharedInstance].database getOneObjectOnResults:{RDCharpterModel.charpterId.max(),RDCharpterModel.bookId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)];
+    __block RDCharpterModel *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getOneObjectOnResults:{RDCharpterModel.charpterId.max(),RDCharpterModel.bookId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)];
+    }];
+    return result;
 }
 
 +(void)deleteAllCharpterWithBookId:(NSInteger)bookid
 {
-    [[RDDatabaseManager sharedInstance].database deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)];
+    }];
 }
 @end

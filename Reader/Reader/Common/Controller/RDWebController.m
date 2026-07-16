@@ -68,7 +68,7 @@
         _webView = [[RDWebView alloc] initWithFrame:CGRectMake(0, self.headView.bottom, ScreenWidth, ScreenHeight - self.headView.height) configuration:configuration];
         
         _webView.autoresizingMask = (UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth);
-        _webView.backgroundColor = [UIColor whiteColor];
+        _webView.backgroundColor = RDBackgroudColor;
         _webView.multipleTouchEnabled = NO;
         _webView.autoresizesSubviews = YES;
         _webView.opaque = NO;

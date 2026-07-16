@@ -220,7 +220,7 @@
 {
     if (!_separate) {
         _separate = [[UIView alloc] init];
-        _separate.backgroundColor = [UIColor colorWithHexValue:0xf5f7fa];
+        _separate.backgroundColor = RDBackgroudColor;
     }
     return _separate;
 }
@@ -356,7 +356,7 @@
 {
     if (!_separate) {
         _separate = [[UIView alloc] init];
-        _separate.backgroundColor = [UIColor colorWithHexValue:0xebebeb];
+        _separate.backgroundColor = RDLightSeparatorColor;
     }
     return _separate;
 }

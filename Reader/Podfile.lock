@@ -73,7 +73,7 @@ DEPENDENCIES:
   - YYText
 
 SPEC REPOS:
-  https://github.com/CocoaPods/Specs.git:
+  trunk:
     - AFNetworking
     - FDFullscreenPopGesture
     - GBDeviceInfo
@@ -99,7 +99,7 @@ SPEC REPOS:
     - YYText
 
 SPEC CHECKSUMS:
-  AFNetworking: b6f891fdfaed196b46c7a83cf209e09697b94057
+  AFNetworking: cb604b1c2bded0871f5f61f5d53653739e841d6b
   FDFullscreenPopGesture: a8a620179e3d9c40e8e00256dcee1c1a27c6d0f0
   GBDeviceInfo: a3f39dba1a04dcb630abff65d6f7e8fbf319eadd
   JLRoutes: 00671e008acb226b8b4c2385318dc1c583ef0dcf
@@ -123,6 +123,6 @@ SPEC CHECKSUMS:
   YYModel: 2a7fdd96aaa4b86a824e26d0c517de8928c04b30
   YYText: 5c461d709e24d55a182d1441c41dc639a18a4849
 
-PODFILE CHECKSUM: aa64631df6cbe16ea9d5b8d0a90ba624b5a0a000
+PODFILE CHECKSUM: 94a851e5b1d001966c89afafeb2c8e70f936a2c8
 
-COCOAPODS: 1.9.1
+COCOAPODS: 1.16.2

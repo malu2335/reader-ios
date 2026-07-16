@@ -19,12 +19,14 @@
 #import "UINavigationController+FDFullscreenPopGesture.h"
 #import "RDReadConfigManager.h"
 #import "RDReadSetView.h"
-#import "RDDownloadController.h"
 #import "RDHistoryRecordManager.h"
 #import "RDCacheModel.h"
-#import "RDForceUpdateApi.h"
 #import "RDCheckApi.h"
 #import "RDCharpterApi.h"
+#import "RDSpeechManager.h"
+#import "RDReadSpeechBar.h"
+#import "RDReadTranslateHelper.h"
+#import "RDAIClient.h"
 
 @implementation UIPageViewController (EnlargeTapRegion)
 -(BOOL) gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch{
@@ -61,7 +63,8 @@
 
 #define kAdPages 10
 
-@interface RDReadPageViewController ()<UIPageViewControllerDelegate,UIPageViewControllerDataSource,RDMenuViewDelegate,RDReadControllerDelegate>
+@interface RDReadPageViewController ()<UIPageViewControllerDelegate,UIPageViewControllerDataSource,RDMenuViewDelegate,RDReadControllerDelegate,RDSpeechManagerDelegate>
+@property (nonatomic,strong) RDReadSpeechBar *speechBar;
 @property (nonatomic,strong) UIPageViewController *pageViewController;
 
 @property (nonatomic,strong) NSArray <RDCharpterModel *>*charpters;    //简短的章节信息，不包含内容
@@ -105,8 +108,8 @@
     [self.KVOController observe:[RDReadConfigManager sharedInstance] keyPath:@"brightness" options:NSKeyValueObservingOptionNew block:^(RDReadPageViewController*  observer, RDReadConfigManager  * object, NSDictionary<NSString *,id> * _Nonnull change) {
         observer.brightnessView.alpha = kConfigMaxBrightnessValue - object.brightness;
     }];
-    //字体
-    [self.KVOController observe:[RDReadConfigManager sharedInstance] keyPath:@"fontSize" options:NSKeyValueObservingOptionNew block:^(RDReadPageViewController*  observer, RDReadConfigManager  * object, NSDictionary<NSString *,id> * _Nonnull change) {
+    //字体(字号与字体名变化都重新分页)
+    [self.KVOController observe:[RDReadConfigManager sharedInstance] keyPaths:@[@"fontSize",@"fontName"] options:NSKeyValueObservingOptionNew block:^(RDReadPageViewController*  observer, RDReadConfigManager  * object, NSDictionary<NSString *,id> * _Nonnull change) {
         
         [RDReadParser paginateWithContent:observer.bookDetail.charpterModel.content charpter:observer.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
             [observer.pageViewController setViewControllers:@[[observer p_creatReadController:observer.bookDetail.charpterModel.name content:[observer p_getCurPageContentWithContent:content page:[observer p_safePage:observer.bookDetail.page totalPages:pages.count] pages:pages] page:[observer p_safePage:observer.bookDetail.page totalPages:pages.count] totalPage:pages.count charpterIndex:[observer p_getCurCharpter] totalCharpter:observer.charpters.count charpterModel:observer.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
@@ -118,6 +121,10 @@
 
 -(void)p_updateChapter
 {
+    if (self.bookDetail.isLocalBook) {
+        //本地书没有线上更新
+        return;
+    }
     if (!self.bookDetail.onBookshelf) {
         //不在书架上的书籍检查更新章节信息
         RDCharpterModel *chapter = [RDCharpterDataManager getLastChapterWithBookId:self.bookDetail.bookId];
@@ -682,54 +689,101 @@
     [self.navigationController popViewControllerAnimated:YES];
 }
 
-//下载
--(void)downloadAction
+#pragma mark - AI 翻译
+
+-(void)translateAction
 {
-    RDDownloadController *controller = [[RDDownloadController alloc] init];
-    controller.record = self.bookDetail;
-    [self pushToController:controller];
-}
-//意见反馈
--(void)qusetionAction
-{
-    [RDToastView showText:@"该功能不可使用" delay:1.5 inView:self.view];
-}
-//刷新当前章节
--(void)reloadAction
-{
-    [self invokeMenu:_pageViewController.viewControllers.firstObject];
-    [self showLoading:@"正在刷新章节..." cancel:nil];
-    RDForceUpdateApi *api = [[RDForceUpdateApi alloc] init];
-    api.bookId = self.bookDetail.bookId;
-    api.charpters = @[@(self.bookDetail.charpterModel.charpterId)];
-    [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-        [self hideLoading];
-        if (!error) {
-            RDCharpterModel *model = api.charptersContent.firstObject;
-            if (model.content.length == 0) {
-                [self showText:@"内容不存在"];
-                return;
-            }
-            [self showText:@"刷新成功"];
-            [RDCharpterDataManager insertObjectsWithCharpters:api.charptersContent];
-            
-            self.bookDetail.charpterModel = model;
-            self.bookDetail.page = 0;
-            [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
-            
-            [RDReadParser paginateWithContent:self.bookDetail.charpterModel.content charpter:self.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
-                [self.pageViewController setViewControllers:@[[self p_creatReadController:self.bookDetail.charpterModel.name content:[self p_getCurPageContentWithContent:content page:[self p_safePage:self.bookDetail.page totalPages:pages.count] pages:pages] page:[self p_safePage:self.bookDetail.page totalPages:pages.count] totalPage:pages.count charpterIndex:[self p_getCurCharpter] totalCharpter:self.charpters.count charpterModel:self.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
-            }];
-            
-        }
-        else{
-            [self showText:error];
-        }
-    }];
-    
-    
+    if (self.menuView.superview) {
+        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
+    }
+    RDReadController *currentController = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    if (!currentController) {
+        return;
+    }
+    [RDReadTranslateHelper translateFromHost:self
+                                    pageText:currentController.content.string
+                                 chapterText:currentController.charpterContent.string
+                                  rawContent:currentController.charpterModel.content];
 }
 
+#pragma mark - 听书
+
+-(void)speechAction
+{
+    if (self.menuView.superview) {
+        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
+    }
+    RDReadController *currentController = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    if (!currentController) {
+        return;
+    }
+    //从当前页起朗读本章剩余内容
+    NSAttributedString *charpterContent = currentController.charpterContent;
+    NSArray *pages = currentController.pages;
+    NSInteger page = currentController.page;
+    NSInteger loc = 0;
+    if (page >= 0 && page < pages.count) {
+        loc = [pages[page] integerValue];
+    }
+    NSString *text = [charpterContent.string substringFromIndex:MIN(loc, charpterContent.string.length)];
+
+    RDSpeechManager *manager = [RDSpeechManager sharedInstance];
+    manager.delegate = self;
+    [manager startWithBook:self.bookDetail chapters:self.charpters chapterIndex:currentController.charpterIndex text:text];
+
+    if (!self.speechBar.superview) {
+        [self.speechBar showInView:self.view];
+    }
+    [self.speechBar updatePlaying:YES rate:manager.rateMultiplier];
+}
+
+-(RDReadSpeechBar *)speechBar
+{
+    if (!_speechBar) {
+        _speechBar = [[RDReadSpeechBar alloc] init];
+        __weak typeof(self) weakSelf = self;
+        RDSpeechManager *manager = [RDSpeechManager sharedInstance];
+        _speechBar.onPlayPause = ^{
+            if (manager.paused) {
+                [manager resume];
+            }
+            else{
+                [manager pause];
+            }
+        };
+        _speechBar.onRate = ^{
+            [manager cycleRate];
+            [RDToastView showText:@"新语速将从下一章开始生效" delay:1.2 inView:weakSelf.view];
+        };
+        _speechBar.onExit = ^{
+            [manager stop];
+        };
+    }
+    return _speechBar;
+}
+
+#pragma mark - RDSpeechManagerDelegate
+
+-(void)speechManagerWillSpeakChapter:(RDCharpterModel *)chapter
+{
+    //续播新章节时,阅读页同步跳到该章首页
+    self.bookDetail.charpterModel = chapter;
+    self.bookDetail.page = 0;
+    [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+    [self initSteup];
+}
+
+-(void)speechManagerDidStop
+{
+    [self.speechBar removeFromSuperview];
+    self.speechBar = nil;
+}
+
+-(void)speechManagerStateChanged
+{
+    RDSpeechManager *manager = [RDSpeechManager sharedInstance];
+    [self.speechBar updatePlaying:manager.active && !manager.paused rate:manager.rateMultiplier];
+}
 //更改翻页方式
 -(void)didChangePageType
 {
@@ -757,6 +811,10 @@
 
 -(void)dealloc
 {
+    if ([RDSpeechManager sharedInstance].active) {
+        [RDSpeechManager sharedInstance].delegate = nil;
+        [[RDSpeechManager sharedInstance] stop];
+    }
     [RDCacheModel sharedInstance].book = nil;
     [[RDCacheModel sharedInstance] archive];
 }

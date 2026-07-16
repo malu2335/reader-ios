@@ -78,8 +78,8 @@
 {
     if (!_slider) {
         _slider = [[UISlider alloc] init];
-        _slider.minimumTrackTintColor = [UIColor colorWithHexValue:0x5D646E];
-        _slider.maximumTrackTintColor = [UIColor colorWithHexValue:0xdfdfdf];
+        _slider.minimumTrackTintColor = RDAccentColor;
+        _slider.maximumTrackTintColor = RDSeparatorColor;
         _slider.minimumValue = 0;
         _slider.maximumValue = 1;
         [_slider addTarget:self action:@selector(jump:) forControlEvents:UIControlEventValueChanged];

@@ -42,7 +42,7 @@
 {
     if (!_textField) {
         _textField = [[RDTextField alloc] init];
-        _textField.backgroundColor = [UIColor colorWithHexValue:0xf1f2f5];
+        _textField.backgroundColor = [UIColor colorWithHexValue:0xEFE8D9];
         _textField.font = RDFont14;
         _textField.textColor = RDBlackColor;
         NSString *placeholder = [RDConfigModel getModel].hotSearch.firstObject.title?:@"搜索";
@@ -248,7 +248,7 @@
             header = [[RDSearchHeaderFooterView alloc] initWithReuseIdentifier:@"RDSearchHistoryHeader"];
             UIButton *button = [[UIButton alloc] init];
             [button setTitle:@"清空" forState:UIControlStateNormal];
-            [button setTitleColor:[UIColor colorWithHexValue:0xbbbbc8] forState:UIControlStateNormal];
+            [button setTitleColor:RDPlaceholderColor forState:UIControlStateNormal];
             button.titleLabel.font = RDFont13;
             [button addTarget:self action:@selector(clear:) forControlEvents:UIControlEventTouchUpInside];
             [header addButton:button];
@@ -343,7 +343,7 @@
         
         action.titleColor = RDGreenColor;
         
-        action.backgroundColor = [UIColor whiteColor];
+        action.backgroundColor = RDSurfaceColor;
         
         action.clickBlock = ^{
             
@@ -356,7 +356,7 @@
         
         action.titleColor = RDGreenColor;
         
-        action.backgroundColor = [UIColor whiteColor];
+        action.backgroundColor = RDSurfaceColor;
         
         action.clickBlock = ^{
             [[RDSearchHistoryModel getModel] removeAllWords];

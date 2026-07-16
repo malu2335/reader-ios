@@ -29,7 +29,7 @@
 - (void)commInit {
     self.frame = CGRectMake(0, 0, ScreenWidth, [UIView statusBar] + [UIView navigationBar]);
     [self addSubview:self.titleLabel];
-    self.backgroundColor = [UIColor whiteColor];
+    self.backgroundColor = RDBackgroudColor;
 }
 - (instancetype)initWithBackStyle {
     self = [super init];
@@ -48,7 +48,8 @@
         UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(kBackBtnWidth, [UIView statusBar], self.bounds.size.width - kBackBtnWidth * 2, [UIView navigationBar])];
         label.backgroundColor = [UIColor clearColor];
         label.textAlignment = NSTextAlignmentCenter;
-        label.font = RDBoldFont17;
+        label.font = RDTitleFont17;
+        label.textColor = RDBlackColor;
         label.lineBreakMode = NSLineBreakByTruncatingMiddle;
         _titleLabel = label;
     }

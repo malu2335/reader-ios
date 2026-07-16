@@ -23,5 +23,7 @@ WCDB_PROPERTY(charpterModel)
 WCDB_PROPERTY(page)
 WCDB_PROPERTY(readTime)
 WCDB_PROPERTY(onBookshelf)
+WCDB_PROPERTY(localPath)
+WCDB_PROPERTY(fileType)
 
 @end

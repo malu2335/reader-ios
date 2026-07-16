@@ -4,28 +4,22 @@
 //
 
 #import "RDBookshelfController.h"
-#import "RDRefreshHeader.h"
 #import "RDBookshelfNoneCell.h"
-#import "RDBookshelfSearchCell.h"
 #import "RDBookDetailModel.h"
 #import "RDReadRecordManager.h"
 #import "RDBookshelfCell.h"
-#import "RDConfigApi.h"
-#import "RDConfigModel.h"
-#import "RDCheckApi.h"
 #import "RDCacheModel.h"
 #import "RDReadHelper.h"
-#import "RDCheckApi.h"
-#import "RDCharpterApi.h"
 #import "RDCharpterDataManager.h"
-#import "LEEAlert.h"
+#import "RDLocalBookManager.h"
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 
 #import "RDCharpterModel.h"
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
 
-@interface RDBookshelfController ()
+@interface RDBookshelfController ()<UIDocumentPickerDelegate>
 @property (nonatomic,strong) NSMutableArray *dataSource;
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) NSMutableArray *bookSource;
@@ -37,70 +31,79 @@
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
     
-    [self requestConfigModel];
-    [self checkBookUpdate];
+    //导入完成后刷新书架(导入入口:顶栏按钮 / 空书架按钮 / 其他应用打开)
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_reload)
+                                                 name:RDLocalBookImportedNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(importAction)
+                                                 name:RDLocalBookImportRequestNotification object:nil];
+
     //如果异常退出是阅读状态，那么直接打开书籍
     RDBookDetailModel *book = [RDCacheModel sharedInstance].book;
     if(book){
          [RDReadHelper beginReadWithBookDetail:book animation:NO];
     }
-    
-}
-//更新配置文件
-- (void)requestConfigModel
-{
-    RDConfigApi *api = [[RDConfigApi alloc] init];
-    [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-        if (!error) {
-            RDConfigModel *configModel = [api configModel];
-            [[RDConfigModel getModel] copyFrom:configModel];
-            [[RDConfigModel getModel] archive];
-        }
-    }];
+
 }
 
-//检查书籍上的书籍是否有更新
--(void)checkBookUpdate
+-(void)dealloc
 {
-    NSArray *array = [RDReadRecordManager getAllOnBookshelfPram];
-    if (array.count == 0) {
-        if (self.tableView.mj_header.isRefreshing) {
-            [self.tableView.mj_header endRefreshing];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - 本地导入
+
+-(void)importAction
+{
+    NSMutableArray <UTType *>*types = [NSMutableArray array];
+    [types addObject:UTTypePlainText];
+    [types addObject:UTTypePDF];
+    UTType *epub = [UTType typeWithIdentifier:@"org.idpf.epub-container"];
+    if (epub) {
+        [types addObject:epub];
+    }
+    for (NSString *ext in @[@"epub", @"mobi", @"azw", @"txt"]) {
+        UTType *type = [UTType typeWithFilenameExtension:ext];
+        if (type && ![types containsObject:type]) {
+            [types addObject:type];
         }
+    }
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:types asCopy:YES];
+    picker.delegate = self;
+    picker.allowsMultipleSelection = YES;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+-(void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
+{
+    if (urls.count == 0) {
         return;
     }
-    RDCheckApi *api = [[RDCheckApi alloc] init];
-    api.books = array;
-    [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-        if (self.tableView.mj_header.isRefreshing) {
-            [self.tableView.mj_header endRefreshing];
-        }
-        if (!error) {
-            NSArray *array =  [api updateBooks];
-            for (NSDictionary *dic in array) {
-                RDCharpterApi *api = [[RDCharpterApi alloc] init];
-                api.bookId = [dic[@"bookId"] integerValue];
-                api.chapterId = [dic[@"chapterId"] integerValue];
-                [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-                    if (self.tableView.mj_header.isRefreshing) {
-                        [self.tableView.mj_header endRefreshing];
-                    }
-                    if (!error) {
-                        NSArray *charpters = [api charpters];
-                        [RDReadRecordManager updateOnBookselfUpdateWithBookId:api.bookId update:YES];
-                        [self p_reload];
-                        dispatch_async(dispatch_get_global_queue(0, 0), ^{
-                            [RDCharpterDataManager insertObjectsWithCharpters:charpters];
-                        });
-                    }
-                }];
+    [self showLoading:@"正在导入..." cancel:nil];
+    __block NSInteger pending = urls.count;
+    __block NSInteger succeed = 0;
+    __block NSString *lastError = nil;
+    for (NSURL *url in urls) {
+        [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage) {
+            pending--;
+            if (book) {
+                succeed++;
             }
-            
-        }
-    }];
-    
+            else if (errorMessage) {
+                lastError = errorMessage;
+            }
+            if (pending == 0) {
+                [self hideLoading];
+                if (succeed > 0 && !lastError) {
+                    [self showText:[NSString stringWithFormat:@"已导入 %@ 本书", @(succeed)]];
+                }
+                else if (lastError) {
+                    [self showText:succeed > 0 ? [NSString stringWithFormat:@"导入 %@ 本,失败:%@", @(succeed), lastError] : lastError];
+                }
+                [self p_reload];
+            }
+        }];
+    }
 }
-
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
@@ -138,7 +141,15 @@
     if (!_topView) {
         _topView = [[RDTopView alloc] init];
         _topView.titleLabel.text = @"书架";
-        _topView.titleLabel.font = RDBoldFont17;
+        _topView.titleLabel.font = RDTitleFont19;
+
+        UIButton *importBtn = [[UIButton alloc] init];
+        [importBtn setTitle:@"导入" forState:UIControlStateNormal];
+        [importBtn setTitleColor:RDAccentColor forState:UIControlStateNormal];
+        [importBtn setTitleColor:[RDAccentColor colorWithAlphaComponent:0.5] forState:UIControlStateHighlighted];
+        importBtn.titleLabel.font = RDFont15;
+        [importBtn addTarget:self action:@selector(importAction) forControlEvents:UIControlEventTouchUpInside];
+        [_topView addRightBtn:importBtn];
     }
 
     return _topView;
@@ -154,13 +165,6 @@
 -(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     id model = [self.dataSource objectAtIndexSafely:indexPath.row];
-    if ([model isKindOfClass:[NSString class]] && [model isEqualToString:@"RDBookshelfSearchCell"]) {
-        RDBookshelfSearchCell *cell = [tableView dequeueReusableCellWithIdentifier:model];
-        if (!cell) {
-            cell = [[RDBookshelfSearchCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:model];
-        }
-        return cell;
-    }
     if ([model isKindOfClass:[NSString class]] && [model isEqualToString:@"RDBookshelfNoneCell"]) {
         RDBookshelfNoneCell *cell = [tableView dequeueReusableCellWithIdentifier:model];
         if (!cell) {
@@ -188,11 +192,8 @@
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     id model = [self.dataSource objectAtIndexSafely:indexPath.row];
-    if ([model isKindOfClass:[NSString class]] && [model isEqualToString:@"RDBookshelfSearchCell"]){
-        return 80;
-    }
     if ([model isKindOfClass:[NSString class]] && [model isEqualToString:@"RDBookshelfNoneCell"]){
-        return ScreenHeight-80-[UIView navigationBar]-[UIView tarBar]-[UIView statusBar];
+        return ScreenHeight-[UIView navigationBar]-[UIView tarBar]-[UIView statusBar];
     }
     if ([model isKindOfClass:NSArray.class]) {
         return [RDBookshelfCell cellHeight];
@@ -216,14 +217,9 @@
 {
     [self.dataSource removeAllObjects];
     [self.bookSource removeAllObjects];
-    [self.dataSource addObject:@"RDBookshelfSearchCell"];
 
-    
-    
     NSArray *books = [RDReadRecordManager getAllOnBookshelf];
-    
-    _tableView.mj_header =books.count>0?[RDRefreshHeader headerWithRefreshingTarget:self refreshingAction:@selector(headerFresh)]:nil;
-    
+
     if (books.count == 0) {
         [self.dataSource addObject:@"RDBookshelfNoneCell"];
     }
@@ -241,12 +237,6 @@
     
     
     [self.tableView reloadData];
-}
-
--(void)headerFresh
-{
-    [self checkBookUpdate];
-    
 }
 
 -(void)viewDidLayoutSubviews

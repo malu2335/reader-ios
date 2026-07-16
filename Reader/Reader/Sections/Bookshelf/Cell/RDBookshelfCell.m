@@ -9,12 +9,14 @@
 #import "RDBookshelfCell.h"
 #import "RDBookDetailModel.h"
 #import "UIImageView+WebCache.h"
+#import "UIView+WebCache.h"
 #import "RDReadRecordManager.h"
 #import "RDReadPageViewController.h"
 #import "RDCharpterManager.h"
 #import "LEEAlert.h"
 #import "RDBookDetailController.h"
 #import "RDCharpterDataManager.h"
+#import "RDLocalBookManager.h"
 
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
@@ -22,6 +24,7 @@
 @property (nonatomic,strong) UIImageView *cover;
 @property (nonatomic,strong) UILabel *bookLabel;
 @property (nonatomic,strong) UIImageView *updateTag;
+@property (nonatomic,strong) UILabel *typeTag;   //本地书格式角标
 
 @property (nonatomic,strong) RDBookDetailModel *book;
 @end
@@ -34,7 +37,8 @@
         [self addSubview:self.cover];
         [self addSubview:self.bookLabel];
         [self.cover addSubview:self.updateTag];
-        
+        [self.cover addSubview:self.typeTag];
+
     }
     return self;
 }
@@ -42,7 +46,18 @@
 -(void)setBook:(RDBookDetailModel *)book
 {
     _book = book;
-    [self.cover sd_setImageWithURL:[NSURL URLWithString:[RDUtilities buildPicUrlWithPath:book.coverImg]] placeholderImage:[UIImage imageNamed:@"app_placeholder"]];
+    if (book.isLocalBook) {
+        [self.cover sd_cancelCurrentImageLoad];
+        self.cover.image = [RDLocalBookManager coverForBook:book] ?: [UIImage imageNamed:@"app_placeholder"];
+        self.typeTag.hidden = NO;
+        self.typeTag.text = book.fileType.uppercaseString;
+        [self.typeTag sizeToFit];
+        [self setNeedsLayout];
+    }
+    else{
+        self.typeTag.hidden = YES;
+        [self.cover sd_setImageWithURL:[NSURL URLWithString:[RDUtilities buildPicUrlWithPath:book.coverImg]] placeholderImage:[UIImage imageNamed:@"app_placeholder"]];
+    }
     self.updateTag.hidden = !book.bookUpdate;
     self.bookLabel.text = book.title;
 }
@@ -77,6 +92,21 @@
     return _bookLabel;
 }
 
+-(UILabel *)typeTag
+{
+    if (!_typeTag) {
+        _typeTag = [[UILabel alloc] init];
+        _typeTag.font = [UIFont systemFontOfSize:9 weight:UIFontWeightSemibold];
+        _typeTag.textColor = [UIColor whiteColor];
+        _typeTag.backgroundColor = [RDAccentColor colorWithAlphaComponent:0.9];
+        _typeTag.textAlignment = NSTextAlignmentCenter;
+        _typeTag.layer.cornerRadius = 3;
+        _typeTag.clipsToBounds = YES;
+        _typeTag.hidden = YES;
+    }
+    return _typeTag;
+}
+
 
 -(void)layoutSubviews
 {
@@ -84,6 +114,7 @@
     self.cover.frame = CGRectMake(0, 0, self.width, self.height-45);
     self.updateTag.frame = CGRectMake(0, 0, 28, 15);
     self.updateTag.right = self.cover.width-4;
+    self.typeTag.frame = CGRectMake(4, self.cover.height-18, self.typeTag.width+10, 14);
     self.bookLabel.frame = CGRectMake(0, self.cover.bottom+8, self.width, RDBoldFont13.lineHeight);
 }
 
@@ -142,22 +173,28 @@
 -(void)longPress:(UILongPressGestureRecognizer *)ges
 {
     if (ges.state == UIGestureRecognizerStateBegan) {
-        [LEEAlert actionsheet].config
-        .LeeAddAction(^(LEEAction *action) {
-            
-            action.type = LEEActionTypeDefault;
-            action.title = @"书籍详情";
-            action.titleColor = RDBlackColor;
-            action.font = RDBoldFont17;
-            [action setClickBlock:^{
-                RDBookshelfCoverView *view = (RDBookshelfCoverView *)ges.view;
-                RDBookDetailModel *model = view.book;
-                RDBookDetailController *controller = [[RDBookDetailController alloc] init];
-                controller.bookId = model.bookId;
-                [[RDUtilities getCurrentVC].navigationController pushViewController:controller animated:YES];
-            }];
-        }).LeeAddAction(^(LEEAction *action) {
-            
+        RDBookshelfCoverView *coverView = (RDBookshelfCoverView *)ges.view;
+        BOOL isLocal = coverView.book.isLocalBook;
+        LEEBaseConfigModel *config = [LEEAlert actionsheet].config;
+        if (!isLocal) {
+            //本地书没有线上详情页
+            config.LeeAddAction(^(LEEAction *action) {
+
+                action.type = LEEActionTypeDefault;
+                action.title = @"书籍详情";
+                action.titleColor = RDBlackColor;
+                action.font = RDBoldFont17;
+                [action setClickBlock:^{
+                    RDBookshelfCoverView *view = (RDBookshelfCoverView *)ges.view;
+                    RDBookDetailModel *model = view.book;
+                    RDBookDetailController *controller = [[RDBookDetailController alloc] init];
+                    controller.bookId = model.bookId;
+                    [[RDUtilities getCurrentVC].navigationController pushViewController:controller animated:YES];
+                }];
+            });
+        }
+        config.LeeAddAction(^(LEEAction *action) {
+
             action.type = LEEActionTypeDestructive;
             action.title = @"删除";
             action.titleColor = [UIColor systemRedColor];
@@ -165,10 +202,15 @@
             [action setClickBlock:^{
                 RDBookshelfCoverView *view = (RDBookshelfCoverView *)ges.view;
                 RDBookDetailModel *model = view.book;
-                [RDReadRecordManager removeBookFromBookShelfWithBookId:model.bookId];
-                dispatch_async(dispatch_get_global_queue(0, 0), ^{
-                    [RDCharpterDataManager deleteAllCharpterWithBookId:model.bookId];
-                });
+                if (model.isLocalBook) {
+                    [RDLocalBookManager removeLocalBook:model];
+                }
+                else{
+                    [RDReadRecordManager removeBookFromBookShelfWithBookId:model.bookId];
+                    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+                        [RDCharpterDataManager deleteAllCharpterWithBookId:model.bookId];
+                    });
+                }
                 if (self.needReload) {
                     self.needReload();
                 }
@@ -180,7 +222,7 @@
             action.titleColor = RDBlackColor;
             action.font = RDBoldFont17;
         })
-        .LeeActionSheetCancelActionSpaceColor([UIColor colorWithHexValue:0xf9f9f9]) // 设置取消按钮间隔的颜色
+        .LeeActionSheetCancelActionSpaceColor(RDBackgroudColor) // 设置取消按钮间隔的颜色
         .LeeActionSheetBottomMargin(0.0f) // 设置底部距离屏幕的边距为0
         .LeeCornerRadii(CornerRadiiMake(7, 7, 0, 0))   // 指定整体圆角半径
         .LeeActionSheetHeaderCornerRadii(CornerRadiiZero()) // 指定头部圆角半径
@@ -188,7 +230,7 @@
         .LeeConfigMaxWidth(^CGFloat(LEEScreenOrientationType type) {
             return ScreenWidth;
         })
-        .LeeActionSheetBackgroundColor([UIColor whiteColor]) // 通过设置背景颜色来填充底部间隙
+        .LeeActionSheetBackgroundColor(RDSurfaceColor) // 通过设置背景颜色来填充底部间隙
         .LeeShow();
         
         

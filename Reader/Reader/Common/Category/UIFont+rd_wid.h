@@ -29,6 +29,14 @@
 #define RDFont11      [UIFont systemFontOfSize:11]
 #define RDFont10      [UIFont systemFontOfSize:10]
 
+// 衬线标题(宋体),用于页面标题/书名/章节名,营造纸质书感;字体缺失时回退粗体
+#define RDSerifBoldFont(s)  ([UIFont fontWithName:@"STSongti-SC-Bold" size:(s)] ?: [UIFont boldSystemFontOfSize:(s)])
+#define RDSerifFont(s)      ([UIFont fontWithName:@"STSongti-SC-Regular" size:(s)] ?: [UIFont systemFontOfSize:(s)])
+#define RDTitleFont15   RDSerifBoldFont(15)
+#define RDTitleFont17   RDSerifBoldFont(17)
+#define RDTitleFont19   RDSerifBoldFont(19)
+#define RDTitleFont21   RDSerifBoldFont(21)
+
 #define RDBoldFont12    [UIFont boldSystemFontOfSize:12]
 #define RDBoldFont13    [UIFont boldSystemFontOfSize:13]
 #define RDBoldFont14    [UIFont boldSystemFontOfSize:14]

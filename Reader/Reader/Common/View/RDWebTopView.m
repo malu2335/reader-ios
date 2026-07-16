@@ -24,7 +24,7 @@
 - (void)commInit {
     self.frame = CGRectMake(0, 0, ScreenWidth, [UIView statusBar] + [UIView navigationBar]);
     [self addSubview:self.titleLabel];
-    self.backgroundColor = [UIColor whiteColor];
+    self.backgroundColor = RDBackgroudColor;
 }
 
 

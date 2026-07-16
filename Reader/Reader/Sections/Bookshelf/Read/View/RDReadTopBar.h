@@ -2,8 +2,7 @@
 //  RDReadTopBar.h
 //  Reader
 //
-//  Created by yuenov on 2019/11/13.
-//  Copyright © 2019 yuenov. All rights reserved.
+//  阅读页顶栏:返回 + AI 翻译 + 听书
 //
 
 #import <UIKit/UIKit.h>
@@ -12,9 +11,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol RDReadTopBarDelegate <NSObject>
 -(void)backAction;
--(void)downloadAction;
--(void)qusetionAction;
--(void)reloadAction;
+-(void)speechAction;
+-(void)translateAction;
 @end
 
 @interface RDReadTopBar : UIView

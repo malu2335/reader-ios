@@ -7,6 +7,7 @@
 //
 
 #import "RDCharpterManager.h"
+#import "RDUtilities.h"
 #import "RDCharpterModel.h"
 #import "RDCharpterDataManager.h"
 #import "RDCharpterApi.h"
@@ -30,13 +31,33 @@
 
 +(void)getCharpterWithBookId:(NSInteger)bookId charpterId:(NSInteger)charpterId complete:(void(^)(BOOL success,RDCharpterModel *model))complete
 {
+    //本地书(bookId<0):章节全部在数据库,绝不发起网络请求
+    if (bookId < 0) {
+        NSInteger localCharpterId = charpterId;
+        if (localCharpterId == -1) {
+            localCharpterId = [RDCharpterDataManager getFirstCharpterIdWirhBookId:bookId];
+        }
+        RDCharpterModel *local = [RDCharpterDataManager getCharpterWithBookId:bookId charpterId:localCharpterId];
+        if (local.content.length > 0) {
+            if (complete) {
+                complete(YES, local);
+            }
+        }
+        else{
+            [RDToastView showText:@"内容不存在" delay:1 inView:[RDUtilities applicationKeyWindow]];
+            if (complete) {
+                complete(NO, nil);
+            }
+        }
+        return;
+    }
     BOOL isExist = [RDCharpterDataManager isExsitWithBookId:bookId charpterId:charpterId];
     __block NSInteger charpterId_block = charpterId;
     if (!isExist) {
         //不存在章节信息
         RDCharpterApi *api = [[RDCharpterApi alloc] init];
         api.bookId = bookId;
-        MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:[UIApplication sharedApplication].keyWindow animated:YES];
+        MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:[RDUtilities applicationKeyWindow] animated:YES];
         [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
             if (!error) {
                 NSArray *charpters = api.charpters;
@@ -54,7 +75,10 @@
                         [hud hideAnimated:NO];
                         RDCharpterModel *model = contentApi.charptersContent.firstObject;
                         if (model.content.length == 0) {
-                            [RDToastView showText:@"内容不存在" delay:1 inView:[UIApplication sharedApplication].keyWindow];
+                            [RDToastView showText:@"内容不存在" delay:1 inView:[RDUtilities applicationKeyWindow]];
+                            if (complete) {
+                                complete(NO, nil);
+                            }
                             return;
                         }
                         [RDCharpterDataManager insertObjectsWithCharpters:contentApi.charptersContent];
@@ -88,13 +112,16 @@
             RDCharpterContentApi *contentApi = [[RDCharpterContentApi alloc] init];
             contentApi.charpters = @[@(charpterId_block)];
             contentApi.bookId = bookId;
-            MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:[UIApplication sharedApplication].keyWindow animated:YES];
+            MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:[RDUtilities applicationKeyWindow] animated:YES];
             [contentApi startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
                 if (!error) {
                     [hud hideAnimated:NO];
                     RDCharpterModel *model = contentApi.charptersContent.firstObject;
                     if (model.content.length == 0) {
-                        [RDToastView showText:@"内容不存在" delay:1 inView:[UIApplication sharedApplication].keyWindow];
+                        [RDToastView showText:@"内容不存在" delay:1 inView:[RDUtilities applicationKeyWindow]];
+                        if (complete) {
+                            complete(NO, nil);
+                        }
                         return;
                     }
                     [RDCharpterDataManager insertObjectsWithCharpters:contentApi.charptersContent];
@@ -123,6 +150,10 @@
 
 +(void)slientDownWithBookId:(NSInteger)bookId charpterIds:(NSArray *)charpters
 {
+    if (bookId < 0) {
+        //本地书内容已全部入库
+        return;
+    }
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         //判断章节是否存在，如果存在不下载
         NSMutableArray *downloads = [NSMutableArray array];
@@ -148,11 +179,17 @@
 }
 +(void)getAllNoConetntCharpterWithBookId:(NSInteger)bookId complete:(void(^)(NSArray <RDCharpterModel *>*charpters))complete
 {
+    if (bookId < 0) {
+        if (complete) {
+            complete(@[]);
+        }
+        return;
+    }
     BOOL isExist = [RDCharpterDataManager isExsitWithBookId:bookId];
     if (!isExist) {
         RDCharpterApi *api = [[RDCharpterApi alloc] init];
         api.bookId = bookId;
-        MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:[UIApplication sharedApplication].keyWindow animated:YES];
+        MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:[RDUtilities applicationKeyWindow] animated:YES];
         [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
             if (!error) {
                 [hud hideAnimated:YES];

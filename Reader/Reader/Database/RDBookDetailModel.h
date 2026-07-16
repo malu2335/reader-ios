@@ -36,4 +36,10 @@
 @property (nonatomic,assign) NSInteger page;        //当前阅读的进度
 @property (nonatomic,assign) NSTimeInterval readTime;   //阅读的最后时间
 @property (nonatomic,assign) BOOL onBookshelf;      //是否在书架上
+
+//本地导入书籍(bookId 为负数,不参与任何网络请求)
+@property (nonatomic,strong) NSString *localPath;   //Documents/LocalBooks 下的相对文件名
+@property (nonatomic,strong) NSString *fileType;    //txt / epub / mobi / pdf
+
+-(BOOL)isLocalBook;
 @end

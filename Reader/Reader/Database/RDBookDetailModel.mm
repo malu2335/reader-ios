@@ -24,6 +24,8 @@ WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, charpterModel, "charpterModel")
 WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, page, "page")
 WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, readTime, "readTime")
 WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, onBookshelf, "onBookshelf")
+WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, localPath, "localPath")
+WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, fileType, "fileType")
 
 WCDB_PRIMARY(RDBookDetailModel, bookId)
 
@@ -55,6 +57,11 @@ WCDB_INDEX(RDBookDetailModel, "_onBookshelf_index", onBookshelf)
         self.end = YES;
     }
     return YES;
+}
+
+-(BOOL)isLocalBook
+{
+    return self.bookId < 0;
 }
 
 -(BOOL)isEqual:(id)object

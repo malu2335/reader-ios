@@ -7,26 +7,80 @@
 //
 
 #import "RDUtilities.h"
+#import "AppDelegate.h"
 #import "RDMainController.h"
 #import "RDGlobalModel.h"
 #import "GBDeviceInfo.h"
 
+
 @implementation RDUtilities
+
++ (UIWindow *)applicationKeyWindow {
+    UIApplication *app = [UIApplication sharedApplication];
+    for (UIScene *scene in app.connectedScenes) {
+        if (![scene isKindOfClass:[UIWindowScene class]]) {
+            continue;
+        }
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        UIWindow *key = windowScene.keyWindow;
+        if (key) {
+            return key;
+        }
+    }
+    for (UIScene *scene in app.connectedScenes) {
+        if (![scene isKindOfClass:[UIWindowScene class]]) {
+            continue;
+        }
+        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+            if (window.isKeyWindow) {
+                return window;
+            }
+        }
+    }
+    for (UIScene *scene in app.connectedScenes) {
+        if (![scene isKindOfClass:[UIWindowScene class]]) {
+            continue;
+        }
+        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+            if (!window.hidden && window.alpha > 0) {
+                return window;
+            }
+        }
+    }
+    AppDelegate *delegate = (AppDelegate *)app.delegate;
+    if ([delegate isKindOfClass:[AppDelegate class]] && delegate.window) {
+        return delegate.window;
+    }
+    return nil;
+}
+
++ (UIWindow *)applicationWindowForNormalLevelPresentation {
+    UIWindow *w = [self applicationKeyWindow];
+    if (w && w.windowLevel == UIWindowLevelNormal) {
+        return w;
+    }
+    UIApplication *app = [UIApplication sharedApplication];
+    for (UIScene *scene in app.connectedScenes) {
+        if (![scene isKindOfClass:[UIWindowScene class]]) {
+            continue;
+        }
+        for (UIWindow *win in ((UIWindowScene *)scene).windows) {
+            if (win.windowLevel == UIWindowLevelNormal && !win.hidden && win.alpha > 0) {
+                return win;
+            }
+        }
+    }
+    return w;
+}
+
 + (UIViewController *_Nullable)getCurrentVC
 {
     UIViewController *result = nil;
     
-    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
-    if (window.windowLevel != UIWindowLevelNormal) {
-        NSArray *windows = [[UIApplication sharedApplication] windows];
-        for (UIWindow *tmpWin in windows) {
-            if (tmpWin.windowLevel == UIWindowLevelNormal) {
-                window = tmpWin;
-                break;
-            }
-        }
+    UIWindow *window = [self applicationWindowForNormalLevelPresentation];
+    if (!window) {
+        return nil;
     }
-
 
     UIView *frontView = [[window subviews] objectAtIndexSafely:0];
     id nextResponder = [frontView nextResponder];
@@ -40,7 +94,6 @@
     if ([vc isKindOfClass:[RDMainController class]]) {
         return [(RDMainController *) vc selectedViewController] ?: vc;
     }
-
     return vc;
 }
 + (UIViewController *)currentVCWithVC:(UIViewController *)vc {

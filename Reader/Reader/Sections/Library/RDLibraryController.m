@@ -26,7 +26,7 @@
         self.automaticallyCalculatesItemWidths = YES;
         self.titleColorNormal = RDLightGrayColor;
         self.titleColorSelected = RDGreenColor;
-        self.menuView.backgroundColor = [UIColor colorWithHexValue:0xffffff];
+        self.menuView.backgroundColor = RDBackgroudColor;
         self.menuView.delegate = self;
         self.categorySource = [RDConfigModel getModel].categories;
     }

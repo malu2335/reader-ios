@@ -19,7 +19,7 @@
     if (self) {
         [self addSubview:self.imageView];
         [self addSubview:self.placeholderLabel];
-        self.backgroundColor = [UIColor colorWithHexValue:0xf1f2f5];
+        self.backgroundColor = [UIColor colorWithHexValue:0xEFE8D9];
         [self addGestureRecognizer:({
             UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(click)];
             tap;

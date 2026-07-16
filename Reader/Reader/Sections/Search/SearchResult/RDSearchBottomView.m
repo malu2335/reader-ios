@@ -18,7 +18,7 @@
 {
     self = [super initWithFrame:frame];
     if (self) {
-        self.backgroundColor = [UIColor colorWithHexValue:0xfbfbfb alpha:0.8];
+        self.backgroundColor = [UIColor colorWithHexValue:0xF7F3EA alpha:0.92];
         [self addSubview:self.separate];
         [self addSubview:self.feedback];
     

@@ -66,8 +66,8 @@
 {
     if (!_slider) {
         _slider = [[RDToolSlider alloc] init];
-        _slider.minimumTrackTintColor = [UIColor colorWithHexValue:0x5D646E];
-        _slider.maximumTrackTintColor = [UIColor colorWithHexValue:0xdfdfdf];
+        _slider.minimumTrackTintColor = RDAccentColor;
+        _slider.maximumTrackTintColor = RDSeparatorColor;
         _slider.minimumValue = 0;
         _slider.maximumValue = kConfigMaxBrightnessValue;
         _slider.value = [RDReadConfigManager sharedInstance].brightness;

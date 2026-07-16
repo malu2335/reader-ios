@@ -19,10 +19,10 @@
             sharedInstance = [[self alloc] init];
             sharedInstance.fontSize = 16;
             sharedInstance.lineSpace = sharedInstance.fontSize-6;
-            sharedInstance.background = [UIImage stretchableImageNamed:@"theme1_read_bg"];
 //            sharedInstance.firstLineHeadIndent = sharedInstance.fontSize * 2;
             sharedInstance.brightness = kConfigMaxBrightnessValue;
-            sharedInstance.theme = RDWhiteTheme;
+            // 默认使用纸色主题,契合整体「安静纸质」视觉
+            sharedInstance.theme = RDYellowTheme;
             sharedInstance.pageType = RDRealTypePage;
         }
     });

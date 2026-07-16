@@ -24,7 +24,7 @@
         [self.contentView addSubview:self.recent];
         [self.contentView addSubview:self.hot];
         [self.contentView addSubview:self.end];
-        self.contentView.backgroundColor = [UIColor whiteColor];
+        self.contentView.backgroundColor = RDBackgroudColor;
         
     }
     return self;

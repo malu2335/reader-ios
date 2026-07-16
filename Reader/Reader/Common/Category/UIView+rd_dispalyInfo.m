@@ -4,16 +4,29 @@
 //
 
 #import "UIView+rd_dispalyInfo.h"
+#import "RDUtilities.h"
 #import "GBDeviceInfo.h"
 
 
 @implementation UIView (rd_dispalyInfo)
 + (CGFloat)statusBar {
-    if ([self isIphoneX]) {
-        return 44;
-    } else {
-        return 20;
+    UIWindow *window = [RDUtilities applicationKeyWindow];
+    if (window) {
+        UIWindowScene *scene = window.windowScene;
+        if (scene && scene.statusBarManager) {
+            CGFloat h = CGRectGetHeight(scene.statusBarManager.statusBarFrame);
+            if (h > 0) {
+                return h;
+            }
+        }
+        if (@available(iOS 11.0, *)) {
+            CGFloat top = window.safeAreaInsets.top;
+            if (top > 0) {
+                return top;
+            }
+        }
     }
+    return [self isIphoneX] ? 44 : 20;
 }
 
 + (CGFloat)navigationBar {
@@ -24,7 +37,7 @@
 + (BOOL)isIphoneX {
     CGFloat safeAreaBottom = 0;
     if (@available(iOS 11.0, *)) {
-        safeAreaBottom = UIApplication.sharedApplication.keyWindow.safeAreaInsets.bottom;
+        safeAreaBottom = [RDUtilities applicationKeyWindow].safeAreaInsets.bottom;
     }
     return safeAreaBottom != 0;
 }
@@ -39,17 +52,14 @@
 + (CGFloat)safeBottomBar {
     CGFloat safeAreaBottom = 0;
     if (@available(iOS 11.0, *)) {
-        safeAreaBottom = UIApplication.sharedApplication.keyWindow.safeAreaInsets.bottom;
+        safeAreaBottom = [RDUtilities applicationKeyWindow].safeAreaInsets.bottom;
     }
     return safeAreaBottom;
 }
 
 + (CGFloat)safeTopBar {
-    if ([self isIphoneX]) {
-        return 24;
-    } else {
-        return 0;
-    }
+    CGFloat sb = [self statusBar];
+    return MAX(0, sb - 20);
 }
 
 + (CGFloat)margins {

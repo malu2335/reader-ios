@@ -519,8 +519,34 @@ Setting 清空 → 本地 removeLocalBook / 在线 remove + deleteAllCharpter
 |----|------|
 | Feature 分支 | `feature/code-review-ai-translate`（已从 `master` 创建） |
 | 本报告路径 | `docs/code-review-report.md` |
-| 建议后续 | ① 阶段 0 修复另开 `feature/security-ai-keys-debug-cleanup` ② 本分支仅挂审查结论与（可选）测试增强 ③ PR → develop/master 时以本报告 P0/P1 为 merge gate |
-| 明确不做 | 本次审查**不**做大规模重构提交（遵从「先报告后整改」） |
+| 整改状态 | 见下方「整改落地记录」(2026-07-17) |
+
+## 8. 整改落地记录 (2026-07-17)
+
+| 编号 | 状态 | 做法摘要 |
+|------|------|----------|
+| P0-F1 调试绝对路径 | **已修** | 删除 AppDelegate/RDUtilities/LEEAlert 中 `RDWriteDebugLog` 与调用 |
+| P0-B1 API Key 明文 | **已修** | Keychain(测试用 sidecar);磁盘 JSON/备份 zip **不含** apiKey;旧明文自动迁移 |
+| P1-F2 翻译连点 | **已修** | `isTranslating` 门闩 + `cancelInFlightTranslate` + generation 丢弃过期回调 |
+| P1-F3 本地打开 | **已修** | RDReadHelper 校验文件/章节;缺失明确 toast |
+| P1-B2 大文件 MD5 | **已修** | 流式 `bookIdForFileURL` + copy 落盘优先 |
+| P1-B3 章节 N+1 | **已修** | 一次查已有 id + batch insert |
+| P1-D2 content 索引 | **已修** | 移除 `(bookId,content)` 索引 |
+| P1-D3 isEqual | **已修** | 比较 bookId+charpterId;hash 对齐 |
+| P1 primaryId 碰撞 | **已修** | 新 id 使用 `bookId_charpterId` 分隔 |
+| P1-B4 备份部分失败 | **已修** | 临时文件提交;失败计数;允许仅 AI 备份;空书架+AI 可恢复 |
+| P1-B5 Gemini key | **已修** | `x-goog-api-key` header,URL 不含 key |
+| P1 ATS | **已修** | 关闭任意加载,仅 yuenov.com 例外 HTTP |
+| P2-B1 complete 遗漏 | **已修** | 空内容路径 `complete(NO,nil)` |
+| P2 翻译截断提示 | **已修** | Toast「仅翻译前 4000 字」 |
+| P2 阅读翻译编排抽出 | **已修** | `RDReadTranslateHelper` 承接翻译 UI 编排 |
+| P2 在线搜索入口 | **已修** | 书架搜索 cell 不再 push 在线搜索 |
+| P2 WCDB 并发 | **已修** | `performSync/Async` 串行队列包裹读写 |
+| P2 primaryId 历史数据 | **已修** | 启动一次性迁移 `bookId_charpterId` |
+| P2 数据文件保护 | **已修** | DB/LocalBooks/AIConfig 使用 `NSFileProtectionCompleteUntilFirstUserAuthentication` |
+| P3 Discover 模块整包删除 | **未做** | 代码仍在工程但主路径不可达;全量删模块风险大,保留编译兼容 |
+
+验证: `Reader/Tests/AIHarness` ALL PASSED; `xcodebuild` BUILD SUCCEEDED.
 
 ---
 

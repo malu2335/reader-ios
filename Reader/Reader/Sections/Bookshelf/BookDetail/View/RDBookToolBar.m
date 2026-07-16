@@ -81,7 +81,7 @@
         
         [_addBook setImage:[UIImage imageNamed:@"book_exist"] forState:UIControlStateDisabled];
         [_addBook setTitle:@"在书架" forState:UIControlStateDisabled];
-        [_addBook setTitleColor:[UIColor colorWithHexValue:0x5D646E] forState:UIControlStateDisabled];
+        [_addBook setTitleColor:RDPlaceholderColor forState:UIControlStateDisabled];
     
         
         _addBook.imageAndTitleInset = 5;
@@ -131,7 +131,7 @@
 {
     if (!_bg) {
         _bg = [[UIView alloc] init];
-        _bg.backgroundColor = [UIColor whiteColor];
+        _bg.backgroundColor = RDSurfaceColor;
     }
     return _bg;
 }

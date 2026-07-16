@@ -17,6 +17,7 @@
  */
 
 #import "LEEAlert.h"
+#import "RDUtilities.h"
 
 #import <Accelerate/Accelerate.h>
 
@@ -29,6 +30,7 @@
 #define VIEW_HEIGHT CGRectGetHeight(self.view.frame)
 #define DEFAULTBORDERWIDTH (1.0f / [[UIScreen mainScreen] scale] + 0.02f)
 #define VIEWSAFEAREAINSETS(view) ({UIEdgeInsets i; if(@available(iOS 11.0, *)) {i = view.safeAreaInsets;} else {i = UIEdgeInsetsZero;} i;})
+
 
 #pragma mark - ===================配置模型===================
 
@@ -1930,13 +1932,10 @@ CGPathRef _Nullable LEECGPathCreateWithRoundedRect(CGRect bounds, CornerRadii co
     
     if (!_currentKeyWindow) _currentKeyWindow = [LEEAlert shareManager].mainWindow;
     
-    if (!_currentKeyWindow) _currentKeyWindow = [UIApplication sharedApplication].keyWindow;
+    if (!_currentKeyWindow) _currentKeyWindow = [RDUtilities applicationKeyWindow];
     
-    if (_currentKeyWindow.windowLevel != UIWindowLevelNormal) {
-        
-        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"windowLevel == %ld AND hidden == 0 " , UIWindowLevelNormal];
-        
-        _currentKeyWindow = [[UIApplication sharedApplication].windows filteredArrayUsingPredicate:predicate].firstObject;
+    if (_currentKeyWindow && _currentKeyWindow.windowLevel != UIWindowLevelNormal) {
+        _currentKeyWindow = [RDUtilities applicationWindowForNormalLevelPresentation];
     }
     
     if (_currentKeyWindow) if (![LEEAlert shareManager].mainWindow) [LEEAlert shareManager].mainWindow = _currentKeyWindow;

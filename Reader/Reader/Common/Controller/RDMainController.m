@@ -7,10 +7,10 @@
 //
 
 #import "RDMainController.h"
+#import "RDUtilities.h"
 #import "UIView+rd_dispalyInfo.h"
 #import "RDBookshelfController.h"
-#import "RDDiscoverController.h"
-#import "RDLibraryController.h"
+#import "RDSettingController.h"
 #import "RDVTabBarItem.h"
 #import "UIColor+rd_wid.h"
 #import "NSArray+rd_wid.h"
@@ -32,7 +32,7 @@
     }
     self.navigationController.navigationBarHidden = YES;
     if (@available(iOS 11.0, *)) {
-        CGFloat safeAreaBottom = UIApplication.sharedApplication.keyWindow.safeAreaInsets.bottom;
+        CGFloat safeAreaBottom = [RDUtilities applicationKeyWindow].safeAreaInsets.bottom;
          self.tabBar.contentEdgeInsets = UIEdgeInsetsMake(0, 0,  safeAreaBottom / 1.5f, 0);
     }
     self.delegate = self;
@@ -46,26 +46,31 @@
         RDBookshelfController *bookshelfController = [[RDBookshelfController alloc] init];
         bookshelfController;
     }),({
-        RDDiscoverController *discoverController = [[RDDiscoverController alloc] init];
-        discoverController;
-    }),({
-        RDLibraryController *libraryController = [[RDLibraryController alloc] init];
-        libraryController;
+        RDSettingController *settingController = [[RDSettingController alloc] init];
+        settingController;
     })];
 
-    NSArray *normalIcons = @[@"tabbar_unselect",@"tabbar_faxian_unselect",@"tabbar_shucheng_unselect",@"tabbar_wo_unselect"];
-    NSArray *selectedIcons = @[@"tabbar_select",@"tabbar_faxian_select",@"tabbar_shucheng_select",@"tabbar_wo_select"];
-    NSArray *titleArray = @[@"书架",@"发现", @"书城", @"我"];
+    //设置 tab 使用系统齿轮图标,与书架切图统一按主题着色
+    UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
+    UIImage *gear = [UIImage systemImageNamed:@"gearshape" withConfiguration:symbolConfig];
+    UIImage *gearFill = [UIImage systemImageNamed:@"gearshape.fill" withConfiguration:symbolConfig];
+
+    NSArray *normalIcons = @[[UIImage imageNamed:@"tabbar_unselect"], gear];
+    NSArray *selectedIcons = @[[UIImage imageNamed:@"tabbar_select"], gearFill];
+    NSArray *titleArray = @[@"书架",@"设置"];
     for (int i = 0; i < self.tabBar.items.count; ++i) {
         RDVTabBarItem *item = self.tabBar.items[i];
-        item.backgroundColor = [UIColor colorWithHexValue:0xf9f9f9];
+        item.backgroundColor = RDSurfaceColor;
         item.title = [titleArray objectAtIndexSafely:i];
         item.titlePositionAdjustment = UIOffsetMake(0, 4);
-        NSDictionary *tabBarTitleUnselectedDic = @{NSForegroundColorAttributeName: [UIColor colorWithHexValue:0xc5c5c7], NSFontAttributeName: [UIFont systemFontOfSize:11]};
-        NSDictionary *tabBarTitleSelectedDic = @{NSForegroundColorAttributeName: [UIColor colorWithHexValue:0x23b383], NSFontAttributeName: [UIFont systemFontOfSize:11]};
+        NSDictionary *tabBarTitleUnselectedDic = @{NSForegroundColorAttributeName: RDLightGrayColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
+        NSDictionary *tabBarTitleSelectedDic = @{NSForegroundColorAttributeName: RDAccentColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
         item.selectedTitleAttributes = tabBarTitleSelectedDic;
         item.unselectedTitleAttributes = tabBarTitleUnselectedDic;
-        [item setFinishedSelectedImage:[UIImage imageNamed:selectedIcons[i]] withFinishedUnselectedImage:[UIImage imageNamed:normalIcons[i]]];
+        //旧图标是绿色/冷灰切图,按纸质主题重新着色
+        UIImage *selectedImage = [selectedIcons[i] imageWithTintColor:RDAccentColor];
+        UIImage *normalImage = [normalIcons[i] imageWithTintColor:RDLightGrayColor];
+        [item setFinishedSelectedImage:selectedImage withFinishedUnselectedImage:normalImage];
         [item removeTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchDown];
         [item addTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchUpInside];
         
@@ -74,7 +79,7 @@
     //添加分割线
     UIView *separatorView = [[UIView alloc] initWithFrame:CGRectMake(0, -1 / [UIScreen mainScreen].scale, self.tabBar.width, 1 / [UIScreen mainScreen].scale)];
     separatorView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    separatorView.backgroundColor = [UIColor colorWithHexValue:0xcdcdce];
+    separatorView.backgroundColor = RDSeparatorColor;
     [self.tabBar addSubview:separatorView];
 }
 

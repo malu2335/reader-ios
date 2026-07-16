@@ -121,7 +121,7 @@
     self.contentView.layer.shadowOffset = CGSizeMake(0,0);
     UIBezierPath *path = [UIBezierPath bezierPathWithRect:CGRectMake(-3, -3, self.contentView.width + 6, self.contentView.height + 6)];
     self.contentView.layer.shadowPath = path.CGPath;
-    self.contentView.backgroundColor = [UIColor whiteColor];
+    self.contentView.backgroundColor = RDBackgroudColor;
     self.headImageView.frame = CGRectMake(15, 15, 45, 55);
     self.nameLabel.frame = CGRectMake(self.headImageView.right+10, 27, self.contentView.width-15-45-10-15, RDBoldFont17.lineHeight);
     self.authorLabel.frame = CGRectMake(self.nameLabel.left, self.nameLabel.bottom+8, self.nameLabel.width, RDFont13.lineHeight);

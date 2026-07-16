@@ -8,6 +8,7 @@
 
 
 #import "RDReadCatalogView.h"
+#import "RDUtilities.h"
 #import "RDReadCatalogHeader.h"
 #import "RDReadCatalogCell.h"
 #import "RDReadCatalogView.h"
@@ -71,7 +72,7 @@
         _tableView.delegate = self;
         _tableView.dataSource = self;
         _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-        _tableView.backgroundColor = [UIColor colorWithHexValue:0xe2e2e2];
+        _tableView.backgroundColor = RDSurfaceColor;
     }
     return _tableView;
 }
@@ -81,7 +82,7 @@
     if (!_header) {
         _header = [[RDReadCatalogHeader alloc] initWithFrame:CGRectMake(0, 0, self.contentView.width, 50)];
         _header.delegate = self;
-        _header.backgroundColor = [UIColor colorWithHexValue:0xe2e2e2];
+        _header.backgroundColor = RDSurfaceColor;
     }
     return _header;
 }
@@ -133,7 +134,7 @@
 
 -(void)show
 {
-    UIView *view = [UIApplication sharedApplication].delegate.window;
+    UIView *view = [RDUtilities applicationKeyWindow] ?: [UIApplication sharedApplication].delegate.window;
     self.frame = view.bounds;
     
     self.backgroundColor = [UIColor colorWithWhite:0 alpha:0];

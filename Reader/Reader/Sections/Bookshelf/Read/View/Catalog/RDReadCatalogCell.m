@@ -20,7 +20,7 @@
     if (self) {
         [self.contentView addSubview:self.chapterLabel];
         [self.contentView addSubview:self.separate];
-        [self.contentView setBackgroundColor:[UIColor colorWithHexValue:0xe2e2e2]];
+        [self.contentView setBackgroundColor:RDSurfaceColor];
         [self.contentView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap)]];
     }
     return self;
@@ -49,7 +49,7 @@
 {
     if (!_separate) {
         _separate = [[UIView alloc] init];
-        _separate.backgroundColor = [UIColor colorWithHexValue:0xe2e2e2];
+        _separate.backgroundColor = RDLightSeparatorColor;
     }
     return _separate;
 }

@@ -34,8 +34,8 @@
 
 -(void)searchViewDidSelect
 {
-    RDSearchController *controller = [[RDSearchController alloc] init];
-    [[RDUtilities getCurrentVC].navigationController pushViewController:controller animated:YES];
+    // 本地优先阅读器:不再进入在线搜索(遗留模块仍在工程中但不可达)
+    [RDToastView showText:@"当前为本地阅读模式,请导入本地书籍" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
 }
 
 -(void)layoutSubviews
