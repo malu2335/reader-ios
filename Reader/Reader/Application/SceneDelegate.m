@@ -9,6 +9,7 @@
 #import "RDNavigationController.h"
 #import "RDLocalBookManager.h"
 #import "RDBookDetailModel.h"
+#import "RDDisplayBoost.h"
 
 @implementation SceneDelegate
 
@@ -30,6 +31,8 @@
     // 兼容旧代码 RDAppDelegate.window / RDUtilities 回退路径
     appDelegate.window = window;
     [window makeKeyAndVisible];
+    // ProMotion / 高刷:对齐 contentsScale,配置滚动容器
+    [RDDisplayBoost applyToWindow:window];
 
     // 冷启动「用其他应用打开」延后到首帧后,避免挡住 makeKeyAndVisible
     if (connectionOptions.URLContexts.count > 0) {

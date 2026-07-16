@@ -27,6 +27,7 @@
 #import "RDReadSpeechBar.h"
 #import "RDReadTranslateHelper.h"
 #import "RDAIClient.h"
+#import "RDDisplayBoost.h"
 
 @implementation UIPageViewController (EnlargeTapRegion)
 -(BOOL) gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch{
@@ -356,6 +357,9 @@
             _pageViewController.doubleSided = (style == UIPageViewControllerTransitionStylePageCurl);
         }
         [self.view addSubview:_pageViewController.view];
+        // 翻页手势在 ProMotion 上采样更密;对齐滚动层与像素密度
+        [RDDisplayBoost applyToView:_pageViewController.view];
+        _pageViewController.view.layer.allowsGroupOpacity = NO;
     }
     return _pageViewController;
 }

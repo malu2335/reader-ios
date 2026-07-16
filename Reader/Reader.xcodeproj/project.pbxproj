@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A11B001DP01BUILDFILE001 /* RDDisplayBoost.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001DP01FILEREF0001 /* RDDisplayBoost.m */; };
 		A11B001SC01BUILDFILE001 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SC01FILEREF0001 /* SceneDelegate.m */; };
 		A11B001AI05BUILDFILE001 /* RDReadTranslateHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */; };
 		A11B001AI01BUILDFILE001 /* RDAIConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI01FILEREF0001 /* RDAIConfig.m */; };
@@ -179,6 +180,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A11B001DP01FILEREF0001 /* RDDisplayBoost.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDDisplayBoost.m; sourceTree = "<group>"; };
+		A11B001DP01FILEREF0002 /* RDDisplayBoost.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDisplayBoost.h; sourceTree = "<group>"; };
 		A11B001SC01FILEREF0001 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
 		A11B001SC01FILEREF0002 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
 		A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadTranslateHelper.m; sourceTree = "<group>"; };
@@ -1424,6 +1427,8 @@
 		ABC345072439DDF000061974 /* Manager */ = {
 			isa = PBXGroup;
 			children = (
+				A11B001DP01FILEREF0002 /* RDDisplayBoost.h */,
+				A11B001DP01FILEREF0001 /* RDDisplayBoost.m */,
 				ABC345082439DE1200061974 /* RDCommParamManager.h */,
 				ABC345092439DE1200061974 /* RDCommParamManager.m */,
 			);
@@ -1631,6 +1636,7 @@
 				29F559882407561000742C19 /* RDRankResultController.m in Sources */,
 				2998A8002428E86500C4E07B /* RDButton.m in Sources */,
 				29407C8323607D0E003C9643 /* AppDelegate.m in Sources */,
+				A11B001DP01BUILDFILE001 /* RDDisplayBoost.m in Sources */,
 				A11B001SC01BUILDFILE001 /* SceneDelegate.m in Sources */,
 				29313C3B236C298A00408AF8 /* RDShareModel.m in Sources */,
 				297F507124124B8E002837A2 /* RDCacheModel.m in Sources */,

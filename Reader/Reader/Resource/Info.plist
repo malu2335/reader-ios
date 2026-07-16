@@ -163,6 +163,9 @@
 			</array>
 		</dict>
 	</dict>
+	<!-- iPhone ProMotion:允许 UIKit/CoreAnimation 使用低于 1/60s 的帧间隔(最高 120Hz) -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiresFullScreen</key>

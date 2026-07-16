@@ -12,6 +12,7 @@
 #import "RDReadProgressView.h"
 #import "RDReadCatalogView.h"
 #import "RDReadCatalogCell.h"
+#import "RDDisplayBoost.h"
 
 #define kToolBarHeight (50+[UIView safeBottomBar])
 #define kSetViewHeight 180
@@ -139,14 +140,14 @@
 {
     self.frame = view.bounds;
     [view addSubview:self];
-    [UIView animateWithDuration:0.3 animations:^{
+    [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
         self.toolBar.frame = CGRectMake(0, self.height-kToolBarHeight, self.width, kToolBarHeight);
         self.topBar.frame = CGRectMake(0, 0, self.width, [UIView navigationBar]+[UIView statusBar]);
     }];
 }
 -(void)dismiss
 {
-    [UIView animateWithDuration:0.3 animations:^{
+    [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
         self.toolBar.frame = CGRectMake(0, ScreenHeight, ScreenWidth, kToolBarHeight);
          CGFloat height = [UIView navigationBar]+[UIView statusBar];
         self.topBar.frame = CGRectMake(0, -height, ScreenSize.width, height);
@@ -161,7 +162,7 @@
 {
     self.frame = view.bounds;
     [view addSubview:self];
-    [UIView animateWithDuration:0.3 animations:^{
+    [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
         self.toolBar.frame = CGRectMake(0, self.height-kToolBarHeight, self.width, kToolBarHeight);
         self.topBar.frame = CGRectMake(0, 0, self.width, [UIView navigationBar]+[UIView statusBar]);
     } completion:^(BOOL finished) {
@@ -172,7 +173,7 @@
 }
 -(void)dismissComplete:(void(^)(void))complete
 {
-    [UIView animateWithDuration:0.3 animations:^{
+    [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
         self.toolBar.frame = CGRectMake(0, ScreenHeight, ScreenWidth, kToolBarHeight);
          CGFloat height = [UIView navigationBar]+[UIView statusBar];
         self.topBar.frame = CGRectMake(0, -height, ScreenSize.width, height);
@@ -218,12 +219,12 @@
     }
     else{
         if (self.showView == self.progressView) {
-            [UIView animateWithDuration:0.3 animations:^{
+            [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
                 self.progressView.frame = CGRectMake(0, ScreenHeight, ScreenWidth, 120);
             }];
             self.showView = nil;
         }else{
-            [UIView animateWithDuration:0.3 animations:^{
+            [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
                 self.progressView.frame = CGRectMake(0, self.height-kToolBarHeight-120, ScreenWidth, 120);
             }];
             self.showView = self.progressView;
@@ -245,12 +246,12 @@
     }
     else{
         if (self.showView == self.lightView) {
-            [UIView animateWithDuration:0.3 animations:^{
+            [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
                 self.lightView.frame = CGRectMake(0, ScreenHeight, ScreenWidth, 120);
             }];
             self.showView = nil;
         }else{
-            [UIView animateWithDuration:0.3 animations:^{
+            [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
                 self.lightView.frame = CGRectMake(0, self.height-kToolBarHeight-120, ScreenWidth, 120);
             }];
             self.showView = self.lightView;
@@ -272,12 +273,12 @@
     }
     else{
         if (self.showView == self.setView) {
-           [UIView animateWithDuration:0.3 animations:^{
+           [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
                self.setView.frame = CGRectMake(0, ScreenHeight, ScreenWidth, kSetViewHeight);
            }];
            self.showView = nil;
         }else{
-            [UIView animateWithDuration:0.3 animations:^{
+            [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
                            self.setView.frame = CGRectMake(0, self.height-kToolBarHeight-kSetViewHeight, ScreenWidth, kSetViewHeight);
                        }];
                        self.showView = self.setView;
