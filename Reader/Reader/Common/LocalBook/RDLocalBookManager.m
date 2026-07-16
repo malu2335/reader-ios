@@ -9,6 +9,7 @@
 #import "RDCharpterModel.h"
 #import "RDCharpterDataManager.h"
 #import "RDReadRecordManager.h"
+#import "RDBookmarkManager.h"
 #import "RDLocalBookParseResult.h"
 #import "RDTxtBookParser.h"
 #import "RDEpubBookParser.h"
@@ -357,6 +358,7 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
         [[NSFileManager defaultManager] removeItemAtPath:coverPath error:nil];
     }
     [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
+    [RDBookmarkManager deleteAllForBookId:book.bookId];
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
     });

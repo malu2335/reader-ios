@@ -18,6 +18,7 @@
 #import "RDLocalBookManager.h"
 #import "RDShareCardBuilder.h"
 #import "RDCharpterModel.h"
+#import "RDBookmarkManager.h"
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
 #define kShelfTopPad 14.f
@@ -64,7 +65,12 @@
     }
     self.updateTag.hidden = !book.bookUpdate;
     self.bookLabel.text = book.title;
-    self.authorLabel.text = book.author.length ? book.author : @"未知作者";
+    // 阅读记忆:显示上次读到的章节,无则作者
+    if (book.charpterModel.name.length) {
+        self.authorLabel.text = [NSString stringWithFormat:@"读到 · %@", book.charpterModel.name];
+    } else {
+        self.authorLabel.text = book.author.length ? book.author : @"未知作者";
+    }
 }
 
 -(UIView *)shadowHost
@@ -412,6 +418,7 @@
                 [RDLocalBookManager removeLocalBook:book];
             } else {
                 [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
+                [RDBookmarkManager deleteAllForBookId:book.bookId];
                 dispatch_async(dispatch_get_global_queue(0, 0), ^{
                     [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
                 });

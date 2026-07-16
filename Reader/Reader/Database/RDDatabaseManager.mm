@@ -11,6 +11,7 @@
 #import "RDCharpterModel.h"
 #import "RDCharpterModel+WCTTableCoding.h"
 #import "RDBookDetailModel.h"
+#import "RDBookmarkModel.h"
 #import <sqlite3.h>
 
 static NSString * const kPrimaryIdMigratedKey = @"RDChapterPrimaryIdMigrated_v1";
@@ -40,6 +41,10 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         [sharedInstance.database createTableAndIndexesOfName:kCharpterTable withClass:RDCharpterModel.class];
         [sharedInstance.database createTableAndIndexesOfName:kReadRecordTable withClass:RDBookDetailModel.class];
         [sharedInstance.database createTableAndIndexesOfName:kHistoryRecordTable withClass:RDBookDetailModel.class];
+        [sharedInstance.database createTableAndIndexesOfName:kBookmarkTable withClass:RDBookmarkModel.class];
+        // 兼容旧库:补阅读记忆的字符偏移列
+        [sharedInstance p_ensureColumn:@"charOffset" table:kReadRecordTable type:@"INTEGER"];
+        [sharedInstance p_ensureColumn:@"charOffset" table:kHistoryRecordTable type:@"INTEGER"];
 
         NSDictionary *attrs = @{NSFileProtectionKey: NSFileProtectionCompleteUntilFirstUserAuthentication};
         [[NSFileManager defaultManager] setAttributes:attrs ofItemAtPath:dbPath error:nil];
@@ -169,6 +174,41 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         return YES;
     }];
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
+}
+
+/// 旧库缺列时 ALTER TABLE 补齐(幂等)
+- (void)p_ensureColumn:(NSString *)column table:(NSString *)table type:(NSString *)type
+{
+    if (column.length == 0 || table.length == 0 || self.dbPath.length == 0) {
+        return;
+    }
+    sqlite3 *db = NULL;
+    int rc = sqlite3_open_v2(self.dbPath.fileSystemRepresentation, &db,
+                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, NULL);
+    if (rc != SQLITE_OK || !db) {
+        if (db) {
+            sqlite3_close(db);
+        }
+        return;
+    }
+    BOOL exists = NO;
+    NSString *pragma = [NSString stringWithFormat:@"PRAGMA table_info(%@);", table];
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(db, pragma.UTF8String, -1, &stmt, NULL) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            const char *name = (const char *)sqlite3_column_text(stmt, 1);
+            if (name && [[NSString stringWithUTF8String:name] isEqualToString:column]) {
+                exists = YES;
+                break;
+            }
+        }
+        sqlite3_finalize(stmt);
+    }
+    if (!exists) {
+        NSString *sql = [NSString stringWithFormat:@"ALTER TABLE %@ ADD COLUMN %@ %@;", table, column, type ?: @"INTEGER"];
+        sqlite3_exec(db, sql.UTF8String, NULL, NULL, NULL);
+    }
+    sqlite3_close(db);
 }
 
 @end

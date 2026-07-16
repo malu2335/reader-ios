@@ -17,7 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol RDReadProgressViewDelegate;
 @protocol RDReadTopBarDelegate;
 @protocol RDReadSetViewDelegate;
-@protocol RDMenuViewDelegate <NSObject,RDReadCatalogViewDelegate,RDReadProgressViewDelegate,RDReadTopBarDelegate,RDReadSetViewDelegate>
+@protocol RDReadBookmarkViewDelegate;
+@protocol RDMenuViewDelegate <NSObject,RDReadCatalogViewDelegate,RDReadProgressViewDelegate,RDReadTopBarDelegate,RDReadSetViewDelegate,RDReadBookmarkViewDelegate>
 -(void)cancelShowMenu:(RDMenuView *)menu;
 @end
 

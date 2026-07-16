@@ -16,6 +16,7 @@
 #import "RDMainController.h"
 #import "RDPdfReadController.h"
 #import "RDLocalBookManager.h"
+#import "RDHistoryRecordManager.h"
 
 @implementation RDReadHelper
 
@@ -59,26 +60,56 @@
 
     RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId];
     RDReadPageViewController *controller = [[RDReadPageViewController alloc] init];
-    if (record.charpterModel) {
-        controller.bookDetail = record;
-        [RDReadRecordManager updateReadTime:record];
-        [RDAppDelegate.mainController.navigationController pushViewController:controller animated:animation];
-    }
-    else{
-        [RDCharpterManager getCharpterWithBookId:book.bookId complete:^(BOOL success,RDCharpterModel * _Nonnull model) {
-            if (success) {
-                RDBookDetailModel *detail  = [book yy_modelCopy];
-                detail.onBookshelf = record.onBookshelf;
-                detail.charpterModel = model;
-                [RDReadRecordManager insertOrReplaceModel:detail];
-                controller.bookDetail = detail;
+
+    // 有阅读记忆:从上次章节/偏移打开
+    if (record.charpterModel.charpterId != 0 || record.charpterModel.name.length > 0) {
+        // 章节正文以章节库为准(记录里可能缺 content 或过旧)
+        NSInteger cid = record.charpterModel.charpterId;
+        [RDCharpterManager getCharpterWithBookId:book.bookId charpterId:cid complete:^(BOOL success, RDCharpterModel *model) {
+            if (success && model) {
+                record.charpterModel = model;
+                // 保留 page / charOffset
+                controller.bookDetail = record;
+                [RDReadRecordManager updateReadTime:record];
+                [RDHistoryRecordManager insertOrReplaceModel:record];
                 [RDAppDelegate.mainController.navigationController pushViewController:controller animated:animation];
-            }
-            else if (book.isLocalBook) {
-                [RDToastView showText:@"无法打开,请重新导入本书" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+            } else {
+                // 章节失效则从第一章重新
+                [self p_openFromFirstChapter:book record:record controller:controller animation:animation];
             }
         }];
+        return;
     }
+
+    [self p_openFromFirstChapter:book record:record controller:controller animation:animation];
+}
+
++ (void)p_openFromFirstChapter:(RDBookDetailModel *)book
+                        record:(RDBookDetailModel *)record
+                    controller:(RDReadPageViewController *)controller
+                     animation:(BOOL)animation
+{
+    [RDCharpterManager getCharpterWithBookId:book.bookId complete:^(BOOL success,RDCharpterModel * _Nonnull model) {
+        if (success) {
+            RDBookDetailModel *detail  = [book yy_modelCopy];
+            detail.onBookshelf = record.onBookshelf;
+            detail.charpterModel = model;
+            detail.page = 0;
+            detail.charOffset = 0;
+            // 继承本地字段
+            if (record.localPath.length) {
+                detail.localPath = record.localPath;
+                detail.fileType = record.fileType;
+            }
+            [RDReadRecordManager insertOrReplaceModel:detail];
+            [RDHistoryRecordManager insertOrReplaceModel:detail];
+            controller.bookDetail = detail;
+            [RDAppDelegate.mainController.navigationController pushViewController:controller animated:animation];
+        }
+        else if (book.isLocalBook) {
+            [RDToastView showText:@"无法打开,请重新导入本书" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+        }
+    }];
 }
 
 +(void)beginReadWithBookDetail:(RDBookDetailModel *)book charpterId:(NSInteger)charpterid
@@ -86,8 +117,15 @@
     [RDCharpterManager getCharpterWithBookId:book.bookId charpterId:charpterid complete:^(BOOL success, RDCharpterModel *model) {
         if (success) {
             RDReadPageViewController *controller = [[RDReadPageViewController alloc] init];
-            RDBookDetailModel *detail = [book yy_modelCopy];
+            RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId];
+            RDBookDetailModel *detail = record ? [record yy_modelCopy] : [book yy_modelCopy];
             detail.charpterModel = model;
+            // 目录跳转从章首
+            detail.page = 0;
+            detail.charOffset = 0;
+            if (record) {
+                detail.onBookshelf = record.onBookshelf;
+            }
             [RDReadRecordManager insertOrReplaceModel:detail];
             controller.bookDetail = detail;
             [[RDUtilities getCurrentVC].navigationController pushViewController:controller animated:YES];

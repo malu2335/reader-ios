@@ -33,7 +33,8 @@
 //添加到书架时的阅读进度
 @property (nonatomic,assign) BOOL bookUpdate;   //书架上的书是否有更新
 @property (nonatomic,strong) RDCharpterModel *charpterModel;  //当前阅读的章节
-@property (nonatomic,assign) NSInteger page;        //当前阅读的进度
+@property (nonatomic,assign) NSInteger page;        //当前阅读的进度(页码,字体变化时仅作参考)
+@property (nonatomic,assign) NSInteger charOffset;  //章节内字符偏移(阅读记忆主坐标,字体变化后恢复用)
 @property (nonatomic,assign) NSTimeInterval readTime;   //阅读的最后时间
 @property (nonatomic,assign) BOOL onBookshelf;      //是否在书架上
 

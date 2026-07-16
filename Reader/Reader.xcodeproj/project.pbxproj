@@ -23,6 +23,9 @@
 		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
 		A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV01FILEREF0001 /* RDVoiceManager.m */; };
 		A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV02FILEREF0001 /* RDVoicePickerController.m */; };
+		A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */; };
+		A11B001BM02BUILDFILE001 /* RDBookmarkManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */; };
+		A11B001BM03BUILDFILE001 /* RDReadBookmarkView.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM03FILEREF0001 /* RDReadBookmarkView.m */; };
 		3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */ = {isa = PBXBuildFile; fileRef = A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */; };
 		AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */; };
 		2818FE29C73406DBFD255D66 /* RDLocalBookParseResult.m in Sources */ = {isa = PBXBuildFile; fileRef = 986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */; };
@@ -218,6 +221,13 @@
 		A11B001TV01FILEREF0002 /* RDVoiceManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoiceManager.h; sourceTree = "<group>"; };
 		A11B001TV02FILEREF0001 /* RDVoicePickerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoicePickerController.m; sourceTree = "<group>"; };
 		A11B001TV02FILEREF0002 /* RDVoicePickerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoicePickerController.h; sourceTree = "<group>"; };
+		A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookmarkModel.mm; sourceTree = "<group>"; };
+		A11B001BM01FILEREF0002 /* RDBookmarkModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookmarkModel.h; sourceTree = "<group>"; };
+		A11B001BM01FILEREF0003 /* RDBookmarkModel+WCTTableCoding.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDBookmarkModel+WCTTableCoding.h"; sourceTree = "<group>"; };
+		A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookmarkManager.mm; sourceTree = "<group>"; };
+		A11B001BM02FILEREF0002 /* RDBookmarkManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookmarkManager.h; sourceTree = "<group>"; };
+		A11B001BM03FILEREF0001 /* RDReadBookmarkView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadBookmarkView.m; sourceTree = "<group>"; };
+		A11B001BM03FILEREF0002 /* RDReadBookmarkView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadBookmarkView.h; sourceTree = "<group>"; };
 		4C5E8A70982106BEB8323759 /* RDSettingController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSettingController.h; sourceTree = "<group>"; };
 		A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSettingController.m; sourceTree = "<group>"; };
 		0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookTextUtil.h; sourceTree = "<group>"; };
@@ -1159,6 +1169,11 @@
 				ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */,
 				29F97D3A240CEB8000909240 /* RDHistoryRecordManager.h */,
 				29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */,
+				A11B001BM01FILEREF0002 /* RDBookmarkModel.h */,
+				A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */,
+				A11B001BM01FILEREF0003 /* RDBookmarkModel+WCTTableCoding.h */,
+				A11B001BM02FILEREF0002 /* RDBookmarkManager.h */,
+				A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */,
 				ABF5D50C23B83BE5008E3163 /* RDDatabaseManager.h */,
 				A11B001DB01FILEREF0002 /* RDDatabaseLifecycle.h */,
 				ABF5D50D23B83BE5008E3163 /* RDDatabaseManager.mm */,
@@ -1224,6 +1239,8 @@
 				ABFF28FC23F197D40005B268 /* Download */,
 				29696CCB23852EB100212879 /* Catalog */,
 				29BBC3AE2383CEE00023825B /* Set */,
+				A11B001BM03FILEREF0002 /* RDReadBookmarkView.h */,
+				A11B001BM03FILEREF0001 /* RDReadBookmarkView.m */,
 				29B00BFD237C44FE00E1B892 /* RDReadToolBar.h */,
 				29B00BFE237C44FE00E1B892 /* RDReadToolBar.m */,
 				29B00C00237C451200E1B892 /* RDReadTopBar.h */,
@@ -1616,6 +1633,9 @@
 				CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */,
 				A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */,
 				A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */,
+				A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */,
+				A11B001BM02BUILDFILE001 /* RDBookmarkManager.mm in Sources */,
+				A11B001BM03BUILDFILE001 /* RDReadBookmarkView.m in Sources */,
 				3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */,
 				AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */,
 				2818FE29C73406DBFD255D66 /* RDLocalBookParseResult.m in Sources */,

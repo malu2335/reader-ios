@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @optional
 -(void)didMenu;
 -(void)didSlider;
+-(void)didBookmark;
 -(void)didLight;
 -(void)didSetting;
 @end
@@ -20,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic,weak) id<RDReadToolBarDelegate>delegate;
 @property (nonatomic,strong) RDLayoutButton *menu;
 @property (nonatomic,strong) RDLayoutButton *slider;
+@property (nonatomic,strong) RDLayoutButton *bookmark;
 @property (nonatomic,strong) RDLayoutButton *light;
 @property (nonatomic,strong) RDLayoutButton *setting;
 @end

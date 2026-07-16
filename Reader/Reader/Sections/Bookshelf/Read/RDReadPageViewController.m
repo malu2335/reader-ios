@@ -31,6 +31,9 @@
 #import "RDShareCardBuilder.h"
 #import "RDVoiceManager.h"
 #import "RDVoicePickerController.h"
+#import "RDBookmarkManager.h"
+#import "RDBookmarkModel.h"
+#import "RDReadBookmarkView.h"
 
 @implementation UIPageViewController (EnlargeTapRegion)
 -(BOOL) gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch{
@@ -112,15 +115,26 @@
     [self.KVOController observe:[RDReadConfigManager sharedInstance] keyPath:@"brightness" options:NSKeyValueObservingOptionNew block:^(RDReadPageViewController*  observer, RDReadConfigManager  * object, NSDictionary<NSString *,id> * _Nonnull change) {
         observer.brightnessView.alpha = kConfigMaxBrightnessValue - object.brightness;
     }];
-    //字体(字号与字体名变化都重新分页)
+    //字体(字号与字体名变化都重新分页) — 用 charOffset 记忆位置,避免页码漂移
     [self.KVOController observe:[RDReadConfigManager sharedInstance] keyPaths:@[@"fontSize",@"fontName"] options:NSKeyValueObservingOptionNew block:^(RDReadPageViewController*  observer, RDReadConfigManager  * object, NSDictionary<NSString *,id> * _Nonnull change) {
-        
+        [observer p_saveRecord];
         [RDReadParser paginateWithContent:observer.bookDetail.charpterModel.content charpter:observer.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
-            [observer.pageViewController setViewControllers:@[[observer p_creatReadController:observer.bookDetail.charpterModel.name content:[observer p_getCurPageContentWithContent:content page:[observer p_safePage:observer.bookDetail.page totalPages:pages.count] pages:pages] page:[observer p_safePage:observer.bookDetail.page totalPages:pages.count] totalPage:pages.count charpterIndex:[observer p_getCurCharpter] totalCharpter:observer.charpters.count charpterModel:observer.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
+            NSInteger page = [observer p_pageForOffset:observer.bookDetail.charOffset pages:pages];
+            observer.bookDetail.page = page;
+            [observer.pageViewController setViewControllers:@[[observer p_creatReadController:observer.bookDetail.charpterModel.name content:[observer p_getCurPageContentWithContent:content page:page pages:pages] page:page totalPage:pages.count charpterIndex:[observer p_getCurCharpter] totalCharpter:observer.charpters.count charpterModel:observer.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
         }];
     }];
     
+    // 退到后台时也落盘进度
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_saveRecord) name:UIApplicationWillResignActiveNotification object:nil];
+    
     [self p_updateChapter];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    [self p_saveRecord];
 }
 
 -(void)p_updateChapter
@@ -211,8 +225,13 @@
 }
 
 -(void)initSteup{
+    // 优先用 charOffset 恢复(字体变化后仍准),否则用 page
     [RDReadParser paginateWithContent:self.bookDetail.charpterModel.content charpter:self.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
-        [self.pageViewController setViewControllers:@[[self p_creatReadController:self.bookDetail.charpterModel.name content:[self p_getCurPageContentWithContent:content page:[self p_safePage:self.bookDetail.page totalPages:pages.count] pages:pages] page:[self p_safePage:self.bookDetail.page totalPages:pages.count] totalPage:pages.count charpterIndex:[self p_getCurCharpter] totalCharpter:self.charpters.count charpterModel:self.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
+        NSInteger page = self.bookDetail.charOffset > 0
+            ? [self p_pageForOffset:self.bookDetail.charOffset pages:pages]
+            : [self p_safePage:self.bookDetail.page totalPages:pages.count];
+        self.bookDetail.page = page;
+        [self.pageViewController setViewControllers:@[[self p_creatReadController:self.bookDetail.charpterModel.name content:[self p_getCurPageContentWithContent:content page:page pages:pages] page:page totalPage:pages.count charpterIndex:[self p_getCurCharpter] totalCharpter:self.charpters.count charpterModel:self.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
     }];
     //默认加载上一章或下一章的数据
     [self p_downloads];
@@ -251,15 +270,60 @@
     NSInteger charpterId = self.bookDetail.charpterModel.charpterId;
     
     RDReadController *readController = self.pageViewController.viewControllers.firstObject;
+    if (!readController || readController.isMirror) {
+        // 仿真翻页可能拿到镜像页,取非镜像
+        for (UIViewController *vc in self.pageViewController.viewControllers) {
+            if ([vc isKindOfClass:RDReadController.class] && ![(RDReadController *)vc isMirror]) {
+                readController = (RDReadController *)vc;
+                break;
+            }
+        }
+    }
+    if (!readController) {
+        return;
+    }
     self.bookDetail.charpterModel = readController.charpterModel;
     self.bookDetail.page = readController.page;
+    // 字符偏移:字体/排版变化后仍可恢复到附近位置
+    NSInteger offset = 0;
+    if (readController.pages.count > 0) {
+        NSInteger page = [self p_safePage:readController.page totalPages:readController.pages.count];
+        offset = [readController.pages[page] integerValue];
+    }
+    self.bookDetail.charOffset = offset;
+    // 写入书架记录时保持 onBookshelf
+    RDBookDetailModel *exist = [RDReadRecordManager getReadRecordWithBookId:self.bookDetail.bookId];
+    if (exist) {
+        self.bookDetail.onBookshelf = exist.onBookshelf;
+    }
     [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+    [RDHistoryRecordManager insertOrReplaceModel:self.bookDetail];
     
     if (charpterId != self.bookDetail.charpterModel.charpterId && self.bookDetail.page == 0) {
         //新的一章
         [self p_downloads];
     }
-    
+}
+
+/// 根据 charOffset 在 pages 中定位页码
+-(NSInteger)p_pageForOffset:(NSInteger)offset pages:(NSArray *)pages
+{
+    if (pages.count == 0) {
+        return 0;
+    }
+    if (offset <= 0) {
+        return 0;
+    }
+    NSInteger best = 0;
+    for (NSInteger i = 0; i < (NSInteger)pages.count; i++) {
+        NSInteger loc = [pages[i] integerValue];
+        if (loc <= offset) {
+            best = i;
+        } else {
+            break;
+        }
+    }
+    return [self p_safePage:best totalPages:pages.count];
 }
 
 -(RDReadController *)p_creatReadController:(NSString *)charpter content:(NSAttributedString *)content page:(NSInteger)page totalPage:(NSInteger)totalPage charpterIndex:(NSInteger)index totalCharpter:(NSInteger)total charpterModel:(RDCharpterModel *)charpterModel charpterContent:(NSAttributedString *)charpterContent pages:(NSArray *)pages;
@@ -921,8 +985,70 @@
     [self invokeMenu:self.pageViewController.viewControllers.firstObject];
 }
 
+#pragma mark - 书签
+
+-(void)bookmarkViewDidAddCurrent
+{
+    RDReadController *cur = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    if (!cur || cur.isMirror) {
+        for (UIViewController *vc in self.pageViewController.viewControllers) {
+            if ([vc isKindOfClass:RDReadController.class] && ![(RDReadController *)vc isMirror]) {
+                cur = (RDReadController *)vc;
+                break;
+            }
+        }
+    }
+    if (!cur.charpterModel) {
+        [RDToastView showText:@"无法添加书签" delay:1.2 inView:self.view];
+        return;
+    }
+    NSInteger offset = 0;
+    if (cur.pages.count > 0) {
+        NSInteger page = [self p_safePage:cur.page totalPages:cur.pages.count];
+        offset = [cur.pages[page] integerValue];
+    }
+    NSString *snippet = cur.content.string;
+    if (snippet.length > 100) {
+        snippet = [[snippet substringToIndex:100] stringByAppendingString:@"…"];
+    }
+    RDBookmarkModel *bm = [RDBookmarkManager addBookmarkForBook:self.bookDetail
+                                                       chapter:cur.charpterModel
+                                                          page:cur.page
+                                                    charOffset:offset
+                                                       snippet:snippet];
+    if (bm) {
+        [RDToastView showText:@"已添加书签" delay:1.2 inView:self.view];
+        [self.menuView.toolBar.bookmark setSelected:YES];
+    }
+}
+
+-(void)bookmarkViewDidSelect:(RDBookmarkModel *)bookmark
+{
+    if (!bookmark) {
+        return;
+    }
+    // 关闭菜单后跳转
+    if (self.menuView.superview) {
+        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
+    }
+    [RDCharpterManager getCharpterWithBookId:self.bookDetail.bookId charpterId:bookmark.charpterId complete:^(BOOL success, RDCharpterModel *model) {
+        if (!success || !model) {
+            [RDToastView showText:@"章节不存在" delay:1.2 inView:self.view];
+            return;
+        }
+        self.bookDetail.charpterModel = model;
+        self.bookDetail.page = bookmark.page;
+        self.bookDetail.charOffset = bookmark.charOffset;
+        [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+        [self initSteup];
+        [RDToastView showText:@"已跳转到书签" delay:1.0 inView:self.view];
+    }];
+}
+
 -(void)dealloc
 {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self p_saveRecord];
     if ([RDSpeechManager sharedInstance].active) {
         [RDSpeechManager sharedInstance].delegate = nil;
         [[RDSpeechManager sharedInstance] stop];

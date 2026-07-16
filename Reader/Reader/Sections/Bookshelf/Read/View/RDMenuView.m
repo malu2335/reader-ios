@@ -12,16 +12,20 @@
 #import "RDReadProgressView.h"
 #import "RDReadCatalogView.h"
 #import "RDReadCatalogCell.h"
+#import "RDReadBookmarkView.h"
+#import "RDBookmarkModel.h"
 #import "RDDisplayBoost.h"
 
 #define kToolBarHeight (50+[UIView safeBottomBar])
 #define kSetViewHeight 180
+#define kBookmarkViewHeight MIN(ScreenHeight * 0.55, 420)
 
-@interface RDMenuView () <RDReadToolBarDelegate,RDReadCatalogViewDelegate,RDReadProgressViewDelegate,RDReadTopBarDelegate,RDReadSetViewDelegate>
+@interface RDMenuView () <RDReadToolBarDelegate,RDReadCatalogViewDelegate,RDReadProgressViewDelegate,RDReadTopBarDelegate,RDReadSetViewDelegate,RDReadBookmarkViewDelegate>
 @property (nonatomic,strong) RDReadSetView *setView;
 @property (nonatomic,strong) RDReadLightView *lightView;
 @property (nonatomic,strong) RDReadProgressView *progressView;
 @property (nonatomic,strong) RDReadCatalogView *catalogView;
+@property (nonatomic,strong) RDReadBookmarkView *bookmarkView;
 @property (nonatomic,strong) UIView *showView;
 @property (nonatomic,strong) UIView *gesView;
 @end
@@ -34,6 +38,7 @@
         [self addSubview:self.setView];
         [self addSubview:self.lightView];
         [self addSubview:self.progressView];
+        [self addSubview:self.bookmarkView];
         [self addSubview:self.topBar];
         [self addSubview:self.catalogView];
         [self addSubview:self.toolBar];
@@ -55,6 +60,7 @@
     _book = book;
     self.catalogView.book = book;
     self.progressView.book = book;
+    self.bookmarkView.book = book;
     self.topBar.record = book;
     
 }
@@ -117,6 +123,15 @@
         _progressView.delegate = self;
     }
     return _progressView;
+}
+
+-(RDReadBookmarkView *)bookmarkView
+{
+    if (!_bookmarkView) {
+        _bookmarkView = [[RDReadBookmarkView alloc] initWithFrame:CGRectMake(0, ScreenSize.height, ScreenSize.width, kBookmarkViewHeight)];
+        _bookmarkView.delegate = self;
+    }
+    return _bookmarkView;
 }
 
 -(UIView *)gesView
@@ -231,6 +246,35 @@
         }
     }
 }
+
+-(void)didBookmark
+{
+    CGFloat h = kBookmarkViewHeight;
+    if (self.showView && self.showView != self.bookmarkView) {
+        self.bookmarkView.frame = CGRectMake(0, self.height - kToolBarHeight - h, ScreenWidth, h);
+        if (self.showView == self.catalogView) {
+            [self.catalogView dismiss];
+        } else {
+            self.showView.frame = CGRectMake(0, ScreenHeight, self.showView.width, self.showView.height);
+        }
+        [self.bookmarkView reloadData];
+        self.showView = self.bookmarkView;
+    } else {
+        if (self.showView == self.bookmarkView) {
+            [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
+                self.bookmarkView.frame = CGRectMake(0, ScreenHeight, ScreenWidth, h);
+            }];
+            self.showView = nil;
+        } else {
+            [self.bookmarkView reloadData];
+            [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
+                self.bookmarkView.frame = CGRectMake(0, self.height - kToolBarHeight - h, ScreenWidth, h);
+            }];
+            self.showView = self.bookmarkView;
+        }
+    }
+}
+
 -(void)didLight
 {
     if (self.showView && self.showView!=self.lightView) {
@@ -300,6 +344,20 @@
 {
     if ([self.delegate respondsToSelector:@selector(sliderToCharpter:)]) {
         [self.delegate sliderToCharpter:charpter];
+    }
+}
+
+-(void)bookmarkViewDidSelect:(RDBookmarkModel *)bookmark
+{
+    if ([self.delegate respondsToSelector:@selector(bookmarkViewDidSelect:)]) {
+        [self.delegate bookmarkViewDidSelect:bookmark];
+    }
+}
+
+-(void)bookmarkViewDidAddCurrent
+{
+    if ([self.delegate respondsToSelector:@selector(bookmarkViewDidAddCurrent)]) {
+        [self.delegate bookmarkViewDidAddCurrent];
     }
 }
 

@@ -12,6 +12,7 @@
 #define kCharpterTable @"chapter"
 #define kReadRecordTable @"read"
 #define kHistoryRecordTable @"history"
+#define kBookmarkTable @"bookmark"
 
 NS_ASSUME_NONNULL_BEGIN
 
