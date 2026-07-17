@@ -204,6 +204,11 @@
     xml.delegate = opf;
     [xml parse];
     if (opf.spine.count == 0) {
+        //现实 EPUB(Sigil 衍生工具等)偶见非法 XML,如无值属性 <dc:creator opf:role>,
+        //NSXMLParser 严格模式会中途终止;退回正则从 OPF 文本直接抽取
+        [self p_populateOpf:opf fromOpfData:opfData];
+    }
+    if (opf.spine.count == 0) {
         if (errorMessage) *errorMessage = @"EPUB 中没有可阅读的章节";
         return nil;
     }
@@ -254,6 +259,92 @@
     result.chapters = chapters.copy;
     result.coverData = [self coverDataWithZip:zip opf:opf opfDir:opfDir];
     return result;
+}
+
+//从标签文本里取属性值(双/单引号均可);attr 名前置 \b 防止匹配到别的属性子串
+static NSString *RDEpubAttrValue(NSString *tag, NSString *attr)
+{
+    NSString *pattern = [NSString stringWithFormat:@"\\b%@\\s*=\\s*[\"']([^\"']*)[\"']", attr];
+    NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:pattern
+                                                                        options:NSRegularExpressionCaseInsensitive
+                                                                          error:nil];
+    NSTextCheckingResult *m = [re firstMatchInString:tag options:0 range:NSMakeRange(0, tag.length)];
+    return m ? [tag substringWithRange:[m rangeAtIndex:1]] : nil;
+}
+
+///宽容模式:XML 解析失败时用正则从 OPF 原文抽 manifest/spine/title/creator/cover
++ (void)p_populateOpf:(RDEpubOpfParser *)opf fromOpfData:(NSData *)opfData
+{
+    NSString *text = [RDBookTextUtil stringFromData:opfData];
+    if (text.length == 0) {
+        return;
+    }
+    NSRange full = NSMakeRange(0, text.length);
+
+    //manifest <item .../>(\b 保证不吞 <itemref>)
+    NSRegularExpression *itemRe = [NSRegularExpression regularExpressionWithPattern:@"<item\\b[^>]*>"
+                                                                            options:NSRegularExpressionCaseInsensitive
+                                                                              error:nil];
+    for (NSTextCheckingResult *m in [itemRe matchesInString:text options:0 range:full]) {
+        NSString *tag = [text substringWithRange:m.range];
+        RDEpubManifestItem *item = [[RDEpubManifestItem alloc] init];
+        item.itemId = RDEpubAttrValue(tag, @"id") ?: @"";
+        item.href = RDEpubAttrValue(tag, @"href") ?: @"";
+        item.mediaType = RDEpubAttrValue(tag, @"media-type") ?: @"";
+        item.properties = RDEpubAttrValue(tag, @"properties") ?: @"";
+        if (item.itemId.length > 0 && item.href.length > 0 && !opf.manifest[item.itemId]) {
+            opf.manifest[item.itemId] = item;
+        }
+    }
+
+    //spine <itemref .../>,保持文档顺序;linear="no" 跳过
+    NSRegularExpression *refRe = [NSRegularExpression regularExpressionWithPattern:@"<itemref\\b[^>]*>"
+                                                                           options:NSRegularExpressionCaseInsensitive
+                                                                             error:nil];
+    for (NSTextCheckingResult *m in [refRe matchesInString:text options:0 range:full]) {
+        NSString *tag = [text substringWithRange:m.range];
+        NSString *idref = RDEpubAttrValue(tag, @"idref");
+        NSString *linear = RDEpubAttrValue(tag, @"linear");
+        if (idref.length > 0 && !(linear && [linear caseInsensitiveCompare:@"no"] == NSOrderedSame)) {
+            [opf.spine addObject:idref];
+        }
+    }
+
+    //metadata:title / creator(取第一个非空文本)
+    if (opf.title.length == 0) {
+        NSRegularExpression *titleRe = [NSRegularExpression regularExpressionWithPattern:@"<(?:\\w+:)?title[^>]*>\\s*([^<]+?)\\s*<"
+                                                                                 options:NSRegularExpressionCaseInsensitive
+                                                                                   error:nil];
+        NSTextCheckingResult *m = [titleRe firstMatchInString:text options:0 range:full];
+        if (m) {
+            opf.title = [text substringWithRange:[m rangeAtIndex:1]];
+        }
+    }
+    if (opf.author.length == 0) {
+        NSRegularExpression *creatorRe = [NSRegularExpression regularExpressionWithPattern:@"<(?:\\w+:)?creator[^>]*>\\s*([^<]+?)\\s*<"
+                                                                                   options:NSRegularExpressionCaseInsensitive
+                                                                                     error:nil];
+        NSTextCheckingResult *m = [creatorRe firstMatchInString:text options:0 range:full];
+        if (m) {
+            opf.author = [text substringWithRange:[m rangeAtIndex:1]];
+        }
+    }
+    if (opf.coverId.length == 0) {
+        NSRegularExpression *metaRe = [NSRegularExpression regularExpressionWithPattern:@"<meta\\b[^>]*>"
+                                                                                options:NSRegularExpressionCaseInsensitive
+                                                                                  error:nil];
+        for (NSTextCheckingResult *m in [metaRe matchesInString:text options:0 range:full]) {
+            NSString *tag = [text substringWithRange:m.range];
+            NSString *name = RDEpubAttrValue(tag, @"name");
+            if ([name caseInsensitiveCompare:@"cover"] == NSOrderedSame) {
+                NSString *content = RDEpubAttrValue(tag, @"content");
+                if (content.length > 0) {
+                    opf.coverId = content;
+                    break;
+                }
+            }
+        }
+    }
 }
 
 //读取 toc.ncx(EPUB2)或 nav 文档(EPUB3)得到 href → 章节名
