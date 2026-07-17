@@ -10,6 +10,8 @@
 @interface RDVoicePickerController () <UITableViewDelegate, UITableViewDataSource, UIDocumentPickerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, copy) NSArray <NSDictionary *>*groups;
+@property (nonatomic, strong) UIActivityIndicatorView *spinner;
+@property (nonatomic, assign) BOOL loading;
 @end
 
 @implementation RDVoicePickerController
@@ -21,6 +23,7 @@
     [self p_setupNavActions];
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
+    [self.view addSubview:self.spinner];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(p_reload)
                                                  name:RDVoiceListChangedNotification
@@ -29,6 +32,7 @@
                                              selector:@selector(p_reload)
                                                  name:RDPreferredVoiceChangedNotification
                                                object:nil];
+    // 首屏不阻塞:speechVoices 放到后台
     [self p_reload];
 }
 
@@ -56,6 +60,7 @@
 {
     [super viewDidLayoutSubviews];
     self.tableView.frame = CGRectMake(0, self.topView.bottom, self.view.width, self.view.height - self.topView.bottom);
+    self.spinner.center = CGPointMake(self.view.width / 2, self.view.height / 2);
 }
 
 - (UITableView *)tableView
@@ -70,10 +75,31 @@
     return _tableView;
 }
 
+- (UIActivityIndicatorView *)spinner
+{
+    if (!_spinner) {
+        _spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+        _spinner.hidesWhenStopped = YES;
+    }
+    return _spinner;
+}
+
 - (void)p_reload
 {
-    self.groups = [[RDVoiceManager sharedInstance] groupedOptions];
-    [self.tableView reloadData];
+    if (self.loading) {
+        return;
+    }
+    self.loading = YES;
+    if (self.groups.count == 0) {
+        [self.spinner startAnimating];
+    }
+    __weak typeof(self) weakSelf = self;
+    [[RDVoiceManager sharedInstance] loadGroupedOptions:^(NSArray<NSDictionary *> *groups) {
+        weakSelf.loading = NO;
+        [weakSelf.spinner stopAnimating];
+        weakSelf.groups = groups;
+        [weakSelf.tableView reloadData];
+    }];
 }
 
 #pragma mark - Import menu

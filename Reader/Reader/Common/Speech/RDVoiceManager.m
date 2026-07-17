@@ -17,6 +17,10 @@ static NSString * const kFavoriteVoicesKey = @"rd.tts.favoriteVoiceIds";
 @interface RDVoiceManager ()
 @property (nonatomic, strong) AVSpeechSynthesizer *previewSynthesizer;
 @property (nonatomic, copy) NSArray <NSString *>*favoriteIdentifiers;
+@property (nonatomic, copy, nullable) NSString *cachedDisplayName;
+@property (nonatomic, copy, nullable) NSArray <NSDictionary *>*cachedGroups;
+@property (nonatomic, strong, nullable) AVSpeechSynthesisVoice *cachedResolvedVoice;
+@property (nonatomic, assign) BOOL loadingGroups;
 @end
 
 @implementation RDVoiceManager
@@ -44,8 +48,16 @@ IMP_SINGLETON(RDVoiceManager)
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+- (void)p_invalidateCaches
+{
+    self.cachedDisplayName = nil;
+    self.cachedGroups = nil;
+    self.cachedResolvedVoice = nil;
+}
+
 - (void)p_voicesChanged
 {
+    [self p_invalidateCaches];
     [[NSNotificationCenter defaultCenter] postNotificationName:RDVoiceListChangedNotification object:nil];
 }
 
@@ -64,6 +76,7 @@ IMP_SINGLETON(RDVoiceManager)
     } else {
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:kPreferredVoiceKey];
     }
+    [self p_invalidateCaches];
     [[NSNotificationCenter defaultCenter] postNotificationName:RDPreferredVoiceChangedNotification object:nil];
 }
 
@@ -74,11 +87,21 @@ IMP_SINGLETON(RDVoiceManager)
 
 - (NSString *)preferredDisplayName
 {
-    AVSpeechSynthesisVoice *v = [self resolvedVoice];
-    if (!v) {
-        return @"系统默认";
+    // 设置页 cell 会频繁调用:禁止扫 speechVoices(主线程极慢)
+    if (self.cachedDisplayName.length) {
+        return self.cachedDisplayName;
     }
-    return [self p_displayNameForVoice:v];
+    if (self.preferredVoiceIdentifier.length == 0) {
+        self.cachedDisplayName = @"自动(中文)";
+        return self.cachedDisplayName;
+    }
+    AVSpeechSynthesisVoice *v = [AVSpeechSynthesisVoice voiceWithIdentifier:self.preferredVoiceIdentifier];
+    if (v) {
+        self.cachedDisplayName = [self p_displayNameForVoice:v];
+    } else {
+        self.cachedDisplayName = @"自动(中文)";
+    }
+    return self.cachedDisplayName;
 }
 
 #pragma mark - Favorites
@@ -104,6 +127,7 @@ IMP_SINGLETON(RDVoiceManager)
     }
     self.favoriteIdentifiers = [arr copy];
     [self p_saveFavorites];
+    self.cachedGroups = nil;
     [[NSNotificationCenter defaultCenter] postNotificationName:RDVoiceListChangedNotification object:nil];
 }
 
@@ -111,35 +135,45 @@ IMP_SINGLETON(RDVoiceManager)
 
 - (AVSpeechSynthesisVoice *)resolvedVoice
 {
+    if (self.cachedResolvedVoice) {
+        return self.cachedResolvedVoice;
+    }
     if (self.preferredVoiceIdentifier.length) {
         AVSpeechSynthesisVoice *v = [AVSpeechSynthesisVoice voiceWithIdentifier:self.preferredVoiceIdentifier];
         if (v) {
+            self.cachedResolvedVoice = v;
             return v;
         }
     }
-    // 自动:优先中文增强,再普通 zh-CN
-    NSArray *all = [AVSpeechSynthesisVoice speechVoices];
-    AVSpeechSynthesisVoice *enhanced = nil;
-    AVSpeechSynthesisVoice *normal = nil;
-    for (AVSpeechSynthesisVoice *v in all) {
-        if (![v.language hasPrefix:@"zh"]) {
-            continue;
-        }
-        if ([self p_isEnhanced:v]) {
-            if (!enhanced) {
-                enhanced = v;
-            }
-        } else if (!normal && [v.language isEqualToString:@"zh-CN"]) {
-            normal = v;
-        }
+    // 自动:先快速取系统默认中文,避免 UI 路径扫全量语音
+    AVSpeechSynthesisVoice *fast = [AVSpeechSynthesisVoice voiceWithLanguage:@"zh-CN"];
+    if (fast) {
+        // 朗读时再尝试升级到增强音(仅首次)
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                NSArray *all = [AVSpeechSynthesisVoice speechVoices];
+                AVSpeechSynthesisVoice *enhanced = nil;
+                for (AVSpeechSynthesisVoice *v in all) {
+                    if ([v.language hasPrefix:@"zh"] && [self p_isEnhanced:v]) {
+                        enhanced = v;
+                        break;
+                    }
+                }
+                if (enhanced) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (self.preferredVoiceIdentifier.length == 0) {
+                            self.cachedResolvedVoice = enhanced;
+                        }
+                    });
+                }
+            });
+        });
+        self.cachedResolvedVoice = fast;
+        return fast;
     }
-    if (enhanced) {
-        return enhanced;
-    }
-    if (normal) {
-        return normal;
-    }
-    return [AVSpeechSynthesisVoice voiceWithLanguage:@"zh-CN"] ?: [AVSpeechSynthesisVoice speechVoices].firstObject;
+    self.cachedResolvedVoice = [AVSpeechSynthesisVoice voiceWithLanguage:@"zh-CN"];
+    return self.cachedResolvedVoice;
 }
 
 #pragma mark - Listing
@@ -239,6 +273,9 @@ IMP_SINGLETON(RDVoiceManager)
 
 - (NSArray <NSDictionary *>*)groupedOptions
 {
+    if (self.cachedGroups) {
+        return self.cachedGroups;
+    }
     NSMutableArray *favorites = [NSMutableArray array];
     NSMutableArray *chinese = [NSMutableArray array];
     NSMutableArray *personal = [NSMutableArray array];
@@ -248,9 +285,12 @@ IMP_SINGLETON(RDVoiceManager)
 
     for (RDVoiceOption *opt in [self allOptions]) {
         if ([favSet containsObject:opt.identifier]) {
-            RDVoiceOption *copy = [self p_optionFromVoice:[AVSpeechSynthesisVoice voiceWithIdentifier:opt.identifier]];
-            copy.kind = RDVoiceKindFavorite;
-            [favorites addObject:copy];
+            AVSpeechSynthesisVoice *voice = [AVSpeechSynthesisVoice voiceWithIdentifier:opt.identifier];
+            if (voice) {
+                RDVoiceOption *copy = [self p_optionFromVoice:voice];
+                copy.kind = RDVoiceKindFavorite;
+                [favorites addObject:copy];
+            }
         }
         if (opt.kind == RDVoiceKindPersonal) {
             [personal addObject:opt];
@@ -284,7 +324,38 @@ IMP_SINGLETON(RDVoiceManager)
     if (others.count) {
         [groups addObject:@{@"title": @"其他语言", @"items": others}];
     }
+    self.cachedGroups = groups;
     return groups;
+}
+
+- (void)loadGroupedOptions:(void (^)(NSArray<NSDictionary *> *))complete
+{
+    if (self.cachedGroups) {
+        if (complete) {
+            complete(self.cachedGroups);
+        }
+        return;
+    }
+    if (self.loadingGroups) {
+        // 简单:稍后再取缓存
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            if (complete) {
+                complete(self.cachedGroups ?: @[]);
+            }
+        });
+        return;
+    }
+    self.loadingGroups = YES;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        // speechVoices 放后台
+        NSArray *groups = [self groupedOptions];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.loadingGroups = NO;
+            if (complete) {
+                complete(groups ?: @[]);
+            }
+        });
+    });
 }
 
 #pragma mark - Personal Voice

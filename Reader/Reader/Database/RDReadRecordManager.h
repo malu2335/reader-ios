@@ -27,6 +27,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 获取所有书架上的书籍
 +(NSArray *)getAllOnBookshelf;
 
+/// 仅统计书架本数(不反序列化章节内容,设置页用)
++(NSInteger)countOnBookshelf;
+
 /// 获取所有书架上的书籍的相关参数
 +(NSArray *)getAllOnBookshelfPram;
 

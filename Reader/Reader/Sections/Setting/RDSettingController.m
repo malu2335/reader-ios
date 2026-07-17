@@ -38,6 +38,9 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) NSArray <NSArray <NSNumber *>*>*sections;
 @property (nonatomic,copy) NSString *storageText;
+@property (nonatomic,copy) NSString *aiDetailText;
+@property (nonatomic,copy) NSString *voiceDetailText;
+@property (nonatomic,assign) BOOL storageRefreshing;
 @end
 
 @implementation RDSettingController
@@ -50,14 +53,20 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
                       @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowDictionary), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowVersion)]];
+    self.storageText = @"…";
+    self.aiDetailText = @"OpenAI · Anthropic · Gemini";
+    self.voiceDetailText = @"自动(中文)";
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
+    // 首屏先出表,再异步填副标题,避免卡 Tab 切换
+    [self p_refreshDetailsAsync];
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    [self p_refreshStorage];
+    // 只轻量刷新副标题,禁止整表 reload + 重扫 TTS/全量书架
+    [self p_refreshDetailsAsync];
 }
 
 - (RDTopView *)topView
@@ -93,29 +102,114 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 
 #pragma mark - 数据
 
-- (void)p_refreshStorage
+- (void)p_refreshDetailsAsync
 {
-    dispatch_async(dispatch_get_global_queue(0, 0), ^{
-        NSArray *books = [RDReadRecordManager getAllOnBookshelf];
-        NSUInteger count = books.count;
+    // AI / 语音展示名:主线程轻量读缓存
+    RDAIConfigProfile *active = [[RDAIConfigStore sharedInstance] activeProfile];
+    if (active.isUsable) {
+        NSString *label = active.name.length > 0 ? active.name : active.type;
+        self.aiDetailText = [NSString stringWithFormat:@"%@ · %@", label, active.model ?: @""];
+    } else if (active) {
+        self.aiDetailText = @"未完成配置";
+    } else {
+        self.aiDetailText = @"OpenAI · Anthropic · Gemini";
+    }
+    self.voiceDetailText = [[RDVoiceManager sharedInstance] preferredDisplayName];
+    [self p_reloadDetailRows];
+
+    if (self.storageRefreshing) {
+        return;
+    }
+    self.storageRefreshing = YES;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        // 只 count,不拉全书+章节正文
+        NSInteger count = [RDReadRecordManager countOnBookshelf];
         unsigned long long bytes = 0;
         NSString *dir = [PATH_DOCUMENT stringByAppendingPathComponent:@"LocalBooks"];
         NSDirectoryEnumerator *enumerator = [[NSFileManager defaultManager] enumeratorAtPath:dir];
         for (NSString *file in enumerator) {
-            NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:[dir stringByAppendingPathComponent:file] error:nil];
-            bytes += attrs.fileSize;
+            @autoreleasepool {
+                NSDictionary *attrs = [enumerator fileAttributes];
+                if (!attrs) {
+                    attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:[dir stringByAppendingPathComponent:file] error:nil];
+                }
+                bytes += attrs.fileSize;
+            }
         }
-        //数据库(章节内容)也计入
         NSString *dbPath = [PATH_DOCUMENT stringByAppendingPathComponent:@"book"];
         NSDictionary *dbAttrs = [[NSFileManager defaultManager] attributesOfItemAtPath:dbPath error:nil];
         bytes += dbAttrs.fileSize;
+        // WAL 也算一点
+        for (NSString *suf in @[@"-wal", @"-shm"]) {
+            NSDictionary *a = [[NSFileManager defaultManager] attributesOfItemAtPath:[dbPath stringByAppendingString:suf] error:nil];
+            bytes += a.fileSize;
+        }
 
         NSString *size = [NSByteCountFormatter stringFromByteCount:bytes countStyle:NSByteCountFormatterCountStyleFile];
+        NSString *text = [NSString stringWithFormat:@"%@ 本 · %@", @(count), size];
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.storageText = [NSString stringWithFormat:@"%@ 本 · %@", @(count), size];
-            [self.tableView reloadData];
+            self.storageRefreshing = NO;
+            if ([self.storageText isEqualToString:text]) {
+                return;
+            }
+            self.storageText = text;
+            [self p_reloadRow:RDSettingRowStorage];
         });
     });
+}
+
+/// 兼容旧调用
+- (void)p_refreshStorage
+{
+    [self p_refreshDetailsAsync];
+}
+
+- (NSIndexPath *)p_indexPathForRow:(RDSettingRow)row
+{
+    for (NSInteger s = 0; s < (NSInteger)self.sections.count; s++) {
+        NSArray *rows = self.sections[s];
+        for (NSInteger r = 0; r < (NSInteger)rows.count; r++) {
+            if ([rows[r] integerValue] == row) {
+                return [NSIndexPath indexPathForRow:r inSection:s];
+            }
+        }
+    }
+    return nil;
+}
+
+- (void)p_reloadRow:(RDSettingRow)row
+{
+    NSIndexPath *ip = [self p_indexPathForRow:row];
+    if (!ip || !self.tableView.window) {
+        return;
+    }
+    [self.tableView reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
+}
+
+- (void)p_reloadDetailRows
+{
+    // 未入窗或首次:整表一次即可,避免 reloadRows 在空表上异常
+    if (!self.isViewLoaded || !self.tableView.window) {
+        if (self.isViewLoaded) {
+            [self.tableView reloadData];
+        }
+        return;
+    }
+    NSMutableArray *paths = [NSMutableArray array];
+    for (NSNumber *n in @[@(RDSettingRowAIConfig), @(RDSettingRowTTSVoice)]) {
+        NSIndexPath *ip = [self p_indexPathForRow:n.integerValue];
+        if (ip) {
+            [paths addObject:ip];
+        }
+    }
+    if (paths.count == 0) {
+        return;
+    }
+    @try {
+        [self.tableView reloadRowsAtIndexPaths:paths withRowAnimation:UITableViewRowAnimationNone];
+    } @catch (__unused NSException *ex) {
+        [self.tableView reloadData];
+    }
 }
 
 - (NSString *)p_version
@@ -177,15 +271,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             break;
         case RDSettingRowAIConfig: {
             cell.textLabel.text = @"AI 配置";
-            RDAIConfigProfile *active = [[RDAIConfigStore sharedInstance] activeProfile];
-            if (active.isUsable) {
-                NSString *label = active.name.length > 0 ? active.name : active.type;
-                cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ · %@", label, active.model ?: @""];
-            } else if (active) {
-                cell.detailTextLabel.text = @"未完成配置";
-            } else {
-                cell.detailTextLabel.text = @"OpenAI · Anthropic · Gemini";
-            }
+            cell.detailTextLabel.text = self.aiDetailText;
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         }
@@ -201,7 +287,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             break;
         case RDSettingRowTTSVoice:
             cell.textLabel.text = @"朗读语音";
-            cell.detailTextLabel.text = [[RDVoiceManager sharedInstance] preferredDisplayName];
+            cell.detailTextLabel.text = self.voiceDetailText;
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         case RDSettingRowBackup:
@@ -239,12 +325,17 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         [self p_confirmClear];
     }
     else if (row == RDSettingRowAIConfig) {
-        RDAIConfigController *ai = [[RDAIConfigController alloc] init];
-        [self.navigationController pushViewController:ai animated:YES];
+        // 延后一帧再 push,让 deselect 动画先跑完,避免点选卡顿感
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RDAIConfigController *ai = [[RDAIConfigController alloc] init];
+            [self.navigationController pushViewController:ai animated:YES];
+        });
     }
     else if (row == RDSettingRowPurify) {
-        RDReplaceRulesController *vc = [[RDReplaceRulesController alloc] init];
-        [self.navigationController pushViewController:vc animated:YES];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RDReplaceRulesController *vc = [[RDReplaceRulesController alloc] init];
+            [self.navigationController pushViewController:vc animated:YES];
+        });
     }
     else if (row == RDSettingRowDictionary) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"查词"
@@ -271,8 +362,10 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         [self presentViewController:alert animated:YES completion:nil];
     }
     else if (row == RDSettingRowTTSVoice) {
-        RDVoicePickerController *vc = [[RDVoicePickerController alloc] init];
-        [self.navigationController pushViewController:vc animated:YES];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RDVoicePickerController *vc = [[RDVoicePickerController alloc] init];
+            [self.navigationController pushViewController:vc animated:YES];
+        });
     }
     else if (row == RDSettingRowBackup) {
         [self p_backup];

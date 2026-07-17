@@ -39,8 +39,10 @@ typedef NS_ENUM(NSInteger, RDVoiceKind) {
 /// 用户收藏的 identifier 列表(可视为「已导入」)
 @property (nonatomic, copy, readonly) NSArray <NSString *>*favoriteIdentifiers;
 
-/// 按分组返回可选语音:中文 / 其他 / 个人声音
+/// 按分组返回可选语音:中文 / 其他 / 个人声音(可能较慢,勿在主线程首次调用)
 - (NSArray <NSDictionary *>*)groupedOptions;
+/// 后台构建分组后主线程回调
+- (void)loadGroupedOptions:(void(^)(NSArray <NSDictionary *>*groups))complete;
 /// 全部选项(扁平)
 - (NSArray <RDVoiceOption *>*)allOptions;
 
@@ -69,7 +71,7 @@ typedef NS_ENUM(NSInteger, RDVoiceKind) {
 /// 导出当前语音配置
 - (nullable NSURL *)exportConfigToCachesError:(NSError * _Nullable * _Nullable)error;
 
-/// 当前默认语音展示名
+/// 当前默认语音展示名(轻量,带缓存,设置页安全调用)
 - (NSString *)preferredDisplayName;
 
 @end

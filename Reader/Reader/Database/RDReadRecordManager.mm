@@ -54,6 +54,19 @@
     return result;
 }
 
++(NSInteger)countOnBookshelf
+{
+    __block NSInteger count = 0;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        // 只取 bookId,避免把 charpterModel 大字段全量反序列化
+        NSArray *rows = [db getObjectsOnResults:{RDBookDetailModel.bookId}
+                                      fromTable:kReadRecordTable
+                                          where:RDBookDetailModel.onBookshelf.is(YES)];
+        count = rows.count;
+    }];
+    return count;
+}
+
 +(NSArray *)getAllOnBookshelfPram
 {
     __block NSArray *result = nil;
