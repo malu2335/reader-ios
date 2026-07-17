@@ -181,7 +181,7 @@
             NSFontAttributeName: [UIFont systemFontOfSize:28 weight:UIFontWeightLight],
             NSForegroundColorAttributeName: [UIColor colorWithWhite:1 alpha:0.55],
         };
-        [@"阅小说 · 本地阅读" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
+        [@"轻阅 · 本地阅读" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
     }];
 }
 
@@ -191,7 +191,7 @@
     if (q.length > 200) {
         q = [[q substringToIndex:200] stringByAppendingString:@"…"];
     }
-    return [NSString stringWithFormat:@"「%@」\n——《%@》%@\n#阅小说 #读书摘句",
+    return [NSString stringWithFormat:@"「%@」\n——《%@》%@\n#轻阅 #读书摘句",
             q.length ? q : @"好书值得一读",
             book.title ?: @"未知",
             book.author.length ? [NSString stringWithFormat:@" · %@", book.author] : @""];

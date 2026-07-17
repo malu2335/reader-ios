@@ -308,7 +308,7 @@
 		29406FF923B0FB0600E4495F /* RDRefreshFooter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDRefreshFooter.m; sourceTree = "<group>"; };
 		29406FFB23B105A700E4495F /* RDReadDetailApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadDetailApi.h; sourceTree = "<group>"; };
 		29406FFC23B105A700E4495F /* RDReadDetailApi.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadDetailApi.m; sourceTree = "<group>"; };
-		29407C7E23607D0E003C9643 /* 阅小说.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "阅小说.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		29407C7E23607D0E003C9643 /* 轻阅.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "轻阅.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29407C8123607D0E003C9643 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		29407C8223607D0E003C9643 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		29407C8D23607D0F003C9643 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -823,7 +823,7 @@
 		29407C7F23607D0E003C9643 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29407C7E23607D0E003C9643 /* 阅小说.app */,
+				29407C7E23607D0E003C9643 /* 轻阅.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1527,7 +1527,7 @@
 			);
 			name = Reader;
 			productName = Reader;
-			productReference = 29407C7E23607D0E003C9643 /* 阅小说.app */;
+			productReference = 29407C7E23607D0E003C9643 /* 轻阅.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -1952,7 +1952,7 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yuenov.open;
-				PRODUCT_NAME = "阅小说";
+				PRODUCT_NAME = "轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				USER_HEADER_SEARCH_PATHS = (
@@ -1982,7 +1982,7 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yuenov.open;
-				PRODUCT_NAME = "阅小说";
+				PRODUCT_NAME = "轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				USER_HEADER_SEARCH_PATHS = (
