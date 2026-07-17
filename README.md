@@ -8,9 +8,26 @@
 | Bundle ID | `xyz.malu2335.reader` |
 | 语言 | Objective-C |
 | 最低系统 | iOS 15.0 |
+| 设备 | **仅 iPhone** |
 | 依赖管理 | CocoaPods |
 | 数据 | WCDB（SQLite）+ App 沙盒文件 |
 | 仓库 | https://github.com/malu2335/reader-ios |
+
+---
+
+## 界面预览
+
+当前版本「纸羽轻阅」主要界面（图源见仓库 `Screenshots/`；App Store 全尺寸导出可放在本地 `AppStoreScreenshots/`，该目录默认不进 Git）。
+
+| 书架 | 正文阅读 | 阅读工具 |
+|:---:|:---:|:---:|
+| <img src="Screenshots/01-bookshelf.png" width="180" alt="书架"/> | <img src="Screenshots/02-reading.png" width="180" alt="正文阅读"/> | <img src="Screenshots/03-reading-tools.png" width="180" alt="阅读工具"/> |
+| 本地书封面网格 · 导入入口 | 纸色正文 · 进度与章节 | 目录 / 书签 / 亮度 / 字号 |
+
+| 排版设置 | 应用设置 | 正文净化 |
+|:---:|:---:|:---:|
+| <img src="Screenshots/04-typography.png" width="180" alt="排版设置"/> | <img src="Screenshots/05-settings.png" width="180" alt="应用设置"/> | <img src="Screenshots/06-reading-rules.png" width="180" alt="正文净化"/> |
+| 字号 · 字体 · 翻页动画 | 导入 · 备份 · 朗读 · 词典 | legado 风格替换规则 |
 
 ---
 
@@ -18,8 +35,9 @@
 
 ### 本地阅读
 - 导入 **TXT / EPUB / PDF / MOBI / ZIP / CBZ**，以及**包含图片的文件夹**（图集）
+- 支持系统「用其他应用打开 / 分享」到纸羽轻阅（复制进沙盒，不修改源文件）
 - ZIP/CBZ：按文件名自然序浏览图片（jpg/png/webp/gif 等）；文件夹会打包为 CBZ 再入库
-- 章节解析与 WCDB 存储；`bookId < 0` 标识本地书，与在线链路隔离
+- 章节解析与 WCDB 存储；`bookId < 0` 标识本地书
 - 内容哈希去重导入提示
 - 阅读进度（含字符偏移）、**书签**；漫画用页码进度
 - 正文净化规则、系统词典查询
@@ -29,6 +47,7 @@
 - 系统 `AVSpeech` 朗读条；语音选择、收藏、个人声音导入指引
 - 自定义字体导入
 - 备份 / 恢复（布局参考 Legado：`bookshelf.json` / `config.json` / `books/`）
+- 设置内可查看 **隐私声明** 与 **开源软件使用声明**（本地文本，无网络）
 
 ### 体验与工程
 - UIScene 生命周期、启动页与书架预加载
@@ -42,7 +61,7 @@
 
 - macOS + **Xcode**（建议较新版本；`Podfile` 含 Xcode 15+ / 新 clang 对 YYText、WCDB 的补丁）
 - [CocoaPods](https://cocoapods.org/)
-- iOS **15.0+** 模拟器或真机
+- iOS **15.0+** 模拟器或真机（iPhone）
 
 ---
 
@@ -82,19 +101,20 @@ open Reader.xcworkspace
 reader-ios/
 ├── README.md
 ├── LICENSE                 # 原项目 MIT（© 2020 阅小说）
-├── docs/                   # 审查与设计类文档
-├── resource/               # 历史界面预览图
+├── Screenshots/            # README 界面预览（已压缩，可提交）
+├── AppStoreScreenshots/    # 本地 ASC 全尺寸导出（默认 gitignore）
 └── Reader/
     ├── Podfile
     ├── Reader.xcodeproj
-    ├── Reader.xcworkspace  # pod install 后生成/更新
-    ├── Reader/             # 主工程源码
-    │   ├── Application/    # AppDelegate / SceneDelegate
-    │   ├── Common/LocalBook/
-    │   ├── Common/Speech/
-    │   ├── Database/       # WCDB 模型与 Manager
-    │   ├── Sections/       # 书架 / 阅读 / 设置等
-    │   └── Resource/       # Info.plist、资源、隐私清单
+    ├── Reader.xcworkspace  # pod install 后打开此 workspace
+    ├── Tests/              # 静态 harness（配置 / 合规文稿等）
+    └── Reader/             # 主工程源码
+        ├── Application/    # AppDelegate / SceneDelegate
+        ├── Common/LocalBook/
+        ├── Common/Speech/
+        ├── Database/       # WCDB 模型与 Manager
+        ├── Sections/       # 书架 / 阅读 / 设置等
+        └── Resource/       # Info.plist、隐私/开源声明、图标
 ```
 
 ---
@@ -102,8 +122,10 @@ reader-ios/
 ## 隐私与数据
 
 - App 不提供业务联网入口，并在 URL Loading 层拒绝 HTTP/HTTPS 请求。
-- **不要**把备份 zip、个人书库数据库，以及含个人书库或隐私信息的调试截图提交进 Git；商店展示截图统一存放在 `AppStoreScreenshots/`。
-- 本地调试目录 `.cursor/`、`.DS_Store`、根目录截图等已在 `.gitignore` 中忽略。
+- 设置页可查看随包发布的隐私声明与开源许可全文。
+- **不要**把备份 zip、个人书库数据库，以及含个人书库或隐私信息的调试截图提交进 Git。
+- 商店全尺寸截图建议放在本地 `AppStoreScreenshots/`；README 使用仓库内 `Screenshots/`。
+- 本地调试目录 `.cursor/`、`.DS_Store`、`docs/`、`CLAUDE.md` 等已在 `.gitignore` 中忽略。
 - 推送前建议自检：`git diff` / `git grep` 是否含 `sk-`、私钥、本机绝对路径等。
 
 ---
@@ -120,16 +142,6 @@ reader-ios/
 | 上游 Android | https://github.com/yuenov/reader-android |
 
 原「阅小说」产品与商店分发信息请以上游及官方渠道为准；本仓库为**独立维护的纯本地衍生版本**，应用展示名为 **纸羽轻阅**。
-
----
-
-## 界面预览
-
-以下截图来自当前「纸羽轻阅」版本，依次展示书架、正文阅读、阅读工具、排版设置、应用设置与正文净化。
-
-<img src="AppStoreScreenshots/asc-1242x2688/01-bookshelf.png" width="180"/><img src="AppStoreScreenshots/asc-1242x2688/02-reading.png" width="180"/><img src="AppStoreScreenshots/asc-1242x2688/03-reading-tools.png" width="180"/>
-
-<img src="AppStoreScreenshots/asc-1242x2688/04-typography.png" width="180"/><img src="AppStoreScreenshots/asc-1242x2688/05-settings.png" width="180"/><img src="AppStoreScreenshots/asc-1242x2688/06-reading-rules.png" width="180"/>
 
 ---
 
