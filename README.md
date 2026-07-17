@@ -105,7 +105,7 @@ open Reader.xcworkspace
 ```text
 reader-ios/
 ├── README.md
-├── LICENSE                 # 原项目 MIT（© 2020 阅小说）
+├── LICENSE                 # MIT（© 2020 阅小说；© 2026 Lu Ma / 纸羽轻阅）
 ├── Screenshots/            # README 界面预览（已压缩，可提交）
 ├── AppStoreScreenshots/    # 本地 ASC 全尺寸导出（默认 gitignore）
 └── Reader/
@@ -154,4 +154,4 @@ reader-ios/
 
 - 本客户端仅处理用户主动导入的文件，不提供在线内容服务。
 - 请勿将本项目用于侵犯著作权或其他违法行为；用户导入的内容由用户自行负责。
-- 软件按 MIT 许可提供，详见 [LICENSE](LICENSE)。
+- 软件按 MIT 许可提供，详见 [LICENSE](LICENSE)。本衍生版本保留上游「阅小说」版权声明，并增加 2026 年 Lu Ma（纸羽轻阅）版权行。

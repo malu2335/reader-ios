@@ -8,13 +8,14 @@ App：纸羽轻阅
 
 ## 上游项目
 
-### 阅小说
+### 阅小说 / 纸羽轻阅
 
-本项目源自 MIT License 开源项目「阅小说」。
+本项目源自 MIT License 开源项目「阅小说」，并由 Lu Ma（malu2335）维护为「纸羽轻阅」。
 
 MIT License
 
 Copyright (c) 2020 阅小说
+Copyright (c) 2026 Lu Ma (malu2335) — 纸羽轻阅
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
