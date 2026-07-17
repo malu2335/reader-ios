@@ -137,9 +137,37 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     return url;
 }
 
+/// 避免 Base 已含 /v1 时再拼出 /v1/v1/...
++ (NSString *)p_joinBase:(NSString *)base absolutePath:(NSString *)path
+{
+    base = [self normalizedBaseURL:base];
+    NSString *p = path ?: @"";
+    if (![p hasPrefix:@"/"]) {
+        p = [@"/" stringByAppendingString:p];
+    }
+    // base 已以 /v1 结尾,且 path 以 /v1/ 开头 → 去掉 path 的 /v1 前缀
+    NSString *lowerBase = base.lowercaseString;
+    NSString *lowerPath = p.lowercaseString;
+    if ([lowerBase hasSuffix:@"/v1"] && [lowerPath hasPrefix:@"/v1/"]) {
+        p = [p substringFromIndex:3]; // 去掉 "/v1"
+    } else if ([lowerBase hasSuffix:@"/v1beta"] && [lowerPath hasPrefix:@"/v1beta/"]) {
+        p = [p substringFromIndex:7];
+    }
+    // base 已是完整 completions/messages 路径
+    if ([lowerBase hasSuffix:@"/chat/completions"] || [lowerBase hasSuffix:@"/messages"] || [lowerBase containsString:@":generatecontent"]) {
+        return base;
+    }
+    return [base stringByAppendingString:p];
+}
+
 + (NSString *)translatePromptForText:(NSString *)text
 {
-    return [NSString stringWithFormat:@"Translate the following text. Output only the translation, with no explanation:\n\n%@", text ?: @""];
+    // 中文小说场景:默认译为英文;若原文已是英文则译为中文 — 由模型判断,只输出译文
+    return [NSString stringWithFormat:
+            @"你是翻译助手。将下面正文翻译成另一种语言:"
+            @"若原文主要是中文,译成通顺英文;若原文主要是英文/其他语言,译成通顺简体中文。"
+            @"只输出译文,不要解释、不要加标题或引号。\n\n%@",
+            text ?: @""];
 }
 
 + (NSURLRequest *)requestForProfile:(RDAIConfigProfile *)profile text:(NSString *)text error:(NSError **)error
@@ -173,7 +201,8 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     NSString *prompt = [self translatePromptForText:text];
 
     if ([self isOpenAIFamily:type]) {
-        NSString *urlString = [base stringByAppendingString:@"/v1/chat/completions"];
+        // 支持 base=https://api.openai.com 或 http://host:port/v1
+        NSString *urlString = [self p_joinBase:base absolutePath:@"/v1/chat/completions"];
         NSURL *url = [NSURL URLWithString:urlString];
         if (!url) {
             if (error) {
@@ -195,13 +224,14 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
         req.HTTPMethod = @"POST";
         req.HTTPBody = bodyData;
+        req.timeoutInterval = 60;
         [req setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
         [req setValue:[NSString stringWithFormat:@"Bearer %@", profile.apiKey] forHTTPHeaderField:@"Authorization"];
         return req;
     }
 
     if ([self isAnthropicFamily:type]) {
-        NSString *urlString = [base stringByAppendingString:@"/v1/messages"];
+        NSString *urlString = [self p_joinBase:base absolutePath:@"/v1/messages"];
         NSURL *url = [NSURL URLWithString:urlString];
         if (!url) {
             if (error) {
@@ -223,6 +253,7 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
         req.HTTPMethod = @"POST";
         req.HTTPBody = bodyData;
+        req.timeoutInterval = 60;
         [req setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
         [req setValue:profile.apiKey forHTTPHeaderField:@"x-api-key"];
         [req setValue:@"2023-06-01" forHTTPHeaderField:@"anthropic-version"];
@@ -232,7 +263,8 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     if ([self isGeminiFamily:type]) {
         // generateContent; API Key 走 header,避免出现在 URL/代理日志
         NSString *encodedModel = [profile.model stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]] ?: profile.model;
-        NSString *urlString = [NSString stringWithFormat:@"%@/v1beta/models/%@:generateContent", base, encodedModel];
+        NSString *path = [NSString stringWithFormat:@"/v1beta/models/%@:generateContent", encodedModel];
+        NSString *urlString = [self p_joinBase:base absolutePath:path];
         NSURL *url = [NSURL URLWithString:urlString];
         if (!url) {
             if (error) {
@@ -256,6 +288,7 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
         req.HTTPMethod = @"POST";
         req.HTTPBody = bodyData;
+        req.timeoutInterval = 60;
         [req setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
         [req setValue:profile.apiKey forHTTPHeaderField:@"x-goog-api-key"];
         return req;
@@ -414,22 +447,49 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         self.isTranslating = NO;
         if (error) {
             if ([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) {
+                // 取消时也回调,便于 UI 关掉 loading
+                if (completion) {
+                    completion(nil, error);
+                }
                 return;
             }
+            NSError *friendly = error;
+            if ([error.domain isEqualToString:NSURLErrorDomain]) {
+                NSString *msg = nil;
+                if (error.code == NSURLErrorAppTransportSecurityRequiresSecureConnection) {
+                    msg = @"网络被系统安全策略拦截:HTTP 需在 Info.plist 允许,或改用 HTTPS";
+                } else if (error.code == NSURLErrorTimedOut) {
+                    msg = @"翻译超时,请检查网络或 API 地址";
+                } else if (error.code == NSURLErrorCannotConnectToHost || error.code == NSURLErrorNetworkConnectionLost) {
+                    msg = [NSString stringWithFormat:@"无法连接翻译服务(%@)", error.localizedDescription ?: @"网络错误"];
+                } else if (error.code == NSURLErrorNotConnectedToInternet) {
+                    msg = @"当前无网络连接";
+                }
+                if (msg) {
+                    friendly = [NSError errorWithDomain:kRDAIErrorDomain code:error.code userInfo:@{NSLocalizedDescriptionKey: msg}];
+                }
+            }
             if (completion) {
-                completion(nil, error);
+                completion(nil, friendly);
             }
             return;
         }
         if (response && response.statusCode >= 400) {
             NSError *parseErr = nil;
-            NSString *parsed = [[self class] translatedTextFromResponseData:data profile:profile error:&parseErr];
+            (void)[[self class] translatedTextFromResponseData:data profile:profile error:&parseErr];
             NSError *httpErr = parseErr;
             if (!httpErr) {
-                // 不把完整 body 抛给 UI,避免泄露上游细节
+                NSString *bodyHint = @"";
+                if (data.length > 0 && data.length < 400) {
+                    NSString *raw = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                    if (raw.length) {
+                        bodyHint = [NSString stringWithFormat:@": %@", raw];
+                    }
+                }
+                // 不把超长 body 抛给 UI
                 httpErr = [NSError errorWithDomain:kRDAIErrorDomain
                                               code:response.statusCode
-                                          userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"翻译服务返回错误(%ld)", (long)response.statusCode]}];
+                                          userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"翻译服务返回错误(%ld)%@", (long)response.statusCode, bodyHint]}];
             }
             if (completion) {
                 completion(nil, httpErr);

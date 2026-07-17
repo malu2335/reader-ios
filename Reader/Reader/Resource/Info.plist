@@ -129,8 +129,11 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<!-- 自定义 AI 网关常为局域网 HTTP(如 Ollama / 兼容代理),需放行 -->
 		<key>NSAllowsArbitraryLoads</key>
-		<false/>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>yuenov.com</key>
