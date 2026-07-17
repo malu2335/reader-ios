@@ -24,8 +24,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 +(void)removeBookFromBookShelfWithBookId:(NSInteger)bookid;
 
-/// 获取所有书架上的书籍
+/// 获取所有书架上的书籍(含 charpterModel,较重)
 +(NSArray *)getAllOnBookshelf;
+
+/// 书架展示用轻量列表(不读 charpterModel 大字段,优先 readChapterName)
++(NSArray <RDBookDetailModel *>*)getBookshelfDisplayList;
 
 /// 仅统计书架本数(不反序列化章节内容,设置页用)
 +(NSInteger)countOnBookshelf;

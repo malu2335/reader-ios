@@ -42,9 +42,11 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         [sharedInstance.database createTableAndIndexesOfName:kReadRecordTable withClass:RDBookDetailModel.class];
         [sharedInstance.database createTableAndIndexesOfName:kHistoryRecordTable withClass:RDBookDetailModel.class];
         [sharedInstance.database createTableAndIndexesOfName:kBookmarkTable withClass:RDBookmarkModel.class];
-        // 兼容旧库:补阅读记忆的字符偏移列
+        // 兼容旧库:补阅读记忆 / 书架轻量字段
         [sharedInstance p_ensureColumn:@"charOffset" table:kReadRecordTable type:@"INTEGER"];
         [sharedInstance p_ensureColumn:@"charOffset" table:kHistoryRecordTable type:@"INTEGER"];
+        [sharedInstance p_ensureColumn:@"readChapterName" table:kReadRecordTable type:@"TEXT"];
+        [sharedInstance p_ensureColumn:@"readChapterName" table:kHistoryRecordTable type:@"TEXT"];
 
         NSDictionary *attrs = @{NSFileProtectionKey: NSFileProtectionCompleteUntilFirstUserAuthentication};
         [[NSFileManager defaultManager] setAttributes:attrs ofItemAtPath:dbPath error:nil];

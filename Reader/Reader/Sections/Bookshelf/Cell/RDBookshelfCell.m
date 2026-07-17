@@ -65,9 +65,10 @@
     }
     self.updateTag.hidden = !book.bookUpdate;
     self.bookLabel.text = book.title;
-    // 阅读记忆:显示上次读到的章节,无则作者
-    if (book.charpterModel.name.length) {
-        self.authorLabel.text = [NSString stringWithFormat:@"读到 · %@", book.charpterModel.name];
+    // 阅读记忆:优先 readChapterName(轻量列表),其次 charpterModel
+    NSString *chapter = book.readChapterName.length ? book.readChapterName : book.charpterModel.name;
+    if (chapter.length) {
+        self.authorLabel.text = [NSString stringWithFormat:@"读到 · %@", chapter];
     } else {
         self.authorLabel.text = book.author.length ? book.author : @"未知作者";
     }

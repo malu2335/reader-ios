@@ -22,14 +22,12 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // 启动关键路径尽量轻量:WebP / 自定义字体放到首帧之后异步完成
+    // 启动关键路径尽量轻量:WebP 延后;字体改由启动页预加载阶段注册,避免与书架抢盘
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         SDImageWebPCoder *webPCoder = [SDImageWebPCoder sharedCoder];
         dispatch_async(dispatch_get_main_queue(), ^{
             [[SDImageCodersManager sharedManager] addCoder:webPCoder];
         });
-        // 字体注册可在后台线程;列表缓存在 FontManager 内
-        [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
     });
     return YES;
 }

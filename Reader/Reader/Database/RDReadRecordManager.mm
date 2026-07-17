@@ -15,6 +15,10 @@
 +(void)insertOrReplaceModel:(RDBookDetailModel *)model
 {
     model.readTime = [NSDate date].timeIntervalSince1970;
+    // 同步书架轻量章节名
+    if (model.charpterModel.name.length) {
+        model.readChapterName = model.charpterModel.name;
+    }
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
         [db insertOrReplaceObject:model into:kReadRecordTable];
     }];
@@ -65,6 +69,32 @@
         count = rows.count;
     }];
     return count;
+}
+
++(NSArray <RDBookDetailModel *>*)getBookshelfDisplayList
+{
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        // 故意不取 charpterModel:章节正文可能极大,拖垮启动/书架首帧
+        result = [db getObjectsOnResults:{
+            RDBookDetailModel.bookId,
+            RDBookDetailModel.coverImg,
+            RDBookDetailModel.title,
+            RDBookDetailModel.author,
+            RDBookDetailModel.desc,
+            RDBookDetailModel.bookUpdate,
+            RDBookDetailModel.page,
+            RDBookDetailModel.charOffset,
+            RDBookDetailModel.readChapterName,
+            RDBookDetailModel.readTime,
+            RDBookDetailModel.onBookshelf,
+            RDBookDetailModel.localPath,
+            RDBookDetailModel.fileType,
+        } fromTable:kReadRecordTable
+             where:RDBookDetailModel.onBookshelf.is(YES)
+           orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
+    }];
+    return result ?: @[];
 }
 
 +(NSArray *)getAllOnBookshelfPram

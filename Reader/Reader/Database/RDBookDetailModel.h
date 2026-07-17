@@ -35,6 +35,8 @@
 @property (nonatomic,strong) RDCharpterModel *charpterModel;  //当前阅读的章节
 @property (nonatomic,assign) NSInteger page;        //当前阅读的进度(页码,字体变化时仅作参考)
 @property (nonatomic,assign) NSInteger charOffset;  //章节内字符偏移(阅读记忆主坐标,字体变化后恢复用)
+/// 最近阅读章节名(书架列表轻量展示,避免反序列化 charpterModel 大字段)
+@property (nonatomic,strong) NSString *readChapterName;
 @property (nonatomic,assign) NSTimeInterval readTime;   //阅读的最后时间
 @property (nonatomic,assign) BOOL onBookshelf;      //是否在书架上
 

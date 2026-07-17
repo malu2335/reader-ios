@@ -1,0 +1,149 @@
+//
+//  RDBookshelfPrefetch.m
+//  Reader
+//
+
+#import "RDBookshelfPrefetch.h"
+#import "RDReadRecordManager.h"
+#import "RDBookDetailModel.h"
+#import "RDCacheModel.h"
+#import "RDFontManager.h"
+#import <QuartzCore/QuartzCore.h>
+
+NSString * const RDBookshelfPrefetchDidFinishNotification = @"RDBookshelfPrefetchDidFinishNotification";
+
+@implementation RDBookshelfPrefetch
+
+static BOOL s_ready = NO;
+static NSArray <RDBookDetailModel *>*s_books = nil;
+static NSArray *s_rows = nil;
+static NSArray *s_groups = nil;
+static BOOL s_running = NO;
+
++ (BOOL)ready { return s_ready; }
++ (NSArray <RDBookDetailModel *>*)books { return s_books; }
++ (NSArray *)dataSourceRows { return s_rows; }
++ (NSArray <NSArray <RDBookDetailModel *>*>*)bookGroups { return s_groups; }
+
++ (void)invalidate
+{
+    s_ready = NO;
+    s_books = nil;
+    s_rows = nil;
+    s_groups = nil;
+}
+
++ (void)buildRowsFromBooks:(NSArray <RDBookDetailModel *>*)books
+                   columns:(NSInteger)columns
+                dataSource:(NSArray * _Nonnull * _Nonnull)outRows
+                    groups:(NSArray * _Nonnull * _Nonnull)outGroups
+{
+    NSInteger cols = MAX(1, columns);
+    NSMutableArray *rows = [NSMutableArray array];
+    NSMutableArray *groups = [NSMutableArray array];
+    if (books.count == 0) {
+        [rows addObject:@"RDBookshelfNoneCell"];
+    } else {
+        NSMutableArray *array = nil;
+        for (NSInteger i = 0; i < (NSInteger)books.count; i++) {
+            if (i % cols == 0) {
+                array = [NSMutableArray array];
+                [groups addObject:array];
+            }
+            [array addObject:books[i]];
+        }
+        [rows addObjectsFromArray:groups];
+    }
+    if (outRows) {
+        *outRows = rows;
+    }
+    if (outGroups) {
+        *outGroups = groups;
+    }
+}
+
++ (void)p_loadIntoCacheColumns:(NSInteger)columns
+{
+    // 轻量列表:getBookshelfDisplayList 内部会打开 DB,不反序列化章节正文
+    NSArray *books = [RDReadRecordManager getBookshelfDisplayList];
+    NSArray *rows = nil;
+    NSArray *groups = nil;
+    [self buildRowsFromBooks:books columns:columns dataSource:&rows groups:&groups];
+    s_books = [books copy];
+    s_rows = rows;
+    s_groups = groups;
+    s_ready = YES;
+}
+
++ (void)runWithComplete:(void (^)(void))complete
+{
+    if (s_ready) {
+        if (complete) {
+            dispatch_async(dispatch_get_main_queue(), complete);
+        }
+        return;
+    }
+    if (s_running) {
+        // 等待已有任务
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            while (s_running && !s_ready) {
+                usleep(20000);
+            }
+            if (complete) {
+                dispatch_async(dispatch_get_main_queue(), complete);
+            }
+        });
+        return;
+    }
+    s_running = YES;
+    NSInteger columns = [RDUtilities iPad] ? 5 : 3;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSTimeInterval t0 = CACurrentMediaTime();
+        [self p_loadIntoCacheColumns:columns];
+        // 并行暖一下缓存模型/字体(不阻塞返回)
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+            (void)[RDCacheModel sharedInstance];
+            [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
+        });
+        // 启动页至少展示一小段,避免闪一下
+        NSTimeInterval elapsed = CACurrentMediaTime() - t0;
+        NSTimeInterval minShow = 0.35;
+        if (elapsed < minShow) {
+            usleep((useconds_t)((minShow - elapsed) * 1e6));
+        }
+        s_running = NO;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:RDBookshelfPrefetchDidFinishNotification object:nil];
+            if (complete) {
+                complete();
+            }
+        });
+    });
+}
+
++ (void)refreshAsync:(void (^)(void))complete
+{
+    NSInteger columns = [RDUtilities iPad] ? 5 : 3;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        [self p_loadIntoCacheColumns:columns];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:RDBookshelfPrefetchDidFinishNotification object:nil];
+            if (complete) {
+                complete();
+            }
+        });
+    });
+}
+
++ (void)updateCacheWithBooks:(NSArray <RDBookDetailModel *>*)books columns:(NSInteger)columns
+{
+    NSArray *rows = nil;
+    NSArray *groups = nil;
+    [self buildRowsFromBooks:books columns:columns dataSource:&rows groups:&groups];
+    s_books = [books copy];
+    s_rows = rows;
+    s_groups = groups;
+    s_ready = YES;
+}
+
+@end

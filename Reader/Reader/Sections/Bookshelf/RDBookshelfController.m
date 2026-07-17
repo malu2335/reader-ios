@@ -12,6 +12,7 @@
 #import "RDReadHelper.h"
 #import "RDCharpterDataManager.h"
 #import "RDLocalBookManager.h"
+#import "RDBookshelfPrefetch.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 
@@ -23,6 +24,9 @@
 @property (nonatomic,strong) NSMutableArray *dataSource;
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) NSMutableArray *bookSource;
+@property (nonatomic,assign) BOOL didApplyPrefetch;
+@property (nonatomic,assign) BOOL isReloading;
+@property (nonatomic,assign) BOOL skipNextAppearReload;
 @end
 
 @implementation RDBookshelfController
@@ -36,6 +40,12 @@
                                                  name:RDLocalBookImportedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(importAction)
                                                  name:RDLocalBookImportRequestNotification object:nil];
+
+    // 启动页已预加载:立刻灌入缓存,首帧不空白
+    if ([RDBookshelfPrefetch ready]) {
+        [self p_applyPrefetchCache];
+        self.skipNextAppearReload = YES;
+    }
 
     // 先出书架 UI,首帧后再恢复上次阅读,避免启动直接卡在读库/分页
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -128,6 +138,7 @@
                     }
                     [self showText:msg.length ? msg : @"导入完成"];
                 }
+                [RDBookshelfPrefetch invalidate];
                 [self p_reload];
             }
         }];
@@ -136,6 +147,15 @@
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if (self.skipNextAppearReload) {
+        self.skipNextAppearReload = NO;
+        return;
+    }
+    if ([RDBookshelfPrefetch ready] && !self.didApplyPrefetch) {
+        [self p_applyPrefetchCache];
+        return;
+    }
+    // 返回书架时异步轻量刷新(不读章节正文)
     [self p_reload];
 }
 - (UITableView *)tableView {
@@ -148,7 +168,7 @@
         _tableView.estimatedRowHeight = 0;
         _tableView.estimatedSectionHeaderHeight = 0;
         _tableView.estimatedSectionFooterHeight = 0;
-        // 第一行不要贴顶:顶部留白 + 底部分页安全区
+        // 书架顶部留白:第一行封面不要贴顶栏
         _tableView.contentInset = UIEdgeInsetsMake(18, 0, 24, 0);
         _tableView.scrollIndicatorInsets = _tableView.contentInset;
         if (@available(iOS 15.0, *)) {
@@ -157,13 +177,13 @@
     }
     return _tableView;
 }
--(NSMutableArray *)dataSource{
+-(NSMutableArray *)dataSource
+{
     if (!_dataSource) {
         _dataSource = [NSMutableArray array];
     }
     return _dataSource;
 }
-
 -(NSMutableArray *)bookSource
 {
     if (!_bookSource) {
@@ -177,21 +197,17 @@
         _topView = [[RDTopView alloc] init];
         _topView.titleLabel.text = @"书架";
         _topView.titleLabel.font = RDTitleFont19;
-
-        UIButton *importBtn = [[UIButton alloc] init];
+        UIButton *importBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         [importBtn setTitle:@"导入" forState:UIControlStateNormal];
+        importBtn.titleLabel.font = RDFont16;
         [importBtn setTitleColor:RDAccentColor forState:UIControlStateNormal];
-        [importBtn setTitleColor:[RDAccentColor colorWithAlphaComponent:0.5] forState:UIControlStateHighlighted];
-        importBtn.titleLabel.font = RDFont15;
         [importBtn addTarget:self action:@selector(importAction) forControlEvents:UIControlEventTouchUpInside];
         [_topView addRightBtn:importBtn];
     }
-
+    
     return _topView;
 }
-
-#pragma mark - Delegate
-
+#pragma mark - delegate
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
     return self.dataSource.count;
@@ -200,41 +216,40 @@
 -(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     id model = [self.dataSource objectAtIndexSafely:indexPath.row];
-    if ([model isKindOfClass:[NSString class]] && [model isEqualToString:@"RDBookshelfNoneCell"]) {
+    if ([model isKindOfClass:NSString.class] && [model isEqualToString:@"RDBookshelfNoneCell"]) {
         RDBookshelfNoneCell *cell = [tableView dequeueReusableCellWithIdentifier:model];
         if (!cell) {
             cell = [[RDBookshelfNoneCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:model];
         }
         return cell;
     }
-    
     if ([model isKindOfClass:NSArray.class]) {
         RDBookshelfCell *cell = [tableView dequeueReusableCellWithIdentifier:@"RDBookshelfCell"];
         if (!cell) {
             cell = [[RDBookshelfCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"RDBookshelfCell"];
-            
             __weak typeof(self) weakSelf = self;
-            [cell setNeedReload:^{
+            cell.needReload = ^{
+                [RDBookshelfPrefetch invalidate];
                 [weakSelf p_reload];
-            }];
+            };
         }
         cell.books = model;
         return cell;
     }
-    
     return [UITableViewCell new];
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     id model = [self.dataSource objectAtIndexSafely:indexPath.row];
-    if ([model isKindOfClass:[NSString class]] && [model isEqualToString:@"RDBookshelfNoneCell"]){
-        return ScreenHeight-[UIView navigationBar]-[UIView tarBar]-[UIView statusBar];
+    if ([model isKindOfClass:NSString.class] && [model isEqualToString:@"RDBookshelfNoneCell"]) {
+        return ScreenHeight - [UIView navigationBar] - [UIView tarBar] - [UIView statusBar];
     }
     if ([model isKindOfClass:NSArray.class]) {
         return [RDBookshelfCell cellHeight];
     }
     return CGFLOAT_MIN;
 }
+
 -(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
@@ -274,28 +289,41 @@
 }
 #pragma mark - action
 
+-(void)p_applyPrefetchCache
+{
+    if (![RDBookshelfPrefetch ready]) {
+        return;
+    }
+    [self.dataSource removeAllObjects];
+    [self.bookSource removeAllObjects];
+    NSArray *rows = [RDBookshelfPrefetch dataSourceRows];
+    NSArray *groups = [RDBookshelfPrefetch bookGroups];
+    if (rows) {
+        [self.dataSource addObjectsFromArray:rows];
+    }
+    if (groups) {
+        [self.bookSource addObjectsFromArray:groups];
+    }
+    self.didApplyPrefetch = YES;
+    [self.tableView reloadData];
+}
+
 -(void)p_reload
 {
-    // 读库放到后台,主线程只做组装与刷新,缩短启动与返回书架卡顿
+    if (self.isReloading) {
+        return;
+    }
+    self.isReloading = YES;
+    // 读库放到后台,主线程只做组装与刷新
     NSInteger columns = kItemCount;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        NSArray *books = [RDReadRecordManager getAllOnBookshelf];
-        NSMutableArray *rows = [NSMutableArray array];
-        NSMutableArray *groups = [NSMutableArray array];
-        if (books.count == 0) {
-            [rows addObject:@"RDBookshelfNoneCell"];
-        } else {
-            NSMutableArray *array = nil;
-            for (NSInteger i = 0; i < (NSInteger)books.count; i++) {
-                if (i % columns == 0) {
-                    array = [NSMutableArray array];
-                    [groups addObject:array];
-                }
-                [array addObject:books[i]];
-            }
-            [rows addObjectsFromArray:groups];
-        }
+        NSArray *books = [RDReadRecordManager getBookshelfDisplayList];
+        NSArray *rows = nil;
+        NSArray *groups = nil;
+        [RDBookshelfPrefetch buildRowsFromBooks:books columns:columns dataSource:&rows groups:&groups];
+        [RDBookshelfPrefetch updateCacheWithBooks:books columns:columns];
         dispatch_async(dispatch_get_main_queue(), ^{
+            self.isReloading = NO;
             if (!self.isViewLoaded) {
                 return;
             }
@@ -303,6 +331,7 @@
             [self.bookSource removeAllObjects];
             [self.bookSource addObjectsFromArray:groups];
             [self.dataSource addObjectsFromArray:rows];
+            self.didApplyPrefetch = YES;
             [self.tableView reloadData];
         });
     });

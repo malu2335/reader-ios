@@ -11,6 +11,8 @@
 #import "RDBookDetailModel.h"
 #import "RDDisplayBoost.h"
 #import "RDDatabaseLifecycle.h"
+#import "RDSplashViewController.h"
+#import "RDBookshelfPrefetch.h"
 
 @implementation SceneDelegate
 
@@ -23,25 +25,55 @@
 
     AppDelegate *appDelegate = (AppDelegate *)UIApplication.sharedApplication.delegate;
     UIWindow *window = [[UIWindow alloc] initWithWindowScene:windowScene];
-    window.backgroundColor = RDBackgroudColor;
+    window.backgroundColor = [UIColor whiteColor];
     window.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
 
-    RDNavigationController *nav = [[RDNavigationController alloc] initWithRootViewController:appDelegate.mainController];
-    window.rootViewController = nav;
+    // 先挂启动页:视觉对齐 LaunchScreen,期间预加载书架 DB
+    RDSplashViewController *splash = [[RDSplashViewController alloc] init];
+    __weak typeof(self) weakSelf = self;
+    __weak AppDelegate *weakApp = appDelegate;
+    splash.onFinished = ^{
+        [weakSelf p_presentMainWithAppDelegate:weakApp];
+    };
+    window.rootViewController = splash;
     self.window = window;
-    // 兼容旧代码 RDAppDelegate.window / RDUtilities 回退路径
     appDelegate.window = window;
     [window makeKeyAndVisible];
-    // ProMotion / 高刷:对齐 contentsScale,配置滚动容器
     [RDDisplayBoost applyToWindow:window];
 
-    // 冷启动「用其他应用打开」延后到首帧后,避免挡住 makeKeyAndVisible
+    // 冷启动「用其他应用打开」等主界面就绪后再导入
     if (connectionOptions.URLContexts.count > 0) {
-        NSSet *contexts = connectionOptions.URLContexts;
-        dispatch_async(dispatch_get_main_queue(), ^{
+        NSSet *contexts = [connectionOptions.URLContexts copy];
+        __block id token = nil;
+        token = [[NSNotificationCenter defaultCenter] addObserverForName:RDBookshelfPrefetchDidFinishNotification
+                                                                  object:nil
+                                                                   queue:[NSOperationQueue mainQueue]
+                                                              usingBlock:^(NSNotification *note) {
+            if (token) {
+                [[NSNotificationCenter defaultCenter] removeObserver:token];
+                token = nil;
+            }
             [self scene:scene openURLContexts:contexts];
-        });
+        }];
     }
+}
+
+- (void)p_presentMainWithAppDelegate:(AppDelegate *)appDelegate
+{
+    if (!appDelegate) {
+        appDelegate = (AppDelegate *)UIApplication.sharedApplication.delegate;
+    }
+    RDNavigationController *nav = [[RDNavigationController alloc] initWithRootViewController:appDelegate.mainController];
+    UIWindow *window = self.window;
+    // 淡入主界面,避免硬切
+    [UIView transitionWithView:window
+                      duration:0.28
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+        window.rootViewController = nav;
+    } completion:nil];
+    window.backgroundColor = RDBackgroudColor;
+    [RDDisplayBoost applyToWindow:window];
 }
 
 - (void)sceneWillEnterForeground:(UIScene *)scene
@@ -70,6 +102,7 @@
             continue;
         }
         [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage, BOOL isDuplicate) {
+            [RDBookshelfPrefetch refreshAsync:nil];
             NSString *text = nil;
             if (isDuplicate) {
                 text = errorMessage.length ? errorMessage : [NSString stringWithFormat:@"《%@》已在书架", book.title ?: @""];
