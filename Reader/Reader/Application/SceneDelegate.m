@@ -13,6 +13,9 @@
 #import "RDDatabaseLifecycle.h"
 #import "RDSplashViewController.h"
 #import "RDBookshelfPrefetch.h"
+#ifdef DEBUG
+#import "RDLegalDocumentController.h"
+#endif
 
 @interface SceneDelegate ()
 /// 冷启动时系统传入的待导入文件;主界面呈现后消费一次,避免预加载通知竞态。
@@ -85,11 +88,73 @@
         // 主界面出来后空闲预热设置页,首次点 Tab 不再创建 view
         dispatch_async(dispatch_get_main_queue(), ^{
             [main preloadSettingIfNeeded];
+#ifdef DEBUG
+            // SIMCTL_CHILD_RD_SHOT=settings|privacy|opensource 用于 README 截图
+            [self p_applyDebugScreenshotHookIfNeededWithMain:main navigation:nav];
+#endif
         });
     }];
     window.backgroundColor = RDBackgroudColor;
     [RDDisplayBoost applyToWindow:window];
 }
+
+#ifdef DEBUG
+/// 仅 Debug：由环境变量 RD_SHOT 跳到设置 / 隐私声明 / 开源声明，便于 simctl 截图。
+- (void)p_applyDebugScreenshotHookIfNeededWithMain:(RDMainController *)main
+                                        navigation:(UINavigationController *)nav
+{
+    NSString *shot = [NSProcessInfo processInfo].environment[@"RD_SHOT"];
+    if (shot.length == 0 || !main || !nav) {
+        return;
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.55 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [main setSelectedIndex:RDMainSetting];
+        // 滚到「关于」分组，露出隐私 / 开源 / 版本
+        UIViewController *settingVC = (main.viewControllers.count > 1) ? main.viewControllers[1] : nil;
+        [settingVC.view layoutIfNeeded];
+        for (UIView *sub in settingVC.view.subviews) {
+            if (![sub isKindOfClass:UITableView.class]) {
+                continue;
+            }
+            UITableView *table = (UITableView *)sub;
+            NSInteger sections = [table numberOfSections];
+            if (sections <= 0) {
+                break;
+            }
+            NSInteger lastSection = sections - 1;
+            NSInteger rows = [table numberOfRowsInSection:lastSection];
+            if (rows <= 0) {
+                break;
+            }
+            NSIndexPath *bottom = [NSIndexPath indexPathForRow:rows - 1 inSection:lastSection];
+            [table scrollToRowAtIndexPath:bottom atScrollPosition:UITableViewScrollPositionBottom animated:NO];
+            [table layoutIfNeeded];
+            break;
+        }
+
+        if ([shot isEqualToString:@"settings"]) {
+            return;
+        }
+
+        NSString *title = nil;
+        NSString *resource = nil;
+        if ([shot isEqualToString:@"privacy"]) {
+            title = @"隐私声明";
+            resource = @"PrivacyPolicy.zh-Hans";
+        } else if ([shot isEqualToString:@"opensource"]) {
+            title = @"开源软件使用声明";
+            resource = @"OpenSourceLicenses";
+        } else {
+            return;
+        }
+
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            RDLegalDocumentController *vc = [[RDLegalDocumentController alloc] initWithTitle:title resourceName:resource];
+            [nav pushViewController:vc animated:NO];
+        });
+    });
+}
+#endif
 
 - (void)sceneWillEnterForeground:(UIScene *)scene
 {

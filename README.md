@@ -27,7 +27,12 @@
 | 排版设置 | 应用设置 | 正文净化 |
 |:---:|:---:|:---:|
 | <img src="Screenshots/04-typography.png" width="180" alt="排版设置"/> | <img src="Screenshots/05-settings.png" width="180" alt="应用设置"/> | <img src="Screenshots/06-reading-rules.png" width="180" alt="正文净化"/> |
-| 字号 · 字体 · 翻页动画 | 导入 · 备份 · 朗读 · 词典 | legado 风格替换规则 |
+| 字号 · 字体 · 翻页动画 | 导入 · 备份 · 隐私/开源入口 | legado 风格替换规则 |
+
+| 隐私声明 | 开源软件使用声明 |
+|:---:|:---:|
+| <img src="Screenshots/07-privacy.png" width="180" alt="隐私声明"/> | <img src="Screenshots/08-opensource.png" width="180" alt="开源软件使用声明"/> |
+| 设置内本地文档 · 无网络 | 完整许可与归属 · 可滚动复制 |
 
 ---
 
