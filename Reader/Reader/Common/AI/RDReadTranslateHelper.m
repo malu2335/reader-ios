@@ -11,6 +11,11 @@
 #import "RDBaseViewController.h"
 #import "AppDelegate.h"
 #import "RDMainController.h"
+#import "RDReadConfigManager.h"
+#import "RDFontManager.h"
+
+@implementation RDTranslatePair
+@end
 
 @implementation RDReadTranslateHelper
 
@@ -23,7 +28,7 @@
 {
     UIView *v = host.view ?: [RDUtilities applicationKeyWindow];
     if (v) {
-        [RDToastView showText:text delay:2.0 inView:v];
+        [RDToastView showText:text delay:1.8 inView:v];
     }
 }
 
@@ -35,27 +40,28 @@
         [nav pushViewController:ai animated:YES];
         return;
     }
-    // 阅读页若无导航栈,切到设置 Tab 并推入
     AppDelegate *app = (AppDelegate *)UIApplication.sharedApplication.delegate;
     if ([app.mainController isKindOfClass:RDMainController.class]) {
         [app.mainController setSelectedIndex:RDMainSetting];
-        UIViewController *setting = app.mainController.viewControllers.count > 1 ? app.mainController.viewControllers[1] : nil;
-        if (setting.navigationController) {
-            [setting.navigationController pushViewController:ai animated:YES];
-        } else {
-            UINavigationController *wrap = [[UINavigationController alloc] initWithRootViewController:ai];
-            wrap.modalPresentationStyle = UIModalPresentationFullScreen;
-            [host presentViewController:wrap animated:YES completion:nil];
-        }
-    } else {
-        [host presentViewController:ai animated:YES completion:nil];
     }
+    UINavigationController *wrap = [[UINavigationController alloc] initWithRootViewController:ai];
+    wrap.modalPresentationStyle = UIModalPresentationFullScreen;
+    [host presentViewController:wrap animated:YES completion:nil];
 }
 
 + (void)translateFromHost:(UIViewController *)host
                  pageText:(NSString *)pageText
               chapterText:(NSString *)chapterText
                rawContent:(NSString *)rawContent
+{
+    [self translateFromHost:host pageText:pageText chapterText:chapterText rawContent:rawContent completion:nil];
+}
+
++ (void)translateFromHost:(UIViewController *)host
+                 pageText:(NSString *)pageText
+              chapterText:(NSString *)chapterText
+               rawContent:(NSString *)rawContent
+               completion:(void (^)(NSArray<RDTranslatePair *> *, NSString *, NSError *))completion
 {
     if (!host) {
         return;
@@ -69,7 +75,7 @@
     if (!profile.isUsable) {
         [LEEAlert alert].config
         .LeeTitle(@"未配置 AI")
-        .LeeContent(@"请先在设置中添加 AI 翻译配置(OpenAI / Anthropic / Gemini 及兼容格式),并填写 API Key、模型与 Base URL。")
+        .LeeContent(@"请先在设置中添加 AI 翻译配置,并填写 API Key、模型与 Base URL。")
         .LeeAddAction(^(LEEAction *action) {
             action.type = LEEActionTypeCancel;
             action.title = @"取消";
@@ -88,17 +94,13 @@
 
     NSString *text = pageText.length ? pageText : (chapterText.length ? chapterText : rawContent);
     text = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    BOOL truncated = NO;
-    if (text.length > 4000) {
-        text = [text substringToIndex:4000];
-        truncated = YES;
+    if (text.length > 3500) {
+        text = [text substringToIndex:3500];
+        [self p_toast:@"本页较长,仅翻译前半部分" on:host];
     }
     if (text.length == 0) {
         [self p_toast:@"当前没有可翻译的文本" on:host];
         return;
-    }
-    if (truncated) {
-        [self p_toast:@"文本较长,仅翻译前 4000 字" on:host];
     }
 
     RDBaseViewController *base = [host isKindOfClass:RDBaseViewController.class] ? (RDBaseViewController *)host : nil;
@@ -108,55 +110,164 @@
             [base hideLoading];
             [RDToastView showText:@"已取消" delay:1.0 inView:host.view];
         }];
-    } else {
-        [self p_toast:@"正在翻译..." on:host];
     }
 
-    NSString *endpointHint = profile.baseURL.length ? profile.baseURL : profile.type;
-    [[RDAIClient sharedClient] translateText:text profile:profile completion:^(NSString *translated, NSError *error) {
+    // 要求模型按句输出,便于插入到语句下方
+    NSString *prompt = [NSString stringWithFormat:
+                        @"你是小说阅读翻译助手。将下面正文按句拆分翻译。"
+                        @"若原文主要是中文则译成英文;若主要是英文/其他语言则译成简体中文。"
+                        @"严格按以下格式输出,不要编号、不要解释、不要多余空行以外的标记:\n"
+                        @"[S]\n原文句子\n[T]\n译文句子\n"
+                        @"下一句继续 [S] ... [T] ...\n"
+                        @"保持句序与原文一致。\n\n正文:\n%@", text];
+
+    [[RDAIClient sharedClient] translateText:prompt profile:profile completion:^(NSString *translated, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (base) {
                 [base hideLoading];
             }
             if (!translated) {
                 if (error && [error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) {
+                    if (completion) {
+                        completion(nil, nil, error);
+                    }
                     return;
                 }
                 NSString *msg = error.localizedDescription.length ? error.localizedDescription : @"翻译失败";
-                // 结果用 Alert,失败也用 Alert,避免「无响应」
-                [LEEAlert alert].config
-                .LeeTitle(@"翻译失败")
-                .LeeContent([NSString stringWithFormat:@"%@\n\n接口: %@ · %@", msg, profile.type ?: @"", endpointHint ?: @""])
-                .LeeAddAction(^(LEEAction *action) {
-                    action.title = @"去检查配置";
-                    action.clickBlock = ^{
-                        [RDReadTranslateHelper p_openAISettingsFrom:host];
-                    };
-                })
-                .LeeAddAction(^(LEEAction *action) {
-                    action.type = LEEActionTypeCancel;
-                    action.title = @"关闭";
-                })
-                .LeeShow();
+                [self p_toast:msg on:host];
+                if (completion) {
+                    completion(nil, nil, error ?: [NSError errorWithDomain:@"RDTranslate" code:1 userInfo:@{NSLocalizedDescriptionKey: msg}]);
+                }
                 return;
             }
-            [LEEAlert alert].config
-            .LeeTitle(@"翻译结果")
-            .LeeContent(translated)
-            .LeeAddAction(^(LEEAction *action) {
-                action.title = @"复制";
-                action.clickBlock = ^{
-                    [UIPasteboard generalPasteboard].string = translated;
-                    [RDToastView showText:@"已复制" delay:1.0 inView:host.view];
-                };
-            })
-            .LeeAddAction(^(LEEAction *action) {
-                action.type = LEEActionTypeCancel;
-                action.title = @"关闭";
-            })
-            .LeeShow();
+            NSArray <RDTranslatePair *>*pairs = [self parsePairsFromModelOutput:translated];
+            if (completion) {
+                completion(pairs, translated, nil);
+            }
         });
     }];
+}
+
+#pragma mark - Parse
+
++ (NSArray <RDTranslatePair *>*)parsePairsFromModelOutput:(NSString *)output
+{
+    if (output.length == 0) {
+        return nil;
+    }
+    NSMutableArray <RDTranslatePair *>*pairs = [NSMutableArray array];
+    // 规范换行
+    NSString *text = [[output stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"]
+                      stringByReplacingOccurrencesOfString:@"\r" withString:@"\n"];
+
+    // 主格式: [S] ... [T] ...
+    NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:@"\\[S\\]\\s*\\n([\\s\\S]*?)\\n\\[T\\]\\s*\\n([\\s\\S]*?)(?=\\n\\[S\\]|$)"
+                                                                        options:0
+                                                                          error:nil];
+    NSArray *matches = [re matchesInString:text options:0 range:NSMakeRange(0, text.length)];
+    for (NSTextCheckingResult *m in matches) {
+        if (m.numberOfRanges < 3) {
+            continue;
+        }
+        NSString *s = [[text substringWithRange:[m rangeAtIndex:1]] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        NSString *t = [[text substringWithRange:[m rangeAtIndex:2]] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (s.length == 0 && t.length == 0) {
+            continue;
+        }
+        RDTranslatePair *p = [[RDTranslatePair alloc] init];
+        p.source = s;
+        p.translated = t;
+        [pairs addObject:p];
+    }
+    if (pairs.count > 0) {
+        return pairs;
+    }
+
+    // 兜底:按中英文句号拆原文块 — 若模型用「原文\n译文\n\n」交替
+    NSArray *blocks = [text componentsSeparatedByString:@"\n\n"];
+    for (NSString *block in blocks) {
+        NSString *b = [block stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (b.length == 0) {
+            continue;
+        }
+        NSRange r = [b rangeOfString:@"\n"];
+        if (r.location == NSNotFound) {
+            continue;
+        }
+        NSString *s = [[b substringToIndex:r.location] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        NSString *t = [[b substringFromIndex:r.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (s.length && t.length) {
+            RDTranslatePair *p = [[RDTranslatePair alloc] init];
+            p.source = s;
+            p.translated = t;
+            [pairs addObject:p];
+        }
+    }
+    return pairs.count > 0 ? pairs : nil;
+}
+
+#pragma mark - Attributed display
+
++ (NSAttributedString *)attributedStringForPairs:(NSArray <RDTranslatePair *>*)pairs
+                                   fallbackSource:(NSString *)source
+                               fallbackTranslation:(NSString *)translation
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    UIFont *srcFont = [RDFontManager readFontWithName:cfg.fontName size:cfg.fontSize];
+    UIFont *trFont = [RDFontManager readFontWithName:cfg.fontName size:MAX(12, cfg.fontSize - 2)];
+    UIColor *srcColor = cfg.fontColor ?: RDBlackColor;
+    UIColor *trColor = [cfg.fontColor colorWithAlphaComponent:0.55] ?: RDGrayColor;
+    if (!trColor) {
+        trColor = RDGrayColor;
+    }
+
+    NSMutableParagraphStyle *srcPS = [[NSMutableParagraphStyle alloc] init];
+    srcPS.lineSpacing = MAX(4, cfg.lineSpace * 0.6);
+    srcPS.paragraphSpacing = 2;
+    srcPS.firstLineHeadIndent = 0;
+    srcPS.headIndent = 0;
+
+    NSMutableParagraphStyle *trPS = [[NSMutableParagraphStyle alloc] init];
+    trPS.lineSpacing = 3;
+    trPS.paragraphSpacing = 10;
+    trPS.firstLineHeadIndent = 12;
+    trPS.headIndent = 12;
+
+    NSDictionary *srcAttr = @{
+        NSFontAttributeName: srcFont,
+        NSForegroundColorAttributeName: srcColor,
+        NSParagraphStyleAttributeName: srcPS,
+    };
+    NSDictionary *trAttr = @{
+        NSFontAttributeName: trFont,
+        NSForegroundColorAttributeName: trColor,
+        NSParagraphStyleAttributeName: trPS,
+    };
+
+    NSMutableAttributedString *out = [[NSMutableAttributedString alloc] init];
+
+    if (pairs.count > 0) {
+        for (NSInteger i = 0; i < (NSInteger)pairs.count; i++) {
+            RDTranslatePair *p = pairs[i];
+            if (p.source.length) {
+                [out appendAttributedString:[[NSAttributedString alloc] initWithString:[p.source stringByAppendingString:@"\n"] attributes:srcAttr]];
+            }
+            if (p.translated.length) {
+                NSString *line = (i == (NSInteger)pairs.count - 1) ? p.translated : [p.translated stringByAppendingString:@"\n\n"];
+                [out appendAttributedString:[[NSAttributedString alloc] initWithString:line attributes:trAttr]];
+            }
+        }
+        return out;
+    }
+
+    // 整段兜底:原文 + 下方全文译文
+    if (source.length) {
+        [out appendAttributedString:[[NSAttributedString alloc] initWithString:[source stringByAppendingString:@"\n\n"] attributes:srcAttr]];
+    }
+    if (translation.length) {
+        [out appendAttributedString:[[NSAttributedString alloc] initWithString:translation attributes:trAttr]];
+    }
+    return out;
 }
 
 @end

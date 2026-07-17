@@ -67,6 +67,7 @@
 @interface RDReadController ()
 @property (nonatomic,strong) UILabel *charpterLabel;
 @property (nonatomic,strong) RDReadView *readView;
+@property (nonatomic,strong) UITextView *inlineTranslationView;
 @property (nonatomic,strong) RDBatteryView *battery;
 @property (nonatomic,strong) UILabel *progressLabel;
 @property (nonatomic,strong) UILabel *timeLabel;
@@ -78,6 +79,7 @@
 @property (nonatomic, strong) NSTimer *timer;
 
 @property (nonatomic, assign) BOOL is12Hour;
+@property (nonatomic, assign, readwrite) BOOL showingInlineTranslation;
 
 @property (nonatomic,assign) NSInteger page;
 @property (nonatomic,assign) NSInteger charpterIndex;
@@ -109,6 +111,7 @@
     [self.backgroundImageView addSubview:self.progressLabel];
     [self.backgroundImageView addSubview:self.timeLabel];
     [self.backgroundImageView addSubview:self.readView];
+    [self.backgroundImageView addSubview:self.inlineTranslationView];
     [self.backgroundImageView addSubview:self.coverBackgroundImageVIew];
     //主题背景
     [self.KVOController observe:[RDReadConfigManager sharedInstance] keyPath:@"theme" options:NSKeyValueObservingOptionNew block:^(RDReadController *  _Nullable observer, RDReadConfigManager *  _Nonnull object, NSDictionary<NSString *,id> * _Nonnull change) {
@@ -190,6 +193,8 @@
     _charpter = charpter;_content = content;_page = page; _totalPage = totalPage; _charpterIndex = chaprterIndex;totalCharpter = _totalCharpter = totalCharpter;
     self.charpterLabel.text = self.charpter;
     self.readView.attributeString = content;
+    // 翻页时清掉内联翻译,避免串页
+    [self showInlineTranslation:nil];
     [self.view setNeedsLayout];
     [self.view layoutIfNeeded];
     
@@ -204,6 +209,23 @@
     self.progressLabel.text = [NSString stringWithFormat:@"%.1f%%",percent];
 }
 
+- (void)showInlineTranslation:(NSAttributedString *)attributed
+{
+    if (!attributed.length) {
+        self.showingInlineTranslation = NO;
+        self.inlineTranslationView.hidden = YES;
+        self.inlineTranslationView.attributedText = nil;
+        self.readView.hidden = NO;
+        return;
+    }
+    self.showingInlineTranslation = YES;
+    self.readView.hidden = YES;
+    self.inlineTranslationView.hidden = NO;
+    self.inlineTranslationView.attributedText = attributed;
+    self.inlineTranslationView.contentOffset = CGPointZero;
+    [self.view setNeedsLayout];
+}
+
 
 -(void)viewDidLayoutSubviews
 {
@@ -215,7 +237,9 @@
     self.battery.centerY = self.timeLabel.centerY;
     self.progressLabel.frame = CGRectMake(0, self.timeLabel.top, 80, 40);
     self.progressLabel.right = self.view.width-20;
-    self.readView.frame = CGRectMake(20, self.charpterLabel.bottom, self.view.width-40, self.timeLabel.top-self.charpterLabel.bottom);
+    CGRect contentFrame = CGRectMake(20, self.charpterLabel.bottom, self.view.width-40, self.timeLabel.top-self.charpterLabel.bottom);
+    self.readView.frame = contentFrame;
+    self.inlineTranslationView.frame = contentFrame;
     self.backgroundImageView.frame = self.view.bounds;
     self.coverBackgroundImageVIew.frame = self.view.bounds;
     if (self.isMirror) {
@@ -273,6 +297,24 @@
         _readView.backgroundColor = [UIColor clearColor];
     }
     return _readView;
+}
+
+- (UITextView *)inlineTranslationView
+{
+    if (!_inlineTranslationView) {
+        _inlineTranslationView = [[UITextView alloc] init];
+        _inlineTranslationView.editable = NO;
+        _inlineTranslationView.selectable = YES;
+        _inlineTranslationView.backgroundColor = [UIColor clearColor];
+        _inlineTranslationView.textContainerInset = UIEdgeInsetsMake(4, 0, 12, 0);
+        _inlineTranslationView.textContainer.lineFragmentPadding = 0;
+        _inlineTranslationView.showsVerticalScrollIndicator = YES;
+        _inlineTranslationView.alwaysBounceVertical = YES;
+        _inlineTranslationView.hidden = YES;
+        // 避免抢阅读区单击菜单
+        _inlineTranslationView.delaysContentTouches = YES;
+    }
+    return _inlineTranslationView;
 }
 
 -(UIImageView *)backgroundImageView

@@ -774,13 +774,53 @@
         [self invokeMenu:self.pageViewController.viewControllers.firstObject];
     }
     RDReadController *currentController = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    if (!currentController || currentController.isMirror) {
+        for (UIViewController *vc in self.pageViewController.viewControllers) {
+            if ([vc isKindOfClass:RDReadController.class] && ![(RDReadController *)vc isMirror]) {
+                currentController = (RDReadController *)vc;
+                break;
+            }
+        }
+    }
     if (!currentController) {
         return;
     }
+    // 已在展示译文时再点「译」→ 收起,恢复原文
+    if (currentController.showingInlineTranslation) {
+        [currentController showInlineTranslation:nil];
+        [RDToastView showText:@"已关闭译文" delay:1.0 inView:self.view];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    __weak RDReadController *weakPage = currentController;
+    NSString *pageText = currentController.content.string;
     [RDReadTranslateHelper translateFromHost:self
-                                    pageText:currentController.content.string
+                                    pageText:pageText
                                  chapterText:currentController.charpterContent.string
-                                  rawContent:currentController.charpterModel.content];
+                                  rawContent:currentController.charpterModel.content
+                                  completion:^(NSArray<RDTranslatePair *> *pairs, NSString *fullTranslation, NSError *error) {
+        if (error || (!pairs.count && fullTranslation.length == 0)) {
+            return; // toast 已在 helper 中处理
+        }
+        RDReadController *page = weakPage;
+        if (!page || !page.isViewLoaded) {
+            // 页已销毁则找当前页
+            page = (RDReadController *)weakSelf.pageViewController.viewControllers.firstObject;
+        }
+        if (![page isKindOfClass:RDReadController.class]) {
+            return;
+        }
+        NSAttributedString *attr = [RDReadTranslateHelper attributedStringForPairs:pairs
+                                                                     fallbackSource:pageText
+                                                                 fallbackTranslation:fullTranslation];
+        if (attr.length == 0) {
+            [RDToastView showText:@"译文为空" delay:1.2 inView:weakSelf.view];
+            return;
+        }
+        [page showInlineTranslation:attr];
+        [RDToastView showText:@"译文已插入正文下方 · 再点「译」可关闭" delay:1.6 inView:weakSelf.view];
+    }];
 }
 
 #pragma mark - 分享金句 / 词典

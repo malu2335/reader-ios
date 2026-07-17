@@ -162,12 +162,8 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
 
 + (NSString *)translatePromptForText:(NSString *)text
 {
-    // 中文小说场景:默认译为英文;若原文已是英文则译为中文 — 由模型判断,只输出译文
-    return [NSString stringWithFormat:
-            @"你是翻译助手。将下面正文翻译成另一种语言:"
-            @"若原文主要是中文,译成通顺英文;若原文主要是英文/其他语言,译成通顺简体中文。"
-            @"只输出译文,不要解释、不要加标题或引号。\n\n%@",
-            text ?: @""];
+    // 默认整段翻译;句级格式由 RDReadTranslateHelper 在 prompt 中自行约定
+    return text ?: @"";
 }
 
 + (NSURLRequest *)requestForProfile:(RDAIConfigProfile *)profile text:(NSString *)text error:(NSError **)error
