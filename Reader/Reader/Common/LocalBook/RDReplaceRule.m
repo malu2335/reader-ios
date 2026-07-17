@@ -7,6 +7,11 @@
 
 static NSString * const kStoreName = @"replace_rules.json";
 
+@interface RDReplaceRule ()
+@property (nonatomic, strong) NSRegularExpression *cachedRegex;
+@property (nonatomic, copy) NSString *cachedRegexPattern;
+@end
+
 @implementation RDReplaceRule
 
 - (instancetype)init
@@ -48,6 +53,21 @@ static NSString * const kStoreName = @"replace_rules.json";
         @"isEnabled": @(self.isEnabled),
         @"order": @(self.order),
     };
+}
+
+- (NSRegularExpression *)compiledRegex
+{
+    if (self.pattern.length == 0) {
+        return nil;
+    }
+    if (self.cachedRegex && [self.cachedRegexPattern isEqualToString:self.pattern]) {
+        return self.cachedRegex;
+    }
+    self.cachedRegex = [NSRegularExpression regularExpressionWithPattern:self.pattern
+                                                                 options:NSRegularExpressionDotMatchesLineSeparators
+                                                                   error:nil];
+    self.cachedRegexPattern = self.pattern;
+    return self.cachedRegex;
 }
 
 + (instancetype)ruleFromDictionary:(NSDictionary *)dict
@@ -217,10 +237,7 @@ static NSString * const kStoreName = @"replace_rules.json";
             continue;
         }
         if (rule.isRegex) {
-            NSError *err = nil;
-            NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:rule.pattern
-                                                                                options:NSRegularExpressionDotMatchesLineSeparators
-                                                                                  error:&err];
+            NSRegularExpression *re = [rule compiledRegex];
             if (!re) {
                 continue;
             }

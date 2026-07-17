@@ -24,6 +24,9 @@ extern NSString * const RDBookmarkChangedNotification;
 + (NSArray <RDBookmarkModel *>*)bookmarksForBookId:(NSInteger)bookId;
 + (NSInteger)countForBookId:(NSInteger)bookId;
 
+/// 原样落库(备份恢复用,保留原 bookmarkId/createTime,不做临近去重)
++ (void)insertOrReplaceBookmark:(RDBookmarkModel *)bookmark;
+
 + (void)deleteBookmark:(RDBookmarkModel *)bookmark;
 + (void)deleteAllForBookId:(NSInteger)bookId;
 

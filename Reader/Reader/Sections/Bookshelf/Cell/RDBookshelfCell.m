@@ -13,12 +13,12 @@
 #import "RDReadPageViewController.h"
 #import "RDCharpterManager.h"
 #import "LEEAlert.h"
-#import "RDBookDetailController.h"
 #import "RDCharpterDataManager.h"
 #import "RDLocalBookManager.h"
 #import "RDShareCardBuilder.h"
 #import "RDCharpterModel.h"
 #import "RDBookmarkManager.h"
+#import "RDHistoryRecordManager.h"
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
 #define kShelfTopPad 14.f
@@ -258,20 +258,6 @@
         };
     });
 
-    if (!book.isLocalBook) {
-        config.LeeAddAction(^(LEEAction *action) {
-            action.type = LEEActionTypeDefault;
-            action.title = @"书籍详情";
-            action.titleColor = RDBlackColor;
-            action.font = RDBoldFont17;
-            action.clickBlock = ^{
-                RDBookDetailController *controller = [[RDBookDetailController alloc] init];
-                controller.bookId = book.bookId;
-                [[RDUtilities getCurrentVC].navigationController pushViewController:controller animated:YES];
-            };
-        });
-    }
-
     config.LeeAddAction(^(LEEAction *action) {
         action.type = LEEActionTypeDestructive;
         action.title = @"删除";
@@ -321,34 +307,12 @@
 
 - (void)p_shareQuoteCard:(RDBookDetailModel *)book
 {
-    // 取当前章节内容前一段作为金句
-    NSString *quote = book.charpterModel.content;
-    if (quote.length == 0 && book.bookId != 0) {
-        // 尝试读库第一章
-        // 轻量:用简介
-        quote = book.desc;
+    // 取当前章节内容(书架轻量模型通常为空,退化到简介)前一段作为金句
+    NSString *source = book.charpterModel.content;
+    if (source.length == 0) {
+        source = book.desc;
     }
-    if (quote.length > 0) {
-        // 取前两句
-        NSArray *parts = [quote componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"。！？\n"]];
-        NSMutableString *picked = [NSMutableString string];
-        for (NSString *p in parts) {
-            NSString *t = [p stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (t.length < 6) {
-                continue;
-            }
-            if (picked.length) {
-                [picked appendString:@"。"];
-            }
-            [picked appendString:t];
-            if (picked.length > 40) {
-                break;
-            }
-        }
-        if (picked.length) {
-            quote = [picked stringByAppendingString:@"。"];
-        }
-    }
+    NSString *quote = [RDShareCardBuilder quoteFromText:source minSentenceLength:6 maxLength:40];
     if (quote.length == 0) {
         quote = [NSString stringWithFormat:@"正在阅读《%@》，值得一读。", book.title ?: @"好书"];
     }
@@ -391,7 +355,8 @@
         if (author) {
             book.author = author;
         }
-        [RDReadRecordManager insertOrReplaceModel:book];
+        // 书架传入的是轻量投影(无 charpterModel 等列),整行回写会清掉阅读进度;只按列改书名/作者
+        [RDReadRecordManager updateTitle:title author:author forBookId:book.bookId];
         if (weakSelf.needReload) {
             weakSelf.needReload();
         }
@@ -420,6 +385,7 @@
             } else {
                 [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
                 [RDBookmarkManager deleteAllForBookId:book.bookId];
+                [RDHistoryRecordManager deleteHistoryWithBookId:book.bookId];
                 dispatch_async(dispatch_get_global_queue(0, 0), ^{
                     [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
                 });

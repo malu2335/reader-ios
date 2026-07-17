@@ -9,6 +9,7 @@
 #import "RDCharpterModel.h"
 #import "RDCharpterDataManager.h"
 #import "RDVoiceManager.h"
+#import "RDReplaceRule.h"
 
 @interface RDSpeechManager ()<AVSpeechSynthesizerDelegate>
 @property (nonatomic,strong) AVSpeechSynthesizer *synthesizer;
@@ -156,7 +157,9 @@ IMP_SINGLETON(RDSpeechManager)
     }
     self.chapterIndex = next;
     [self.delegate speechManagerWillSpeakChapter:chapter];
-    NSString *text = [NSString stringWithFormat:@"%@\n%@", chapter.name ?: @"", chapter.content];
+    // 与屏显一致:朗读净化后的正文
+    NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:chapter.content ?: @""];
+    NSString *text = [NSString stringWithFormat:@"%@\n%@", chapter.name ?: @"", cleaned];
     [self speakText:text];
 }
 
@@ -164,6 +167,13 @@ IMP_SINGLETON(RDSpeechManager)
 
 - (void)speechSynthesizer:(AVSpeechSynthesizer *)synthesizer didFinishSpeechUtterance:(AVSpeechUtterance *)utterance
 {
+    // 回调线程未有文档保证;续播涉及 DB 与 UI(delegate 刷阅读页),统一回主线程
+    if (!NSThread.isMainThread) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self speechSynthesizer:synthesizer didFinishSpeechUtterance:utterance];
+        });
+        return;
+    }
     if (!self.active || self.stopping) {
         return;
     }

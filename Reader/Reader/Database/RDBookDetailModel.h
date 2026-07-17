@@ -42,7 +42,7 @@
 
 //本地导入书籍(bookId 为负数,不参与任何网络请求)
 @property (nonatomic,strong) NSString *localPath;   //Documents/LocalBooks 下的相对文件名
-@property (nonatomic,strong) NSString *fileType;    //txt / epub / mobi / pdf
+@property (nonatomic,strong) NSString *fileType;    //txt / epub / mobi / pdf / cbz(zip 图集·图片文件夹)
 
 -(BOOL)isLocalBook;
 @end

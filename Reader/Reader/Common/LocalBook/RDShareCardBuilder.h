@@ -34,6 +34,11 @@ typedef NS_ENUM(NSInteger, RDShareCardGenre) {
 /// 分享文案
 + (NSString *)shareTextWithQuote:(NSString *)quote book:(RDBookDetailModel *)book;
 
+/// 从正文截取金句:按句号/叹号/问号拆句,取足 maxLength 左右;截不出时返回 nil
++ (nullable NSString *)quoteFromText:(nullable NSString *)text
+                       minSentenceLength:(NSInteger)minSentenceLength
+                               maxLength:(NSInteger)maxLength;
+
 @end
 
 NS_ASSUME_NONNULL_END

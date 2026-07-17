@@ -158,23 +158,55 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
     if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrimaryIdMigratedKey]) {
         return;
     }
-    NSArray <RDCharpterModel *>*all = [self.database getAllObjectsOfClass:RDCharpterModel.class fromTable:kCharpterTable];
-    if (all.count == 0) {
+    // 只取键列(绝不把章节正文整表载入内存),大书库首启不再有 OOM 风险
+    NSArray <RDCharpterModel *>*rows = [self.database getAllObjectsOnResults:{RDCharpterModel.primaryId,
+                                                                              RDCharpterModel.bookId,
+                                                                              RDCharpterModel.charpterId}
+                                                                   fromTable:kCharpterTable];
+    NSMutableArray <NSArray *>*pending = [NSMutableArray array]; // @[old, desired]
+    for (RDCharpterModel *chapter in rows) {
+        NSString *desired = [NSString stringWithFormat:@"%@_%@", @(chapter.bookId), @(chapter.charpterId)];
+        // 直接读 ivar 值需经 getter,getter 会伪造 desired;这里 fetch 出来的对象 _primaryId 即库值
+        NSString *old = chapter.primaryId;
+        if ([old isEqualToString:desired]) {
+            continue;
+        }
+        [pending addObject:@[old ?: @"", desired]];
+    }
+    if (pending.count == 0) {
         [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
         return;
     }
-    [self.database runTransaction:^BOOL{
-        for (RDCharpterModel *chapter in all) {
-            NSString *desired = [NSString stringWithFormat:@"%@_%@", @(chapter.bookId), @(chapter.charpterId)];
-            if ([chapter.primaryId isEqualToString:desired]) {
-                continue;
+    // 分批小事务,中途被杀也可幂等续跑(按主键更新,不搬 content)
+    const NSUInteger batchSize = 500;
+    for (NSUInteger start = 0; start < pending.count; start += batchSize) {
+        NSUInteger end = MIN(start + batchSize, pending.count);
+        [self.database runTransaction:^BOOL{
+            for (NSUInteger i = start; i < end; i++) {
+                NSString *old = pending[i][0];
+                NSString *desired = pending[i][1];
+                if (old.length == 0) {
+                    continue;
+                }
+                // 目标主键已存在(重复数据)则删旧行,否则原地改主键
+                RDCharpterModel *conflict = [self.database getOneObjectOnResults:{RDCharpterModel.primaryId}
+                                                                       fromTable:kCharpterTable
+                                                                           where:RDCharpterModel.primaryId.is(desired)];
+                if (conflict) {
+                    [self.database deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.primaryId.is(old)];
+                }
+                else {
+                    RDCharpterModel *patch = [[RDCharpterModel alloc] init];
+                    patch.primaryId = desired;
+                    [self.database updateRowsInTable:kCharpterTable
+                                          onProperty:RDCharpterModel.primaryId
+                                          withObject:patch
+                                               where:RDCharpterModel.primaryId.is(old)];
+                }
             }
-            [self.database deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.primaryId.is(chapter.primaryId)];
-            chapter.primaryId = desired;
-            [self.database insertOrReplaceObject:chapter into:kCharpterTable];
-        }
-        return YES;
-    }];
+            return YES;
+        }];
+    }
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
 }
 

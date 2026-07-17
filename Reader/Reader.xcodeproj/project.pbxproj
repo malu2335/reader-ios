@@ -37,6 +37,8 @@
 		071B71033545EB805BBC6FF4 /* RDMobiBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 68F31C352B682E98E9009858 /* RDMobiBookParser.m */; };
 		B5C8C00B30738253136F7673 /* RDLocalBookManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */; };
 		E1C8FD090799D51DC7A68BB4 /* RDPdfReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 230E80FE544127BFB49E5639 /* RDPdfReadController.m */; };
+		63A52E4840A444CEB8643F48 /* RDComicHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 9EB2CFA1BB18478F8226647E /* RDComicHelper.m */; };
+		621C6567E53548639FD2E2F4 /* RDComicReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1868C360CBE04902804DB56E /* RDComicReadController.m */; };
 		127B21BAA582033696A73117 /* UIColor+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2DE12A7C8DEAFCA69FF7 /* UIColor+rd_wid.m */; };
 		127B228E93D63BADCE90977E /* RDDiscoverController.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2F7282B3D5AF078835E9 /* RDDiscoverController.m */; };
 		127B23BF2F05230BF053E248 /* NSData+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2E08EF8C9D11D74CC7A2 /* NSData+rd_wid.m */; };
@@ -252,6 +254,10 @@
 		0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookManager.m; sourceTree = "<group>"; };
 		F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDPdfReadController.h; sourceTree = "<group>"; };
 		230E80FE544127BFB49E5639 /* RDPdfReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDPdfReadController.m; sourceTree = "<group>"; };
+		F175AC3051EC4FB0B4C5C39E /* RDComicHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicHelper.h; sourceTree = "<group>"; };
+		9EB2CFA1BB18478F8226647E /* RDComicHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicHelper.m; sourceTree = "<group>"; };
+		25D3CE3C0AED4878BB582152 /* RDComicReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicReadController.h; sourceTree = "<group>"; };
+		1868C360CBE04902804DB56E /* RDComicReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicReadController.m; sourceTree = "<group>"; };
 		016DFB88DA12605DA3BF6CDE /* Pods-Reader.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Reader.release.xcconfig"; path = "Target Support Files/Pods-Reader/Pods-Reader.release.xcconfig"; sourceTree = "<group>"; };
 		127B2027321AFAAC3C4BCD1C /* RDLibraryController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RDLibraryController.m; sourceTree = "<group>"; };
 		127B2063B3118D604E9D18F1 /* RDDiscoverController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RDDiscoverController.h; sourceTree = "<group>"; };
@@ -646,6 +652,10 @@
 				0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */,
 				F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */,
 				230E80FE544127BFB49E5639 /* RDPdfReadController.m */,
+				F175AC3051EC4FB0B4C5C39E /* RDComicHelper.h */,
+				9EB2CFA1BB18478F8226647E /* RDComicHelper.m */,
+				25D3CE3C0AED4878BB582152 /* RDComicReadController.h */,
+				1868C360CBE04902804DB56E /* RDComicReadController.m */,
 				A11B001RP01FILEREF0002 /* RDReplaceRule.h */,
 				A11B001RP01FILEREF0001 /* RDReplaceRule.m */,
 				A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */,
@@ -1657,6 +1667,8 @@
 				071B71033545EB805BBC6FF4 /* RDMobiBookParser.m in Sources */,
 				B5C8C00B30738253136F7673 /* RDLocalBookManager.m in Sources */,
 				E1C8FD090799D51DC7A68BB4 /* RDPdfReadController.m in Sources */,
+				63A52E4840A444CEB8643F48 /* RDComicHelper.m in Sources */,
+				621C6567E53548639FD2E2F4 /* RDComicReadController.m in Sources */,
 				296B7835236877510077BCAD /* RDUserModel.m in Sources */,
 				294C75EA240605490013FB30 /* RDCategoryCollectionCell.m in Sources */,
 				29407CA42360873B003C9643 /* RDNavigationController.m in Sources */,

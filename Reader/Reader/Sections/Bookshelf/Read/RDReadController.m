@@ -98,7 +98,8 @@
         self.proxy.obj = self;
         self.is12Hour = [self is12HourFormat];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didChangeBatteryLevel:) name:UIDeviceBatteryLevelDidChangeNotification object:nil];
-        self.timer = [NSTimer scheduledTimerWithTimeInterval:1 target:self.proxy selector:@selector(setTimer) userInfo:nil repeats:YES];
+        // 只展示到分钟,15s 刷新足够;仿真翻页会同时存活多个页面实例,1s 高频纯浪费
+        self.timer = [NSTimer scheduledTimerWithTimeInterval:15 target:self.proxy selector:@selector(setTimer) userInfo:nil repeats:YES];
 
     }
     return self;
@@ -333,24 +334,28 @@
     return _coverBackgroundImageVIew;
 }
 
+// NSDateFormatter 创建昂贵,静态复用(仅主线程访问)
++ (NSDateFormatter *)p_timeFormatter12Hour:(BOOL)is12Hour
+{
+    static NSDateFormatter *formatter12 = nil;
+    static NSDateFormatter *formatter24 = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        formatter12 = [[NSDateFormatter alloc] init];
+        formatter12.AMSymbol = @"上午";
+        formatter12.PMSymbol = @"下午";
+        formatter12.dateFormat = @"aaah:mm";
+        formatter12.calendar = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+        formatter24 = [[NSDateFormatter alloc] init];
+        formatter24.dateFormat = @"H:mm";
+        formatter24.calendar = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+    });
+    return is12Hour ? formatter12 : formatter24;
+}
+
 -(void)setTimer
 {
-    if (_is12Hour){
-        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-        dateFormatter.AMSymbol = @"上午";
-        dateFormatter.PMSymbol = @"下午";
-        [dateFormatter setDateFormat:@"aaah:mm"];
-        [dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
-        NSString *str = [dateFormatter stringFromDate:[NSDate date]];
-        self.timeLabel.text = str;
-    } else{
-        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-        [dateFormatter setDateFormat:@"H:mm"];
-        [dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
-        NSString *str = [dateFormatter stringFromDate:[NSDate date]];
-        self.timeLabel.text = str;
-    }
-
+    self.timeLabel.text = [[RDReadController p_timeFormatter12Hour:_is12Hour] stringFromDate:[NSDate date]];
 }
 - (BOOL)is12HourFormat{
     NSString *formatStringForHours = [NSDateFormatter dateFormatFromTemplate:@"j" options:0 locale:[NSLocale currentLocale]];

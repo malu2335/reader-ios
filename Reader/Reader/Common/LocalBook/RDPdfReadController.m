@@ -16,6 +16,7 @@
 @property (nonatomic,strong) UISlider *pageSlider;
 @property (nonatomic,strong) UIView *bottomBar;
 @property (nonatomic,assign) BOOL barsHidden;
+@property (nonatomic,assign) CFTimeInterval lastProgressSave;
 @end
 
 @implementation RDPdfReadController
@@ -146,6 +147,12 @@
 - (void)p_pageChanged
 {
     [self p_updatePageInfo];
+    // 连续滚动时高频触发,节流 0.5s;最终位置由 viewWillDisappear 兜底
+    CFTimeInterval now = CACurrentMediaTime();
+    if (now - self.lastProgressSave < 0.5) {
+        return;
+    }
+    self.lastProgressSave = now;
     [self p_saveRecord];
 }
 
@@ -168,7 +175,8 @@
         return;
     }
     self.bookDetail.page = index;
-    [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+    // 只更新 page/readTime 两列,异步写,不阻塞滚动
+    [RDReadRecordManager asyncUpdatePage:index forBookId:self.bookDetail.bookId];
 }
 
 - (void)viewWillDisappear:(BOOL)animated

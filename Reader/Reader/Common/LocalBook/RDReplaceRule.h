@@ -20,6 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSDictionary *)toDictionary;
 + (nullable instancetype)ruleFromDictionary:(NSDictionary *)dict;
+
+/// 惰性编译并缓存的正则(pattern 变化自动失效);非法 pattern 返回 nil
+- (nullable NSRegularExpression *)compiledRegex;
 @end
 
 @interface RDReplaceRuleStore : NSObject

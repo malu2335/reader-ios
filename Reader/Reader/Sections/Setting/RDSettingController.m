@@ -8,6 +8,7 @@
 #import "RDBookDetailModel.h"
 #import "RDReadRecordManager.h"
 #import "RDCharpterDataManager.h"
+#import "RDHistoryRecordManager.h"
 #import "LEEAlert.h"
 #import "RDFontManager.h"
 #import "RDBackupManager.h"
@@ -270,7 +271,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     switch (row) {
         case RDSettingRowImport:
             cell.textLabel.text = @"导入本地书籍";
-            cell.detailTextLabel.text = @"txt · epub · mobi · pdf";
+            cell.detailTextLabel.text = @"txt · epub · mobi · pdf · zip/cbz · 图片文件夹";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         case RDSettingRowImportFont:
@@ -310,7 +311,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             break;
         case RDSettingRowBackup:
             cell.textLabel.text = @"备份到文件";
-            cell.detailTextLabel.text = @"书籍 · 进度 · 设置 · AI(不含密钥)";
+            cell.detailTextLabel.text = @"书籍 · 进度 · 书签 · 字体 · 规则 · AI";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         case RDSettingRowRestore:
@@ -356,28 +357,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         });
     }
     else if (row == RDSettingRowDictionary) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"查词"
-                                                                       message:@"输入词语,将调用系统词典(需系统已下载对应词典包)"
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
-            tf.placeholder = @"词语";
-            tf.clearButtonMode = UITextFieldViewModeWhileEditing;
-        }];
-        __weak typeof(self) weakSelf = self;
-        [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-        [alert addAction:[UIAlertAction actionWithTitle:@"查询" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            NSString *word = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (word.length == 0) {
-                return;
-            }
-            if (![UIReferenceLibraryViewController dictionaryHasDefinitionForTerm:word]) {
-                [weakSelf showText:@"系统词典中未找到该词,可在「设置-通用-词典」下载词典"];
-                return;
-            }
-            UIReferenceLibraryViewController *dict = [[UIReferenceLibraryViewController alloc] initWithTerm:word];
-            [weakSelf presentViewController:dict animated:YES completion:nil];
-        }]];
-        [self presentViewController:alert animated:YES completion:nil];
+        [RDUtilities presentDictionaryLookupFrom:self initialTerm:nil];
     }
     else if (row == RDSettingRowTTSVoice) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -505,19 +485,27 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 
 - (void)p_clearAll
 {
-    NSArray *books = [RDReadRecordManager getAllOnBookshelf];
-    for (RDBookDetailModel *book in books) {
-        if (book.isLocalBook) {
-            [RDLocalBookManager removeLocalBook:book];
+    // 文件与多表删除放后台,几十本书时不冻结 UI
+    [self showLoading:@"正在清理..." cancel:nil];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSArray *books = [RDReadRecordManager getAllOnBookshelf];
+        for (RDBookDetailModel *book in books) {
+            if (book.isLocalBook) {
+                [RDLocalBookManager removeLocalBook:book];
+            }
+            else{
+                [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
+                [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
+            }
         }
-        else{
-            [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
-            [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
-        }
-    }
-    [self showText:@"书架已清空"];
-    [self p_refreshStorage];
-    [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:nil];
+        [RDHistoryRecordManager deleteAllHistory];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self hideLoading];
+            [self showText:@"书架已清空"];
+            [self p_refreshStorage];
+            [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:nil];
+        });
+    });
 }
 
 @end

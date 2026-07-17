@@ -72,7 +72,15 @@
     if (epub) {
         [types addObject:epub];
     }
-    for (NSString *ext in @[@"epub", @"mobi", @"azw", @"txt"]) {
+    UTType *zip = [UTType typeWithIdentifier:@"public.zip-archive"];
+    if (zip) {
+        [types addObject:zip];
+    }
+    // 图片文件夹(图集)
+    if (UTTypeFolder) {
+        [types addObject:UTTypeFolder];
+    }
+    for (NSString *ext in @[@"epub", @"mobi", @"azw", @"txt", @"zip", @"cbz"]) {
         UTType *type = [UTType typeWithFilenameExtension:ext];
         if (type && ![types containsObject:type]) {
             [types addObject:type];

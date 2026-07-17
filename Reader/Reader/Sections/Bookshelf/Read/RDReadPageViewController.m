@@ -19,10 +19,7 @@
 #import "UINavigationController+FDFullscreenPopGesture.h"
 #import "RDReadConfigManager.h"
 #import "RDReadSetView.h"
-#import "RDHistoryRecordManager.h"
 #import "RDCacheModel.h"
-#import "RDCheckApi.h"
-#import "RDCharpterApi.h"
 #import "RDSpeechManager.h"
 #import "RDReadSpeechBar.h"
 #import "RDReadTranslateHelper.h"
@@ -68,8 +65,6 @@
 }
 @end
 
-#define kAdPages 10
-
 @interface RDReadPageViewController ()<UIPageViewControllerDelegate,UIPageViewControllerDataSource,RDMenuViewDelegate,RDReadControllerDelegate,RDSpeechManagerDelegate>
 @property (nonatomic,strong) RDReadSpeechBar *speechBar;
 @property (nonatomic,strong) UIPageViewController *pageViewController;
@@ -80,16 +75,13 @@
 @property (nonatomic,assign) BOOL isShowStatusBar;
 @property (nonatomic,strong) RDMenuView *menuView;
 
-
-@property (nonatomic,assign) NSInteger userPages;   //用户翻到第几页，用来记录展示广告的页数
-
 /// 后台翻译会话:关闭显示后仍继续预译缓存
 @property (nonatomic,assign) BOOL translateBackgroundEnabled;
 /// 是否在正文区展示译文
 @property (nonatomic,assign) BOOL translateDisplayEnabled;
-/// 译文缓存 key=bookId_chapterId_page
-@property (nonatomic,strong) NSMutableDictionary <NSString *, NSAttributedString *>*translateCache;
-/// 正在后台请求中的 key,防重复打
+/// 译文缓存 key=bookId_chapterId_page(NSCache 限量,长会话内存有界)
+@property (nonatomic,strong) NSCache <NSString *, NSAttributedString *>*translateCache;
+/// 正在后台请求中的 key,防重复打;同时充当在途并发上限
 @property (nonatomic,strong) NSMutableSet <NSString *>*translatePendingKeys;
 @end
 
@@ -103,7 +95,6 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.userPages = 0;
     [RDCacheModel sharedInstance].book = self.bookDetail;
     [[RDCacheModel sharedInstance] archive];
     self.fd_interactivePopDisabled = YES;
@@ -136,8 +127,6 @@
     
     // 退到后台时也落盘进度
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_saveRecord) name:UIApplicationWillResignActiveNotification object:nil];
-    
-    [self p_updateChapter];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -146,36 +135,6 @@
     [self p_saveRecord];
 }
 
--(void)p_updateChapter
-{
-    if (self.bookDetail.isLocalBook) {
-        //本地书没有线上更新
-        return;
-    }
-    if (!self.bookDetail.onBookshelf) {
-        //不在书架上的书籍检查更新章节信息
-        RDCharpterModel *chapter = [RDCharpterDataManager getLastChapterWithBookId:self.bookDetail.bookId];
-        RDCheckApi *api = [[RDCheckApi alloc] init];
-        api.books = @[chapter];
-        [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-            if (!error) {
-                for (NSDictionary *dic in [api updateBooks]) {
-                    RDCharpterApi *api = [[RDCharpterApi alloc] init];
-                    api.bookId = [dic[@"bookId"] integerValue];
-                    api.chapterId = [dic[@"chapterId"] integerValue];
-                    [api startWithCompletionBlock:^(RDBaseApi * _Nonnull request, NSString * _Nonnull error) {
-                        if (!error) {
-                            NSArray *charpters = [api charpters];
-                            dispatch_async(dispatch_get_global_queue(0, 0), ^{
-                                [RDCharpterDataManager insertObjectsWithCharpters:charpters];
-                            });
-                        }
-                    }];
-                }
-            }
-        }];
-    }
-}
 
 -(UIView *)brightnessView
 {
@@ -305,14 +264,9 @@
         offset = [readController.pages[page] integerValue];
     }
     self.bookDetail.charOffset = offset;
-    // 写入书架记录时保持 onBookshelf
-    RDBookDetailModel *exist = [RDReadRecordManager getReadRecordWithBookId:self.bookDetail.bookId];
-    if (exist) {
-        self.bookDetail.onBookshelf = exist.onBookshelf;
-    }
-    [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
-    [RDHistoryRecordManager insertOrReplaceModel:self.bookDetail];
-    
+    // 高频调用:只按列更新进度(章节引用不含正文),不整行回写、不再写 history 表
+    [RDReadRecordManager updateProgressWithModel:self.bookDetail];
+
     if (charpterId != self.bookDetail.charpterModel.charpterId && self.bookDetail.page == 0) {
         //新的一章
         [self p_downloads];
@@ -754,12 +708,14 @@
         if (success) {
             self.bookDetail.charpterModel = model;
             self.bookDetail.page = 0;
-            [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+            // charOffset 必须同步清零,否则 initSteup 会按旧偏移定位到新章节的错误页
+            self.bookDetail.charOffset = 0;
+            [RDReadRecordManager updateProgressWithModel:self.bookDetail];
             [self initSteup];
         }
-        
+
     }];
-    
+
 }
 //滑动到某个章节
 -(void)sliderToCharpter:(RDCharpterModel *)charpter
@@ -767,11 +723,12 @@
     [RDCharpterManager getCharpterWithBookId:self.bookDetail.bookId charpterId:charpter.charpterId complete:^(BOOL success,RDCharpterModel * _Nonnull model) {
         if (success) {
             self.bookDetail.charpterModel = model;
-             self.bookDetail.page = 0;
-            [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+            self.bookDetail.page = 0;
+            self.bookDetail.charOffset = 0;
+            [RDReadRecordManager updateProgressWithModel:self.bookDetail];
             [self initSteup];
         }
-        
+
     }];
 
 }
@@ -779,15 +736,27 @@
 -(void)backAction
 {
     [self p_stopTranslateBackground];
+    // 退出阅读:停听书、存进度、清自动续读缓存(业务收敛在这里,dealloc 只做纯清理)
+    if ([RDSpeechManager sharedInstance].active) {
+        [RDSpeechManager sharedInstance].delegate = nil;
+        [[RDSpeechManager sharedInstance] stop];
+    }
+    [self p_saveRecord];
+    [RDCacheModel sharedInstance].book = nil;
+    [[RDCacheModel sharedInstance] archive];
     [self.navigationController popViewControllerAnimated:YES];
 }
 
 #pragma mark - AI 翻译
 
-- (NSMutableDictionary <NSString *, NSAttributedString *>*)translateCache
+// 在途 LLM 请求上限:当前页 + 前后预取,超出丢弃(翻页停下后会重新补)
+static const NSUInteger kTranslateMaxInflight = 3;
+
+- (NSCache <NSString *, NSAttributedString *>*)translateCache
 {
     if (!_translateCache) {
-        _translateCache = [NSMutableDictionary dictionary];
+        _translateCache = [[NSCache alloc] init];
+        _translateCache.countLimit = 60;
     }
     return _translateCache;
 }
@@ -841,7 +810,7 @@
     if (key.length == 0) {
         return;
     }
-    NSAttributedString *cached = self.translateCache[key];
+    NSAttributedString *cached = [self.translateCache objectForKey:key];
     if (self.translateDisplayEnabled) {
         if (cached.length) {
             [page showInlineTranslation:cached];
@@ -892,8 +861,12 @@
             continue;
         }
         NSString *key = [self p_translateKeyForBook:bookId chapter:cid page:p];
-        if (self.translateCache[key].length || [self.translatePendingKeys containsObject:key]) {
+        if ([self.translateCache objectForKey:key].length || [self.translatePendingKeys containsObject:key]) {
             continue;
+        }
+        // 预取受在途上限约束,快速翻页不堆积请求
+        if (self.translatePendingKeys.count >= kTranslateMaxInflight) {
+            break;
         }
         NSAttributedString *slice = [self p_getCurPageContentWithContent:chapterContent page:p pages:pages];
         NSString *text = slice.string;
@@ -920,16 +893,21 @@
     if (key.length == 0 || !self.translateBackgroundEnabled) {
         return;
     }
-    if (self.translateCache[key].length) {
+    NSAttributedString *hit = [self.translateCache objectForKey:key];
+    if (hit.length) {
         if (forDisplay && self.translateDisplayEnabled) {
             RDReadController *cur = [self p_currentReadController];
             if ([[self p_translateKeyForController:cur] isEqualToString:key]) {
-                [cur showInlineTranslation:self.translateCache[key]];
+                [cur showInlineTranslation:hit];
             }
         }
         return;
     }
     if ([self.translatePendingKeys containsObject:key]) {
+        return;
+    }
+    // 在途上限:当前页展示请求(forDisplay)始终放行,纯预取超限丢弃
+    if (!forDisplay && self.translatePendingKeys.count >= kTranslateMaxInflight) {
         return;
     }
     [self.translatePendingKeys addObject:key];
@@ -959,7 +937,7 @@
         if (attr.length == 0) {
             return;
         }
-        self.translateCache[key] = attr;
+        [self.translateCache setObject:attr forKey:key];
         // 仅显示开 + 仍在该页 → 插入正文
         if (self.translateDisplayEnabled) {
             RDReadController *cur = [self p_currentReadController];
@@ -1014,7 +992,7 @@
     self.translateBackgroundEnabled = YES;
     self.translateDisplayEnabled = YES;
     NSString *key = [self p_translateKeyForController:currentController];
-    NSAttributedString *cached = self.translateCache[key];
+    NSAttributedString *cached = [self.translateCache objectForKey:key];
     if (cached.length) {
         [currentController showInlineTranslation:cached];
         [RDToastView showText:@"翻译已开 · 翻页后台同步 · 点「译」可隐藏" delay:1.6 inView:self.view];
@@ -1041,36 +1019,14 @@
         [self invokeMenu:self.pageViewController.viewControllers.firstObject];
     }
     RDReadController *currentController = (RDReadController *)self.pageViewController.viewControllers.firstObject;
-    NSString *quote = currentController.content.string;
-    if (quote.length == 0) {
-        quote = currentController.charpterContent.string;
+    NSString *source = currentController.content.string;
+    if (source.length == 0) {
+        source = currentController.charpterContent.string;
     }
-    if (quote.length == 0) {
-        quote = self.bookDetail.charpterModel.content;
+    if (source.length == 0) {
+        source = self.bookDetail.charpterModel.content;
     }
-    // 截取首句/前段作为金句
-    if (quote.length > 0) {
-        NSArray *parts = [quote componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"。！？\n"]];
-        NSMutableString *picked = [NSMutableString string];
-        for (NSString *p in parts) {
-            NSString *t = [p stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (t.length < 4) {
-                continue;
-            }
-            if (picked.length) {
-                [picked appendString:@"。"];
-            }
-            [picked appendString:t];
-            if (picked.length > 60) {
-                break;
-            }
-        }
-        if (picked.length) {
-            quote = [picked stringByAppendingString:@"。"];
-        } else if (quote.length > 120) {
-            quote = [[quote substringToIndex:120] stringByAppendingString:@"…"];
-        }
-    }
+    NSString *quote = [RDShareCardBuilder quoteFromText:source minSentenceLength:4 maxLength:60];
     if (quote.length == 0) {
         quote = [NSString stringWithFormat:@"正在阅读《%@》", self.bookDetail.title ?: @"好书"];
     }
@@ -1090,40 +1046,20 @@
     if (self.menuView.superview) {
         [self invokeMenu:self.pageViewController.viewControllers.firstObject];
     }
-    __weak typeof(self) weakSelf = self;
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"查词典"
-                                                                   message:@"输入词语,调用系统词典(需已下载词典包)"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
-        tf.placeholder = @"词语 / 单词";
-        tf.clearButtonMode = UITextFieldViewModeWhileEditing;
-        // 预填当前页首词便于快速查
-        RDReadController *cur = (RDReadController *)weakSelf.pageViewController.viewControllers.firstObject;
-        NSString *page = cur.content.string;
-        if (page.length > 0) {
-            NSArray *tokens = [page componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            for (NSString *t in tokens) {
-                if (t.length >= 1 && t.length <= 8) {
-                    tf.text = t;
-                    break;
-                }
+    // 预填当前页首词便于快速查
+    NSString *initial = nil;
+    RDReadController *cur = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    NSString *page = cur.content.string;
+    if (page.length > 0) {
+        NSArray *tokens = [page componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        for (NSString *t in tokens) {
+            if (t.length >= 1 && t.length <= 8) {
+                initial = t;
+                break;
             }
         }
-    }];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"查询" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        NSString *word = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if (word.length == 0) {
-            return;
-        }
-        if (![UIReferenceLibraryViewController dictionaryHasDefinitionForTerm:word]) {
-            [RDToastView showText:@"词典中未找到,可到系统「设置-通用-词典」下载" delay:2 inView:weakSelf.view];
-            return;
-        }
-        UIReferenceLibraryViewController *dict = [[UIReferenceLibraryViewController alloc] initWithTerm:word];
-        [weakSelf presentViewController:dict animated:YES completion:nil];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    }
+    [RDUtilities presentDictionaryLookupFrom:self initialTerm:initial];
 }
 
 #pragma mark - 听书
@@ -1195,7 +1131,8 @@
     //续播新章节时,阅读页同步跳到该章首页
     self.bookDetail.charpterModel = chapter;
     self.bookDetail.page = 0;
-    [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+    self.bookDetail.charOffset = 0;
+    [RDReadRecordManager updateProgressWithModel:self.bookDetail];
     [self initSteup];
 }
 
@@ -1289,7 +1226,7 @@
         self.bookDetail.charpterModel = model;
         self.bookDetail.page = bookmark.page;
         self.bookDetail.charOffset = bookmark.charOffset;
-        [RDReadRecordManager insertOrReplaceModel:self.bookDetail];
+        [RDReadRecordManager updateProgressWithModel:self.bookDetail];
         [self initSteup];
         [RDToastView showText:@"已跳转到书签" delay:1.0 inView:self.view];
     }];
@@ -1297,17 +1234,14 @@
 
 -(void)dealloc
 {
+    // 进度保存/停听书/清缓存已在 backAction 与 viewWillDisappear 完成;
+    // dealloc 期间不再调用业务方法(避免析构中创建弱引用/写库)
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    self.translateBackgroundEnabled = NO;
-    self.translateDisplayEnabled = NO;
-    [self.translatePendingKeys removeAllObjects];
-    [self p_saveRecord];
-    if ([RDSpeechManager sharedInstance].active) {
+    _translateBackgroundEnabled = NO;
+    _translateDisplayEnabled = NO;
+    if ([RDSpeechManager sharedInstance].delegate == self) {
         [RDSpeechManager sharedInstance].delegate = nil;
-        [[RDSpeechManager sharedInstance] stop];
     }
-    [RDCacheModel sharedInstance].book = nil;
-    [[RDCacheModel sharedInstance] archive];
 }
 
 @end

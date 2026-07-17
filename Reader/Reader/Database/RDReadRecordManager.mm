@@ -14,13 +14,115 @@
 
 +(void)insertOrReplaceModel:(RDBookDetailModel *)model
 {
-    model.readTime = [NSDate date].timeIntervalSince1970;
+    [self insertOrReplaceModel:model touchReadTime:YES];
+}
+
++(void)insertOrReplaceModel:(RDBookDetailModel *)model touchReadTime:(BOOL)touchReadTime
+{
+    if (touchReadTime || model.readTime <= 0) {
+        model.readTime = [NSDate date].timeIntervalSince1970;
+    }
     // 同步书架轻量章节名
     if (model.charpterModel.name.length) {
         model.readChapterName = model.charpterModel.name;
     }
+    // 章节正文以章节表为准,记录表只存引用,避免整章正文随进度反复落盘
+    RDCharpterModel *original = model.charpterModel;
+    RDCharpterModel *light = [self p_lightCharpter:original];
+    if (light) {
+        model.charpterModel = light;
+    }
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
         [db insertOrReplaceObject:model into:kReadRecordTable];
+    }];
+    if (light) {
+        model.charpterModel = original;
+    }
+}
+
+/// 去掉 content 的章节引用副本;无需剥离时返回 nil
++(RDCharpterModel *)p_lightCharpter:(RDCharpterModel *)charpter
+{
+    if (!charpter || charpter.content.length == 0) {
+        return nil;
+    }
+    RDCharpterModel *light = [[RDCharpterModel alloc] init];
+    light.bookId = charpter.bookId;
+    light.charpterId = charpter.charpterId;
+    light.name = charpter.name;
+    light.bookName = charpter.bookName;
+    light.author = charpter.author;
+    return light;
+}
+
++(void)updateProgressWithModel:(RDBookDetailModel *)model
+{
+    if (model.bookId == 0) {
+        return;
+    }
+    RDCharpterModel *original = model.charpterModel;
+    RDCharpterModel *light = [self p_lightCharpter:original];
+    if (light) {
+        model.charpterModel = light;
+    }
+    model.readTime = [NSDate date].timeIntervalSince1970;
+    if (model.charpterModel.name.length) {
+        model.readChapterName = model.charpterModel.name;
+    }
+    __block BOOL exists = NO;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        RDBookDetailModel *row = [db getOneObjectOnResults:{RDBookDetailModel.bookId}
+                                                 fromTable:kReadRecordTable
+                                                     where:RDBookDetailModel.bookId.is(model.bookId)];
+        exists = row != nil;
+        if (exists) {
+            [db updateRowsInTable:kReadRecordTable
+                     onProperties:{RDBookDetailModel.charpterModel,
+                                   RDBookDetailModel.page,
+                                   RDBookDetailModel.charOffset,
+                                   RDBookDetailModel.readChapterName,
+                                   RDBookDetailModel.readTime}
+                       withObject:model
+                            where:RDBookDetailModel.bookId.is(model.bookId)];
+        }
+        else {
+            [db insertOrReplaceObject:model into:kReadRecordTable];
+        }
+    }];
+    if (light) {
+        model.charpterModel = original;
+    }
+}
+
++(void)updateTitle:(NSString *)title author:(NSString *)author forBookId:(NSInteger)bookId
+{
+    if (bookId == 0 || title.length == 0) {
+        return;
+    }
+    RDBookDetailModel *patch = [[RDBookDetailModel alloc] init];
+    patch.title = title;
+    patch.author = author ?: @"";
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db updateRowsInTable:kReadRecordTable
+                 onProperties:{RDBookDetailModel.title, RDBookDetailModel.author}
+                   withObject:patch
+                        where:RDBookDetailModel.bookId.is(bookId)];
+    }];
+}
+
++(void)asyncUpdatePage:(NSInteger)page forBookId:(NSInteger)bookId
+{
+    if (bookId == 0) {
+        return;
+    }
+    RDBookDetailModel *patch = [[RDBookDetailModel alloc] init];
+    patch.page = page;
+    patch.readTime = [NSDate date].timeIntervalSince1970;
+    [[RDDatabaseManager sharedInstance] performAsync:^(WCTDatabase *db) {
+        [db updateRowsInTable:kReadRecordTable
+                 onProperties:{RDBookDetailModel.page, RDBookDetailModel.readTime}
+                   withObject:patch
+                        where:RDBookDetailModel.bookId.is(bookId)];
     }];
 }
 
@@ -62,11 +164,9 @@
 {
     __block NSInteger count = 0;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        // 只取 bookId,避免把 charpterModel 大字段全量反序列化
-        NSArray *rows = [db getObjectsOnResults:{RDBookDetailModel.bookId}
-                                      fromTable:kReadRecordTable
-                                          where:RDBookDetailModel.onBookshelf.is(YES)];
-        count = rows.count;
+        count = [[db getOneValueOnResult:RDBookDetailModel.AnyProperty.count()
+                               fromTable:kReadRecordTable
+                                   where:RDBookDetailModel.onBookshelf.is(YES)] integerValue];
     }];
     return count;
 }
@@ -95,27 +195,6 @@
            orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
     }];
     return result ?: @[];
-}
-
-+(NSArray *)getAllOnBookshelfPram
-{
-    __block NSArray *result = nil;
-    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        NSMutableArray *array = [NSMutableArray array];
-        NSArray *books = [db getObjectsOfClass:RDBookDetailModel.class fromTable:kReadRecordTable where:RDBookDetailModel.onBookshelf.is(YES) orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
-        for (RDBookDetailModel *book in books) {
-            if (book.isLocalBook) {
-                continue;
-            }
-            RDCharpterModel *chapter = [RDCharpterDataManager getLastChapterWithBookId:book.bookId];
-            if (!chapter || chapter.bookId==0) {
-                continue;
-            }
-            [array addObjectSafely:chapter];
-        }
-        result = array.copy;
-    }];
-    return result;
 }
 
 +(void)removeBookFromBookShelfWithBookId:(NSInteger)bookid

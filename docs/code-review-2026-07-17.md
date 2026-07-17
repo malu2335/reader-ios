@@ -1,5 +1,9 @@
 # 轻阅 iOS 全应用代码审查报告
 
+> **2026-07-17 修复记录**:P0-1、P1-1~P1-3、P2-1~P2-13、以及 P3-4/5/6/7/8/9/10/11/14 与 P3-2/3(复用下沉)已在本分支修复并通过编译 + 模拟器冒烟 + 独立 harness 验证;
+> 审查中补发现并一并修复:阅读页内目录/进度条跳章未清 charOffset,导致新章节落在错误页。
+> 明确延期项(非缺陷,独立 PR):P3-1(翻页控制器双胞胎方法合并)、P3-12(恢复/字体 picker 拆分)、P3-13(RDUrl.h 随死代码批次删除)、P2-12 的 48 个死文件从 pbxproj 物理移除(本次已切断全部运行时在线链路:目录管理器纯本地化、书籍详情入口移除、p_updateChapter 删除)。
+
 - 日期:2026-07-17
 - 分支:`feature/code-review-full-audit`(基于 `feature/code-review-ai-translate` HEAD,含工作区未提交的漫画阅读改动)
 - 范围:UI 层(Controller/View)、业务层(Manager/Helper)、数据层(WCDB)、完整业务链路、配置(Info.plist/pbxproj)、测试

@@ -11,11 +11,18 @@
 #import "RDReadRecordManager.h"
 #import "RDReadConfigManager.h"
 #import "RDAIConfig.h"
+#import "RDBookmarkManager.h"
+#import "RDBookmarkModel.h"
+#import "RDReplaceRule.h"
+#import "RDFontManager.h"
 
 //与 legado 一致的清单文件名
 static NSString * const kBackupBookshelfEntry = @"bookshelf.json";
 static NSString * const kBackupConfigEntry = @"config.json";
+static NSString * const kBackupBookmarksEntry = @"bookmarks.json";
+static NSString * const kBackupReplaceRulesEntry = @"replace_rules.json";
 static NSString * const kBackupBooksDir = @"books";
+static NSString * const kBackupFontsDir = @"fonts";
 
 @implementation RDBackupManager
 
@@ -116,6 +123,7 @@ static NSString * const kBackupBooksDir = @"books";
                 @"coverImg": book.coverImg ?: @"",
                 @"durChapterId": @(book.charpterModel.charpterId),
                 @"durChapterPage": @(book.page),
+                @"durChapterOffset": @(book.charOffset),
                 @"lastReadTime": @(book.readTime),
             }];
         }
@@ -143,21 +151,64 @@ static NSString * const kBackupBooksDir = @"books";
             return;
         }
 
-        //books/:源文件与封面
+        //bookmarks.json(本地书全部书签)
+        NSMutableArray *bookmarkList = [NSMutableArray array];
+        for (RDBookDetailModel *book in localBooks) {
+            for (RDBookmarkModel *bm in [RDBookmarkManager bookmarksForBookId:book.bookId]) {
+                [bookmarkList addObject:@{
+                    @"bookmarkId": bm.bookmarkId ?: @"",
+                    @"bookId": @(bm.bookId),
+                    @"bookTitle": bm.bookTitle ?: @"",
+                    @"charpterId": @(bm.charpterId),
+                    @"charpterName": bm.charpterName ?: @"",
+                    @"page": @(bm.page),
+                    @"charOffset": @(bm.charOffset),
+                    @"snippet": bm.snippet ?: @"",
+                    @"note": bm.note ?: @"",
+                    @"createTime": @(bm.createTime),
+                }];
+            }
+        }
+        NSData *bookmarksData = [NSJSONSerialization dataWithJSONObject:bookmarkList options:NSJSONWritingPrettyPrinted error:nil];
+        if (bookmarksData) {
+            [writer addEntryWithName:kBackupBookmarksEntry data:bookmarksData];
+        }
+
+        //replace_rules.json(正文净化规则,legado 同名)
+        NSMutableArray *ruleList = [NSMutableArray array];
+        for (RDReplaceRule *rule in [RDReplaceRuleStore sharedInstance].rules) {
+            [ruleList addObject:[rule toDictionary]];
+        }
+        NSData *rulesData = [NSJSONSerialization dataWithJSONObject:@{@"version": @1, @"rules": ruleList} options:NSJSONWritingPrettyPrinted error:nil];
+        if (rulesData) {
+            [writer addEntryWithName:kBackupReplaceRulesEntry data:rulesData];
+        }
+
+        //fonts/:自定义阅读字体
+        NSString *fontsDir = [RDFontManager fontsDirectory];
+        for (NSString *file in [[NSFileManager defaultManager] contentsOfDirectoryAtPath:fontsDir error:nil]) {
+            NSString *ext = file.pathExtension.lowercaseString;
+            if (![@[@"ttf", @"otf", @"ttc"] containsObject:ext]) {
+                continue;
+            }
+            [writer addEntryWithName:[NSString stringWithFormat:@"%@/%@", kBackupFontsDir, file]
+                          fileAtPath:[fontsDir stringByAppendingPathComponent:file]];
+        }
+
+        //books/:源文件与封面(流式写入,大 PDF/漫画不整包进内存)
         for (RDBookDetailModel *book in localBooks) {
             NSString *filePath = [RDLocalBookManager absolutePathForBook:book];
-            NSData *fileData = filePath ? [NSData dataWithContentsOfFile:filePath] : nil;
-            if (fileData.length == 0) {
+            if (!filePath || ![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
                 continue;
             }
             NSString *entry = [NSString stringWithFormat:@"%@/%@", kBackupBooksDir, book.localPath];
-            if (![writer addEntryWithName:entry data:fileData]) {
+            if (![writer addEntryWithName:entry fileAtPath:filePath]) {
                 finish(nil, @"写入书籍文件失败");
                 return;
             }
             if (book.coverImg.length > 0) {
                 NSString *coverPath = [[RDLocalBookManager booksDirectory] stringByAppendingPathComponent:book.coverImg];
-                NSData *coverData = [NSData dataWithContentsOfFile:coverPath];
+                NSData *coverData = [NSData dataWithContentsOfFile:coverPath options:NSDataReadingMappedIfSafe error:nil];
                 if (coverData.length > 0) {
                     [writer addEntryWithName:[NSString stringWithFormat:@"%@/%@", kBackupBooksDir, book.coverImg] data:coverData];
                 }
@@ -216,26 +267,12 @@ static NSString * const kBackupBooksDir = @"books";
             if (localPath.length == 0 || bookId >= 0) {
                 continue;
             }
-            //还原书籍源文件
-            NSData *fileData = [zip dataForEntry:[NSString stringWithFormat:@"%@/%@", kBackupBooksDir, localPath]];
-            if (fileData.length == 0) {
-                lastError = @"备份中缺少书籍文件";
-                failed++;
-                continue;
-            }
-            // 先写临时文件再替换,降低半写入风险
+            //还原书籍源文件(流式落盘:writeEntry 内部先写 .part 再原子替换)
             NSString *target = [[RDLocalBookManager booksDirectory] stringByAppendingPathComponent:localPath];
-            NSString *tmp = [target stringByAppendingString:@".restoring"];
-            if (![fileData writeToFile:tmp atomically:YES]) {
-                lastError = @"书籍文件写入失败";
+            NSString *bookEntry = [NSString stringWithFormat:@"%@/%@", kBackupBooksDir, localPath];
+            if (![zip writeEntry:bookEntry toFile:target]) {
+                lastError = @"备份中缺少书籍文件或写入失败";
                 failed++;
-                continue;
-            }
-            [[NSFileManager defaultManager] removeItemAtPath:target error:nil];
-            if (![[NSFileManager defaultManager] moveItemAtPath:tmp toPath:target error:nil]) {
-                lastError = @"书籍文件提交失败";
-                failed++;
-                [[NSFileManager defaultManager] removeItemAtPath:tmp error:nil];
                 continue;
             }
             //还原封面
@@ -256,6 +293,7 @@ static NSString * const kBackupBooksDir = @"books";
             book.localPath = localPath;
             book.coverImg = cover;
             book.page = [MakeNSNumber(item[@"durChapterPage"]) integerValue];
+            book.charOffset = [MakeNSNumber(item[@"durChapterOffset"]) integerValue];
             book.readTime = [MakeNSNumber(item[@"lastReadTime"]) doubleValue];
             book.onBookshelf = YES;
             book.end = YES;
@@ -272,7 +310,8 @@ static NSString * const kBackupBooksDir = @"books";
                 failed++;
                 continue;
             }
-            [RDReadRecordManager insertOrReplaceModel:book];
+            // 保留备份里的 lastReadTime,恢复后书架顺序与备份前一致
+            [RDReadRecordManager insertOrReplaceModel:book touchReadTime:NO];
             restored++;
         }
 
@@ -306,6 +345,69 @@ static NSString * const kBackupBooksDir = @"books";
                     config.pageType = pageType.integerValue;
                 }
                 [config archive];
+            });
+        }
+
+        //还原书签(旧备份无该条目则跳过)
+        NSData *bookmarksData = [zip dataForEntry:kBackupBookmarksEntry];
+        NSArray *bookmarkItems = bookmarksData ? [NSJSONSerialization JSONObjectWithData:bookmarksData options:0 error:nil] : nil;
+        if ([bookmarkItems isKindOfClass:NSArray.class]) {
+            for (NSDictionary *item in bookmarkItems) {
+                if (![item isKindOfClass:NSDictionary.class]) {
+                    continue;
+                }
+                RDBookmarkModel *bm = [[RDBookmarkModel alloc] init];
+                bm.bookmarkId = MakeNSStringNoNull(item[@"bookmarkId"]);
+                bm.bookId = [MakeNSNumber(item[@"bookId"]) integerValue];
+                bm.bookTitle = MakeNSStringNoNull(item[@"bookTitle"]);
+                bm.charpterId = [MakeNSNumber(item[@"charpterId"]) integerValue];
+                bm.charpterName = MakeNSStringNoNull(item[@"charpterName"]);
+                bm.page = [MakeNSNumber(item[@"page"]) integerValue];
+                bm.charOffset = [MakeNSNumber(item[@"charOffset"]) integerValue];
+                bm.snippet = MakeNSStringNoNull(item[@"snippet"]);
+                bm.note = MakeNSStringNoNull(item[@"note"]);
+                bm.createTime = [MakeNSNumber(item[@"createTime"]) doubleValue];
+                [RDBookmarkManager insertOrReplaceBookmark:bm];
+            }
+        }
+
+        //还原正文净化规则
+        NSData *rulesData = [zip dataForEntry:kBackupReplaceRulesEntry];
+        NSDictionary *rulesRoot = rulesData ? [NSJSONSerialization JSONObjectWithData:rulesData options:0 error:nil] : nil;
+        if ([rulesRoot isKindOfClass:NSDictionary.class] && [rulesRoot[@"rules"] isKindOfClass:NSArray.class]) {
+            NSMutableArray *rules = [NSMutableArray array];
+            for (id item in rulesRoot[@"rules"]) {
+                RDReplaceRule *rule = [RDReplaceRule ruleFromDictionary:item];
+                if (rule.pattern.length) {
+                    [rules addObject:rule];
+                }
+            }
+            if (rules.count > 0) {
+                [[RDReplaceRuleStore sharedInstance] replaceAllRules:rules];
+            }
+        }
+
+        //还原自定义字体并注册
+        BOOL fontRestored = NO;
+        NSString *fontsDir = [RDFontManager fontsDirectory];
+        for (NSString *entry in zip.entryNames) {
+            NSString *prefix = [kBackupFontsDir stringByAppendingString:@"/"];
+            if (![entry hasPrefix:prefix]) {
+                continue;
+            }
+            NSString *fileName = entry.lastPathComponent;
+            NSString *ext = fileName.pathExtension.lowercaseString;
+            if (fileName.length == 0 || ![@[@"ttf", @"otf", @"ttc"] containsObject:ext]) {
+                continue;
+            }
+            if ([zip writeEntry:entry toFile:[fontsDir stringByAppendingPathComponent:fileName]]) {
+                fontRestored = YES;
+            }
+        }
+        if (fontRestored) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
+                [[NSNotificationCenter defaultCenter] postNotificationName:RDFontListChangedNotification object:nil];
             });
         }
 

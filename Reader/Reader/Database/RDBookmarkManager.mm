@@ -59,6 +59,16 @@ NSString * const RDBookmarkChangedNotification = @"RDBookmarkChangedNotification
     return bm;
 }
 
++ (void)insertOrReplaceBookmark:(RDBookmarkModel *)bookmark
+{
+    if (bookmark.bookmarkId.length == 0 || bookmark.bookId == 0) {
+        return;
+    }
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [db insertOrReplaceObject:bookmark into:kBookmarkTable];
+    }];
+}
+
 + (NSArray <RDBookmarkModel *>*)bookmarksForBookId:(NSInteger)bookId
 {
     __block NSArray *result = nil;

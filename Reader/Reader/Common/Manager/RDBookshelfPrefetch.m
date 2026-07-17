@@ -21,6 +21,7 @@ static NSArray <RDBookDetailModel *>*s_books = nil;
 static NSArray *s_rows = nil;
 static NSArray *s_groups = nil;
 static BOOL s_running = NO;
+static NSMutableArray <dispatch_block_t>*s_waiters = nil;
 
 + (BOOL)ready { return s_ready; }
 + (NSArray <RDBookDetailModel *>*)books { return s_books; }
@@ -86,15 +87,15 @@ static BOOL s_running = NO;
         return;
     }
     if (s_running) {
-        // 等待已有任务
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-            while (s_running && !s_ready) {
-                usleep(20000);
+        // 已有任务在跑:登记回调,完成时统一在主线程触发,不轮询
+        if (complete) {
+            @synchronized (self) {
+                if (!s_waiters) {
+                    s_waiters = [NSMutableArray array];
+                }
+                [s_waiters addObject:[complete copy]];
             }
-            if (complete) {
-                dispatch_async(dispatch_get_main_queue(), complete);
-            }
-        });
+        }
         return;
     }
     s_running = YES;
@@ -116,10 +117,18 @@ static BOOL s_running = NO;
             usleep((useconds_t)((minShow - elapsed) * 1e6));
         }
         s_running = NO;
+        NSArray <dispatch_block_t>*waiters = nil;
+        @synchronized (self) {
+            waiters = s_waiters.copy;
+            [s_waiters removeAllObjects];
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
             [[NSNotificationCenter defaultCenter] postNotificationName:RDBookshelfPrefetchDidFinishNotification object:nil];
             if (complete) {
                 complete();
+            }
+            for (dispatch_block_t waiter in waiters) {
+                waiter();
             }
         });
     });

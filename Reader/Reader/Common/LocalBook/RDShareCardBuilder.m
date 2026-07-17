@@ -197,4 +197,36 @@
             book.author.length ? [NSString stringWithFormat:@" · %@", book.author] : @""];
 }
 
++ (NSString *)quoteFromText:(NSString *)text
+          minSentenceLength:(NSInteger)minSentenceLength
+                  maxLength:(NSInteger)maxLength
+{
+    NSString *source = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (source.length == 0) {
+        return nil;
+    }
+    NSArray *parts = [source componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"。！？\n"]];
+    NSMutableString *picked = [NSMutableString string];
+    for (NSString *p in parts) {
+        NSString *t = [p stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if ((NSInteger)t.length < minSentenceLength) {
+            continue;
+        }
+        if (picked.length) {
+            [picked appendString:@"。"];
+        }
+        [picked appendString:t];
+        if ((NSInteger)picked.length > maxLength) {
+            break;
+        }
+    }
+    if (picked.length) {
+        return [picked stringByAppendingString:@"。"];
+    }
+    if ((NSInteger)source.length > maxLength * 2) {
+        return [[source substringToIndex:maxLength * 2] stringByAppendingString:@"…"];
+    }
+    return source;
+}
+
 @end

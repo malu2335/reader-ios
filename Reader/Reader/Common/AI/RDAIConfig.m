@@ -261,9 +261,12 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
     return self;
 }
 
+// 备份恢复在后台线程写入,阅读页/设置页在主线程读;@synchronized(递归)统一保护 mutableProfiles
 - (NSArray <RDAIConfigProfile *>*)profiles
 {
-    return [self.mutableProfiles copy];
+    @synchronized (self) {
+        return [self.mutableProfiles copy];
+    }
 }
 
 - (NSString *)storageDirectory
@@ -300,6 +303,7 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
 
 - (void)reloadFromDisk
 {
+    @synchronized (self) {
     [self.mutableProfiles removeAllObjects];
     _activeProfileId = nil;
     if (s_storageOverride.length > 0) {
@@ -328,40 +332,45 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
         _activeProfileId = [active copy];
     }
     [self p_hydrateKeysFromSecureStore];
+    }
 }
 
 - (BOOL)saveToDisk
 {
-    NSString *dir = [self storageDirectory];
-    NSFileManager *fm = [NSFileManager defaultManager];
-    if (![fm fileExistsAtPath:dir]) {
-        [fm createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
+    @synchronized (self) {
+        NSString *dir = [self storageDirectory];
+        NSFileManager *fm = [NSFileManager defaultManager];
+        if (![fm fileExistsAtPath:dir]) {
+            [fm createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
+        }
+        // 先把内存中的 key 写入安全存储
+        for (RDAIConfigProfile *p in self.mutableProfiles) {
+            RDAISaveAPIKey(p.profileId, p.apiKey ?: @"");
+        }
+        NSData *data = [self exportBackupData];
+        if (!data) {
+            return NO;
+        }
+        return [data writeToFile:[self storagePath] atomically:YES];
     }
-    // 先把内存中的 key 写入安全存储
-    for (RDAIConfigProfile *p in self.mutableProfiles) {
-        RDAISaveAPIKey(p.profileId, p.apiKey ?: @"");
-    }
-    NSData *data = [self exportBackupData];
-    if (!data) {
-        return NO;
-    }
-    return [data writeToFile:[self storagePath] atomically:YES];
 }
 
 - (NSData *)exportBackupData
 {
-    // 备份/磁盘 JSON 均不含明文 apiKey
-    NSMutableArray *arr = [NSMutableArray array];
-    for (RDAIConfigProfile *p in self.mutableProfiles) {
-        [arr addObject:[p toDictionary]];
+    @synchronized (self) {
+        // 备份/磁盘 JSON 均不含明文 apiKey
+        NSMutableArray *arr = [NSMutableArray array];
+        for (RDAIConfigProfile *p in self.mutableProfiles) {
+            [arr addObject:[p toDictionary]];
+        }
+        NSDictionary *root = @{
+            @"version": @2,
+            @"keysInKeychain": @YES,
+            @"activeProfileId": self.activeProfileId ?: @"",
+            @"profiles": arr,
+        };
+        return [NSJSONSerialization dataWithJSONObject:root options:NSJSONWritingPrettyPrinted error:nil];
     }
-    NSDictionary *root = @{
-        @"version": @2,
-        @"keysInKeychain": @YES,
-        @"activeProfileId": self.activeProfileId ?: @"",
-        @"profiles": arr,
-    };
-    return [NSJSONSerialization dataWithJSONObject:root options:NSJSONWritingPrettyPrinted error:nil];
 }
 
 - (BOOL)importBackupData:(NSData *)data error:(NSError **)error
@@ -379,64 +388,62 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
         }
         return NO;
     }
-    // 保留同 profileId 已有 Keychain key(备份不含 key 时)
-    NSMutableDictionary *previousKeys = [NSMutableDictionary dictionary];
-    for (RDAIConfigProfile *old in self.mutableProfiles) {
-        if (old.apiKey.length > 0) {
-            previousKeys[old.profileId] = old.apiKey;
+    @synchronized (self) {
+        // 保留同 profileId 已有 Keychain key(备份不含 key 时)
+        NSMutableDictionary *previousKeys = [NSMutableDictionary dictionary];
+        for (RDAIConfigProfile *old in self.mutableProfiles) {
+            if (old.apiKey.length > 0) {
+                previousKeys[old.profileId] = old.apiKey;
+            }
         }
-    }
 
-    NSDictionary *root = (NSDictionary *)json;
-    NSArray *oldIds = [self.mutableProfiles valueForKey:@"profileId"];
-    for (NSString *pid in oldIds) {
-        if (![previousKeys[pid] length]) {
-            // 将被覆盖的 profile 若无 previous,后面再删
-        }
-    }
-    [self.mutableProfiles removeAllObjects];
-    NSArray *list = root[@"profiles"];
-    if ([list isKindOfClass:NSArray.class]) {
-        for (id item in list) {
-            RDAIConfigProfile *p = [RDAIConfigProfile profileFromDictionary:item];
-            if (!p) {
-                continue;
-            }
-            if (p.apiKey.length == 0) {
-                // 优先 Keychain,其次本机旧值
-                NSString *secure = RDAILoadAPIKey(p.profileId);
-                if (secure.length > 0) {
-                    p.apiKey = secure;
-                } else if (previousKeys[p.profileId]) {
-                    p.apiKey = previousKeys[p.profileId];
+        NSDictionary *root = (NSDictionary *)json;
+        [self.mutableProfiles removeAllObjects];
+        NSArray *list = root[@"profiles"];
+        if ([list isKindOfClass:NSArray.class]) {
+            for (id item in list) {
+                RDAIConfigProfile *p = [RDAIConfigProfile profileFromDictionary:item];
+                if (!p) {
+                    continue;
                 }
-            } else {
-                // 旧版备份含明文 key:迁入 Keychain
-                RDAISaveAPIKey(p.profileId, p.apiKey);
+                if (p.apiKey.length == 0) {
+                    // 优先 Keychain,其次本机旧值
+                    NSString *secure = RDAILoadAPIKey(p.profileId);
+                    if (secure.length > 0) {
+                        p.apiKey = secure;
+                    } else if (previousKeys[p.profileId]) {
+                        p.apiKey = previousKeys[p.profileId];
+                    }
+                } else {
+                    // 旧版备份含明文 key:迁入 Keychain
+                    RDAISaveAPIKey(p.profileId, p.apiKey);
+                }
+                [self.mutableProfiles addObject:p];
             }
-            [self.mutableProfiles addObject:p];
         }
+        NSString *active = root[@"activeProfileId"];
+        _activeProfileId = ([active isKindOfClass:NSString.class] && active.length > 0) ? [active copy] : nil;
+        return [self saveToDisk];
     }
-    NSString *active = root[@"activeProfileId"];
-    _activeProfileId = ([active isKindOfClass:NSString.class] && active.length > 0) ? [active copy] : nil;
-    return [self saveToDisk];
 }
 
 - (RDAIConfigProfile *)activeProfile
 {
-    if (self.activeProfileId.length == 0) {
-        for (RDAIConfigProfile *p in self.mutableProfiles) {
-            if (p.isUsable) {
-                return p;
+    @synchronized (self) {
+        if (self.activeProfileId.length == 0) {
+            for (RDAIConfigProfile *p in self.mutableProfiles) {
+                if (p.isUsable) {
+                    return p;
+                }
             }
+            return self.mutableProfiles.firstObject;
+        }
+        RDAIConfigProfile *found = [self profileWithId:self.activeProfileId];
+        if (found) {
+            return found;
         }
         return self.mutableProfiles.firstObject;
     }
-    RDAIConfigProfile *found = [self profileWithId:self.activeProfileId];
-    if (found) {
-        return found;
-    }
-    return self.mutableProfiles.firstObject;
 }
 
 - (RDAIConfigProfile *)profileWithId:(NSString *)profileId
@@ -444,12 +451,14 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
     if (profileId.length == 0) {
         return nil;
     }
-    for (RDAIConfigProfile *p in self.mutableProfiles) {
-        if ([p.profileId isEqualToString:profileId]) {
-            return p;
+    @synchronized (self) {
+        for (RDAIConfigProfile *p in self.mutableProfiles) {
+            if ([p.profileId isEqualToString:profileId]) {
+                return p;
+            }
         }
+        return nil;
     }
-    return nil;
 }
 
 - (void)upsertProfile:(RDAIConfigProfile *)profile
@@ -457,24 +466,26 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
     if (!profile || profile.profileId.length == 0) {
         return;
     }
-    NSInteger idx = NSNotFound;
-    for (NSInteger i = 0; i < (NSInteger)self.mutableProfiles.count; i++) {
-        if ([self.mutableProfiles[i].profileId isEqualToString:profile.profileId]) {
-            idx = i;
-            break;
+    @synchronized (self) {
+        NSInteger idx = NSNotFound;
+        for (NSInteger i = 0; i < (NSInteger)self.mutableProfiles.count; i++) {
+            if ([self.mutableProfiles[i].profileId isEqualToString:profile.profileId]) {
+                idx = i;
+                break;
+            }
         }
+        RDAIConfigProfile *copy = [profile copy];
+        RDAISaveAPIKey(copy.profileId, copy.apiKey ?: @"");
+        if (idx == NSNotFound) {
+            [self.mutableProfiles addObject:copy];
+        } else {
+            self.mutableProfiles[idx] = copy;
+        }
+        if (self.activeProfileId.length == 0) {
+            _activeProfileId = copy.profileId;
+        }
+        [self saveToDisk];
     }
-    RDAIConfigProfile *copy = [profile copy];
-    RDAISaveAPIKey(copy.profileId, copy.apiKey ?: @"");
-    if (idx == NSNotFound) {
-        [self.mutableProfiles addObject:copy];
-    } else {
-        self.mutableProfiles[idx] = copy;
-    }
-    if (self.activeProfileId.length == 0) {
-        _activeProfileId = copy.profileId;
-    }
-    [self saveToDisk];
 }
 
 - (void)removeProfileId:(NSString *)profileId
@@ -482,42 +493,48 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
     if (profileId.length == 0) {
         return;
     }
-    RDAIDeleteAPIKey(profileId);
-    NSMutableArray *survivors = [NSMutableArray array];
-    for (RDAIConfigProfile *p in self.mutableProfiles) {
-        if (![p.profileId isEqualToString:profileId]) {
-            [survivors addObject:p];
+    @synchronized (self) {
+        RDAIDeleteAPIKey(profileId);
+        NSMutableArray *survivors = [NSMutableArray array];
+        for (RDAIConfigProfile *p in self.mutableProfiles) {
+            if (![p.profileId isEqualToString:profileId]) {
+                [survivors addObject:p];
+            }
         }
+        self.mutableProfiles = survivors;
+        if ([self.activeProfileId isEqualToString:profileId]) {
+            _activeProfileId = self.mutableProfiles.firstObject.profileId;
+        }
+        [self saveToDisk];
     }
-    self.mutableProfiles = survivors;
-    if ([self.activeProfileId isEqualToString:profileId]) {
-        _activeProfileId = self.mutableProfiles.firstObject.profileId;
-    }
-    [self saveToDisk];
 }
 
 - (void)setActiveProfileId:(NSString *)activeProfileId
 {
-    _activeProfileId = [activeProfileId copy];
-    [self saveToDisk];
+    @synchronized (self) {
+        _activeProfileId = [activeProfileId copy];
+        [self saveToDisk];
+    }
 }
 
 - (void)clearAll
 {
-    for (RDAIConfigProfile *p in self.mutableProfiles) {
-        RDAIDeleteAPIKey(p.profileId);
+    @synchronized (self) {
+        for (RDAIConfigProfile *p in self.mutableProfiles) {
+            RDAIDeleteAPIKey(p.profileId);
+        }
+        [self.mutableProfiles removeAllObjects];
+        _activeProfileId = nil;
+        NSString *path = [self storagePath];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+        }
+        NSString *keysPath = RDAITestKeysPath();
+        if (keysPath.length && [[NSFileManager defaultManager] fileExistsAtPath:keysPath]) {
+            [[NSFileManager defaultManager] removeItemAtPath:keysPath error:nil];
+        }
+        [RDAITestKeyMap() removeAllObjects];
     }
-    [self.mutableProfiles removeAllObjects];
-    _activeProfileId = nil;
-    NSString *path = [self storagePath];
-    if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
-        [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
-    }
-    NSString *keysPath = RDAITestKeysPath();
-    if (keysPath.length && [[NSFileManager defaultManager] fileExistsAtPath:keysPath]) {
-        [[NSFileManager defaultManager] removeItemAtPath:keysPath error:nil];
-    }
-    [RDAITestKeyMap() removeAllObjects];
 }
 
 @end

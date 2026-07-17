@@ -21,11 +21,12 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 
 @interface RDLocalBookManager : NSObject
 
-+ (NSArray <NSString *>*)supportedExtensions;   //txt/epub/mobi/pdf/azw
++ (NSArray <NSString *>*)supportedExtensions;   //txt/epub/mobi/pdf/azw/zip/cbz
 
-+ (BOOL)isSupportedFileURL:(NSURL *)url;
++ (BOOL)isSupportedFileURL:(NSURL *)url;        //含图片文件夹
 
 /// 异步导入(后台解析,主线程回调)。按文件内容 MD5 去重:同一文件不重复入库。
+/// 支持 zip/cbz 图集与「含图片的文件夹」(文件夹会打包为 cbz 再入库)。
 + (void)importBookAtURL:(NSURL *)url complete:(nullable RDLocalBookImportCompletion)complete;
 
 /// 本地书的绝对文件路径

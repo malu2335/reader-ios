@@ -15,8 +15,9 @@
 #import "AppDelegate.h"
 #import "RDMainController.h"
 #import "RDPdfReadController.h"
+#import "RDComicReadController.h"
+#import "RDComicHelper.h"
 #import "RDLocalBookManager.h"
-#import "RDHistoryRecordManager.h"
 
 @implementation RDReadHelper
 
@@ -30,22 +31,28 @@
     if (!book) {
         return;
     }
-    // 本地 PDF 使用专用阅读器
-    if (book.isLocalBook && [book.fileType isEqualToString:@"pdf"]) {
+    // 本地 PDF / 漫画图集使用专用阅读器(无文字章节库)
+    if (book.isLocalBook && ([book.fileType isEqualToString:@"pdf"] || [RDComicHelper isComicFileType:book.fileType])) {
         NSString *path = [RDLocalBookManager absolutePathForBook:book];
         if (path.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
             [RDToastView showText:@"本地文件已丢失,请重新导入" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
             return;
         }
-        RDBookDetailModel *pdfRecord = [RDReadRecordManager getReadRecordWithBookId:book.bookId] ?: book;
-        [RDReadRecordManager updateReadTime:pdfRecord];
-        RDPdfReadController *pdfController = [[RDPdfReadController alloc] init];
-        pdfController.bookDetail = pdfRecord;
-        [RDAppDelegate.mainController.navigationController pushViewController:pdfController animated:animation];
+        RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId] ?: book;
+        [RDReadRecordManager updateReadTime:record];
+        if ([RDComicHelper isComicFileType:book.fileType]) {
+            RDComicReadController *comic = [[RDComicReadController alloc] init];
+            comic.bookDetail = record;
+            [RDAppDelegate.mainController.navigationController pushViewController:comic animated:animation];
+        } else {
+            RDPdfReadController *pdfController = [[RDPdfReadController alloc] init];
+            pdfController.bookDetail = record;
+            [RDAppDelegate.mainController.navigationController pushViewController:pdfController animated:animation];
+        }
         return;
     }
 
-    // 本地非 PDF:校验文件与章节完整性
+    // 本地文字书:校验文件与章节完整性
     if (book.isLocalBook) {
         NSString *path = [RDLocalBookManager absolutePathForBook:book];
         if (path.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
@@ -71,7 +78,6 @@
                 // 保留 page / charOffset
                 controller.bookDetail = record;
                 [RDReadRecordManager updateReadTime:record];
-                [RDHistoryRecordManager insertOrReplaceModel:record];
                 [RDAppDelegate.mainController.navigationController pushViewController:controller animated:animation];
             } else {
                 // 章节失效则从第一章重新
@@ -102,7 +108,6 @@
                 detail.fileType = record.fileType;
             }
             [RDReadRecordManager insertOrReplaceModel:detail];
-            [RDHistoryRecordManager insertOrReplaceModel:detail];
             controller.bookDetail = detail;
             [RDAppDelegate.mainController.navigationController pushViewController:controller animated:animation];
         }

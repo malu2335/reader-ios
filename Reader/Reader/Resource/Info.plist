@@ -70,6 +70,30 @@
 				<string>xyz.malu2335.reader.mobi</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>漫画压缩包 ZIP</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.zip-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>漫画 CBZ</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>xyz.malu2335.reader.cbz</string>
+			</array>
+		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
@@ -91,61 +115,37 @@
 				</array>
 			</dict>
 		</dict>
-	</array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>wechat</string>
-		<string>weixin</string>
-		<string>weixinULAPI</string>
-		<string>weibosdk</string>
-		<string>sinaweibohd</string>
-		<string>weibosdk2.5</string>
-		<string>sinaweibo</string>
-		<string>sinaweibosso</string>
-		<string>mqqapi</string>
-		<string>mqq</string>
-		<string>iosamap</string>
-		<string>baidumap</string>
-		<string>sosomap</string>
-		<string>mqqOpensdkSSoLogin</string>
-		<string>mqqconnect</string>
-		<string>mqqopensdkdataline</string>
-		<string>mqqopensdkgrouptribeshare</string>
-		<string>mqqopensdkfriend</string>
-		<string>mqqopensdkapi</string>
-		<string>mqqopensdkapiV2</string>
-		<string>mqqopensdkapiV3</string>
-		<string>mqzoneopensdk</string>
-		<string>wtloginmqq</string>
-		<string>wtloginmqq2</string>
-		<string>mqqwpa</string>
-		<string>mqzone</string>
-		<string>mqzonev2</string>
-		<string>mqzoneshare</string>
-		<string>wtloginqzone</string>
-		<string>mqzonewx</string>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>漫画 CBZ</string>
+			<key>UTTypeIdentifier</key>
+			<string>xyz.malu2335.reader.cbz</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>cbz</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.comicbook+zip</string>
+					<string>application/x-cbz</string>
+				</array>
+			</dict>
+		</dict>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- 自定义 AI 网关常为局域网 HTTP(如 Ollama / 兼容代理),需放行 -->
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
+		<!-- 仅放行局域网 HTTP(Ollama 等本地 AI 网关);公网一律 HTTPS -->
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>yuenov.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSExceptionRequiresForwardSecrecy</key>
-				<false/>
-			</dict>
-		</dict>
 	</dict>
 	<key>UIBackgroundModes</key>
 	<array>

@@ -22,6 +22,9 @@ extern NSString * const RDFontListChangedNotification;
 
 + (instancetype)sharedInstance;
 
+/// 自定义字体存放目录 Documents/Fonts(不存在会创建;备份/恢复用)
++ (NSString *)fontsDirectory;
+
 /// 系统 + 内置中文字体 + 已导入字体(始终以「系统」开头)
 - (NSArray <RDFontOption *>*)allOptions;
 

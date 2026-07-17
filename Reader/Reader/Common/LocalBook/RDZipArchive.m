@@ -176,6 +176,64 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     return nil;
 }
 
+- (BOOL)writeEntry:(NSString *)name toFile:(NSString *)path
+{
+    RDZipEntry *entry = self.entries[name];
+    if (!entry || path.length == 0) {
+        return NO;
+    }
+    if (entry.method != 0) {
+        // deflate 条目量级小(json/封面),回退内存解压
+        NSData *data = [self dataForEntry:name];
+        return data ? [data writeToFile:path atomically:YES] : NO;
+    }
+    const uint8_t *bytes = self.data.bytes;
+    NSUInteger length = self.data.length;
+    NSUInteger offset = entry.localHeaderOffset;
+    if (offset + 30 > length || readU32(bytes + offset) != kZipLocalSignature) {
+        return NO;
+    }
+    uint16_t nameLen = readU16(bytes + offset + 26);
+    uint16_t extraLen = readU16(bytes + offset + 28);
+    NSUInteger dataStart = offset + 30 + nameLen + extraLen;
+    if (dataStart + entry.compressedSize > length) {
+        return NO;
+    }
+    // 分块从 mmap 数据拷贝到目标文件,峰值内存恒定
+    NSString *tmp = [path stringByAppendingString:@".part"];
+    [[NSFileManager defaultManager] removeItemAtPath:tmp error:nil];
+    if (![[NSFileManager defaultManager] createFileAtPath:tmp contents:nil attributes:nil]) {
+        return NO;
+    }
+    NSFileHandle *out = [NSFileHandle fileHandleForWritingAtPath:tmp];
+    if (!out) {
+        return NO;
+    }
+    BOOL ok = YES;
+    const NSUInteger chunk = 1024 * 1024;
+    @try {
+        NSUInteger written = 0;
+        while (written < entry.compressedSize) {
+            NSUInteger n = MIN(chunk, entry.compressedSize - written);
+            @autoreleasepool {
+                NSData *slice = [NSData dataWithBytes:bytes + dataStart + written length:n];
+                [out writeData:slice];
+            }
+            written += n;
+        }
+        [out closeFile];
+    }
+    @catch (NSException *exception) {
+        ok = NO;
+    }
+    if (!ok) {
+        [[NSFileManager defaultManager] removeItemAtPath:tmp error:nil];
+        return NO;
+    }
+    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+    return [[NSFileManager defaultManager] moveItemAtPath:tmp toPath:path error:nil];
+}
+
 @end
 
 #pragma mark - RDZipWriter
@@ -265,6 +323,102 @@ static void appendU32(NSMutableData *data, uint32_t value) {
         return NO;
     }
     self.offset += header.length + data.length;
+    return YES;
+}
+
+- (BOOL)addEntryWithName:(NSString *)name fileAtPath:(NSString *)path
+{
+    if (self.finalized || name.length == 0 || path.length == 0) {
+        return NO;
+    }
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+    unsigned long long fileSize = attrs.fileSize;
+    if (fileSize == 0) {
+        return NO;
+    }
+    if (fileSize > UINT32_MAX || self.offset > UINT32_MAX - fileSize - 1024) {
+        return NO;   //不支持 zip64
+    }
+    NSData *nameData = [name dataUsingEncoding:NSUTF8StringEncoding];
+
+    //第一遍:分块算 crc32
+    NSInputStream *crcStream = [NSInputStream inputStreamWithFileAtPath:path];
+    if (!crcStream) {
+        return NO;
+    }
+    [crcStream open];
+    uLong crc = crc32(0, NULL, 0);
+    uint8_t buffer[256 * 1024];
+    unsigned long long total = 0;
+    while (crcStream.hasBytesAvailable) {
+        NSInteger n = [crcStream read:buffer maxLength:sizeof(buffer)];
+        if (n < 0) {
+            [crcStream close];
+            return NO;
+        }
+        if (n == 0) {
+            break;
+        }
+        crc = crc32(crc, buffer, (uInt)n);
+        total += (unsigned long long)n;
+    }
+    [crcStream close];
+    if (total != fileSize) {
+        return NO;   //读取期间文件被改动
+    }
+
+    RDZipRecordedEntry *record = [[RDZipRecordedEntry alloc] init];
+    record.nameData = nameData;
+    record.crc = (uint32_t)crc;
+    record.size = (uint32_t)fileSize;
+    record.offset = self.offset;
+
+    NSMutableData *header = [NSMutableData data];
+    appendU32(header, 0x04034b50);
+    appendU16(header, 20);
+    appendU16(header, 0x0800);
+    appendU16(header, 0);
+    appendU16(header, 0);    //time
+    appendU16(header, 0x21); //date(1980-01-01)
+    appendU32(header, record.crc);
+    appendU32(header, record.size);
+    appendU32(header, record.size);
+    appendU16(header, (uint16_t)nameData.length);
+    appendU16(header, 0);
+    [header appendData:nameData];
+
+    //第二遍:分块拷贝正文
+    NSInputStream *copyStream = [NSInputStream inputStreamWithFileAtPath:path];
+    if (!copyStream) {
+        return NO;
+    }
+    [copyStream open];
+    BOOL ok = YES;
+    @try {
+        [self.handle writeData:header];
+        while (copyStream.hasBytesAvailable) {
+            NSInteger n = [copyStream read:buffer maxLength:sizeof(buffer)];
+            if (n < 0) {
+                ok = NO;
+                break;
+            }
+            if (n == 0) {
+                break;
+            }
+            @autoreleasepool {
+                [self.handle writeData:[NSData dataWithBytes:buffer length:n]];
+            }
+        }
+    }
+    @catch (NSException *exception) {
+        ok = NO;
+    }
+    [copyStream close];
+    if (!ok) {
+        return NO;
+    }
+    [self.records addObject:record];
+    self.offset += header.length + record.size;
     return YES;
 }
 

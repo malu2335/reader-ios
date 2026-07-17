@@ -10,6 +10,7 @@
 #import "AppDelegate.h"
 #import "RDMainController.h"
 #import "RDGlobalModel.h"
+#import "RDToastView.h"
 
 
 @implementation RDUtilities
@@ -116,5 +117,37 @@
 {
     // 启动/列表热路径避免 GBDeviceInfo 解析设备树
     return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+}
+
++ (void)presentDictionaryLookupFrom:(UIViewController *)host initialTerm:(NSString *)initialTerm
+{
+    if (!host) {
+        return;
+    }
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"查词典"
+                                                                   message:@"输入词语,调用系统词典(需已下载词典包)"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+        tf.placeholder = @"词语 / 单词";
+        tf.clearButtonMode = UITextFieldViewModeWhileEditing;
+        if (initialTerm.length > 0 && initialTerm.length <= 8) {
+            tf.text = initialTerm;
+        }
+    }];
+    __weak UIViewController *weakHost = host;
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"查询" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        NSString *word = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (word.length == 0 || !weakHost) {
+            return;
+        }
+        if (![UIReferenceLibraryViewController dictionaryHasDefinitionForTerm:word]) {
+            [RDToastView showText:@"词典中未找到,可到系统「设置-通用-词典」下载" delay:2 inView:weakHost.view];
+            return;
+        }
+        UIReferenceLibraryViewController *dict = [[UIReferenceLibraryViewController alloc] initWithTerm:word];
+        [weakHost presentViewController:dict animated:YES completion:nil];
+    }]];
+    [host presentViewController:alert animated:YES completion:nil];
 }
 @end
