@@ -9,11 +9,6 @@
 /* Begin PBXBuildFile section */
 		A11B001DP01BUILDFILE001 /* RDDisplayBoost.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001DP01FILEREF0001 /* RDDisplayBoost.m */; };
 		A11B001SC01BUILDFILE001 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SC01FILEREF0001 /* SceneDelegate.m */; };
-		A11B001AI05BUILDFILE001 /* RDReadTranslateHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */; };
-		A11B001AI01BUILDFILE001 /* RDAIConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI01FILEREF0001 /* RDAIConfig.m */; };
-		A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI02FILEREF0001 /* RDAIClient.m */; };
-		A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI03FILEREF0001 /* RDAIConfigController.m */; };
-		A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */; };
 		A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BK01FILEREF0001 /* RDBackupManager.m */; };
 		A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP01FILEREF0001 /* RDReplaceRule.m */; };
 		A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */; };
@@ -23,6 +18,9 @@
 		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
 		A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV01FILEREF0001 /* RDVoiceManager.m */; };
 		A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV02FILEREF0001 /* RDVoicePickerController.m */; };
+		A11B001LG01BUILDFILE001 /* RDLegalDocumentController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */; };
+		A11B001LG02BUILDFILE001 /* PrivacyPolicy.zh-Hans.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */; };
+		A11B001LG03BUILDFILE001 /* OpenSourceLicenses.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */; };
 		A11B001SP01BUILDFILE001 /* RDSplashViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP01FILEREF0001 /* RDSplashViewController.m */; };
 		A11B001SP02BUILDFILE001 /* RDBookshelfPrefetch.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */; };
 		A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */; };
@@ -123,8 +121,6 @@
 		2992BB7323B225E400C599B1 /* RDCatalogController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB7223B225E400C599B1 /* RDCatalogController.m */; };
 		2992BB7623B22E0200C599B1 /* RDCharpterApi.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB7523B22E0100C599B1 /* RDCharpterApi.m */; };
 		2992BB7923B2375500C599B1 /* RDUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB7823B2375500C599B1 /* RDUtilities.m */; };
-		2998A7F72428DD7A00C4E07B /* RDWebController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7F62428DD7A00C4E07B /* RDWebController.m */; };
-		2998A7FA2428DE1B00C4E07B /* RDWebView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7F92428DE1B00C4E07B /* RDWebView.m */; };
 		2998A7FD2428E0A200C4E07B /* RDWebTopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7FC2428E0A200C4E07B /* RDWebTopView.m */; };
 		2998A8002428E86500C4E07B /* RDButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7FF2428E86500C4E07B /* RDButton.m */; };
 		2998A816242A23A100C4E07B /* RDUpdateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A815242A23A100C4E07B /* RDUpdateModel.m */; };
@@ -197,16 +193,6 @@
 		A11B001DP01FILEREF0002 /* RDDisplayBoost.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDisplayBoost.h; sourceTree = "<group>"; };
 		A11B001SC01FILEREF0001 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
 		A11B001SC01FILEREF0002 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
-		A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadTranslateHelper.m; sourceTree = "<group>"; };
-		A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadTranslateHelper.h; sourceTree = "<group>"; };
-		A11B001AI01FILEREF0001 /* RDAIConfig.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfig.m; sourceTree = "<group>"; };
-		A11B001AI01FILEREF0002 /* RDAIConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfig.h; sourceTree = "<group>"; };
-		A11B001AI02FILEREF0001 /* RDAIClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIClient.m; sourceTree = "<group>"; };
-		A11B001AI02FILEREF0002 /* RDAIClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIClient.h; sourceTree = "<group>"; };
-		A11B001AI03FILEREF0001 /* RDAIConfigController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfigController.m; sourceTree = "<group>"; };
-		A11B001AI03FILEREF0002 /* RDAIConfigController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfigController.h; sourceTree = "<group>"; };
-		A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIProfileEditController.m; sourceTree = "<group>"; };
-		A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIProfileEditController.h; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0001 /* RDBackupManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBackupManager.m; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0002 /* RDBackupManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBackupManager.h; sourceTree = "<group>"; };
 		A11B001RP01FILEREF0001 /* RDReplaceRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRule.m; sourceTree = "<group>"; };
@@ -225,6 +211,10 @@
 		A11B001TV01FILEREF0002 /* RDVoiceManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoiceManager.h; sourceTree = "<group>"; };
 		A11B001TV02FILEREF0001 /* RDVoicePickerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoicePickerController.m; sourceTree = "<group>"; };
 		A11B001TV02FILEREF0002 /* RDVoicePickerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoicePickerController.h; sourceTree = "<group>"; };
+		A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLegalDocumentController.m; sourceTree = "<group>"; };
+		A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLegalDocumentController.h; sourceTree = "<group>"; };
+		A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "PrivacyPolicy.zh-Hans.txt"; sourceTree = "<group>"; };
+		A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OpenSourceLicenses.txt; sourceTree = "<group>"; };
 		A11B001SP01FILEREF0001 /* RDSplashViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSplashViewController.m; sourceTree = "<group>"; };
 		A11B001SP01FILEREF0002 /* RDSplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSplashViewController.h; sourceTree = "<group>"; };
 		A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfPrefetch.m; sourceTree = "<group>"; };
@@ -314,7 +304,7 @@
 		29406FF923B0FB0600E4495F /* RDRefreshFooter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDRefreshFooter.m; sourceTree = "<group>"; };
 		29406FFB23B105A700E4495F /* RDReadDetailApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadDetailApi.h; sourceTree = "<group>"; };
 		29406FFC23B105A700E4495F /* RDReadDetailApi.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadDetailApi.m; sourceTree = "<group>"; };
-		29407C7E23607D0E003C9643 /* 轻阅.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "轻阅.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		29407C7E23607D0E003C9643 /* 纸羽轻阅.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "纸羽轻阅.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29407C8123607D0E003C9643 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		29407C8223607D0E003C9643 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		29407C8D23607D0F003C9643 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -431,10 +421,6 @@
 		2992BB7723B2375500C599B1 /* RDUtilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDUtilities.h; sourceTree = "<group>"; };
 		2992BB7823B2375500C599B1 /* RDUtilities.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDUtilities.m; sourceTree = "<group>"; };
 		2998A7F42428DCD600C4E07B /* RDUrl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDUrl.h; sourceTree = "<group>"; };
-		2998A7F52428DD7A00C4E07B /* RDWebController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebController.h; sourceTree = "<group>"; };
-		2998A7F62428DD7A00C4E07B /* RDWebController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDWebController.m; sourceTree = "<group>"; };
-		2998A7F82428DE1B00C4E07B /* RDWebView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebView.h; sourceTree = "<group>"; };
-		2998A7F92428DE1B00C4E07B /* RDWebView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDWebView.m; sourceTree = "<group>"; };
 		2998A7FB2428E0A200C4E07B /* RDWebTopView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebTopView.h; sourceTree = "<group>"; };
 		2998A7FC2428E0A200C4E07B /* RDWebTopView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDWebTopView.m; sourceTree = "<group>"; };
 		2998A7FE2428E86500C4E07B /* RDButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDButton.h; sourceTree = "<group>"; };
@@ -582,12 +568,6 @@
 		A11B001AIGROUP000000001 /* AI */ = {
 			isa = PBXGroup;
 			children = (
-				A11B001AI01FILEREF0002 /* RDAIConfig.h */,
-				A11B001AI01FILEREF0001 /* RDAIConfig.m */,
-				A11B001AI02FILEREF0002 /* RDAIClient.h */,
-				A11B001AI02FILEREF0001 /* RDAIClient.m */,
-				A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */,
-				A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -619,14 +599,12 @@
 			children = (
 				4C5E8A70982106BEB8323759 /* RDSettingController.h */,
 				A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */,
-				A11B001AI03FILEREF0002 /* RDAIConfigController.h */,
-				A11B001AI03FILEREF0001 /* RDAIConfigController.m */,
-				A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */,
-				A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */,
 				A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */,
 				A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */,
 				A11B001TV02FILEREF0002 /* RDVoicePickerController.h */,
 				A11B001TV02FILEREF0001 /* RDVoicePickerController.m */,
+				A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */,
+				A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */,
 			);
 			path = Setting;
 			sourceTree = "<group>";
@@ -833,7 +811,7 @@
 		29407C7F23607D0E003C9643 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29407C7E23607D0E003C9643 /* 轻阅.app */,
+				29407C7E23607D0E003C9643 /* 纸羽轻阅.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -873,6 +851,8 @@
 				29407C8F23607D0F003C9643 /* LaunchScreen.storyboard */,
 				29407C9223607D0F003C9643 /* Info.plist */,
 				A1B226CD0001D00E003C9645 /* PrivacyInfo.xcprivacy */,
+				A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */,
+				A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */,
 				127B2FC5280B99FD8662E26E /* Reader.pch */,
 				29406FE523B0E44C00E4495F /* config.json */,
 			);
@@ -957,8 +937,6 @@
 				29407CAA236087FA003C9643 /* RDMainController.m */,
 				294C75E424052E5B0013FB30 /* RDPageController.h */,
 				294C75E524052E5B0013FB30 /* RDPageController.m */,
-				2998A7F52428DD7A00C4E07B /* RDWebController.h */,
-				2998A7F62428DD7A00C4E07B /* RDWebController.m */,
 				2979A5822445664100AE053B /* RDNetErrorView.h */,
 				2979A5832445664100AE053B /* RDNetErrorView.m */,
 				A11B001SP01FILEREF0002 /* RDSplashViewController.h */,
@@ -1003,8 +981,6 @@
 				29CE2BB423FFBA4D001B0D03 /* RDUpdateControl.m */,
 				29F5598324067B1800742C19 /* RDCommBookCell.h */,
 				29F5598424067B1800742C19 /* RDCommBookCell.m */,
-				2998A7F82428DE1B00C4E07B /* RDWebView.h */,
-				2998A7F92428DE1B00C4E07B /* RDWebView.m */,
 				2998A7FB2428E0A200C4E07B /* RDWebTopView.h */,
 				2998A7FC2428E0A200C4E07B /* RDWebTopView.m */,
 			);
@@ -1537,7 +1513,7 @@
 			);
 			name = Reader;
 			productName = Reader;
-			productReference = 29407C7E23607D0E003C9643 /* 轻阅.app */;
+			productReference = 29407C7E23607D0E003C9643 /* 纸羽轻阅.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -1582,6 +1558,8 @@
 				29407C8E23607D0F003C9643 /* Assets.xcassets in Resources */,
 				29406FE623B0E44C00E4495F /* config.json in Resources */,
 				A1B226CD0002D00E003C9645 /* PrivacyInfo.xcprivacy in Resources */,
+				A11B001LG02BUILDFILE001 /* PrivacyPolicy.zh-Hans.txt in Resources */,
+				A11B001LG03BUILDFILE001 /* OpenSourceLicenses.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1634,11 +1612,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A11B001AI01BUILDFILE001 /* RDAIConfig.m in Sources */,
-				A11B001AI05BUILDFILE001 /* RDReadTranslateHelper.m in Sources */,
-				A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */,
-				A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */,
-				A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */,
 				A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */,
 				A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */,
 				A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */,
@@ -1653,6 +1626,7 @@
 				CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */,
 				A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */,
 				A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */,
+				A11B001LG01BUILDFILE001 /* RDLegalDocumentController.m in Sources */,
 				A11B001SP01BUILDFILE001 /* RDSplashViewController.m in Sources */,
 				A11B001SP02BUILDFILE001 /* RDBookshelfPrefetch.m in Sources */,
 				A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */,
@@ -1739,7 +1713,6 @@
 				29406FEB23B0E61500E4495F /* RDBaseApi.m in Sources */,
 				29BA84972361D263000FE927 /* RDBookshelfNoneCell.m in Sources */,
 				29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */,
-				2998A7FA2428DE1B00C4E07B /* RDWebView.m in Sources */,
 				295C3ACE243425B10057C0DC /* RDAllSpecialApi.m in Sources */,
 				29406FF123B0E88A00E4495F /* RDHttpModel.m in Sources */,
 				29696CE42386B7EF00212879 /* RDReadModel.m in Sources */,
@@ -1759,7 +1732,6 @@
 				299F6456243C628000D4C085 /* UIScrollView+rd_ges.m in Sources */,
 				AB5B75DD2417DF4500D9BDAD /* RDDiscoverAllApi.m in Sources */,
 				ABB7B8F32419378900225828 /* RDBookRecommendApi.m in Sources */,
-				2998A7F72428DD7A00C4E07B /* RDWebController.m in Sources */,
 				29696CF02386D48300212879 /* RDReadPageViewController.m in Sources */,
 				294C75F9240621F10013FB30 /* RDRankCell.m in Sources */,
 				29EFAF4F236473350020E5AE /* RDModelAgent.m in Sources */,
@@ -1951,7 +1923,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.0.0.1;
+				CURRENT_PROJECT_VERSION = 10302;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1962,11 +1934,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
-				PRODUCT_NAME = "轻阅";
+				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				USER_HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PROJECT_DIR}/Pods\"/**",
@@ -1981,7 +1953,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.0.0.1;
+				CURRENT_PROJECT_VERSION = 10302;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1992,11 +1964,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
-				PRODUCT_NAME = "轻阅";
+				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				USER_HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PROJECT_DIR}/Pods\"/**",

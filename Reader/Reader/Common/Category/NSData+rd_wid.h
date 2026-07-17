@@ -11,12 +11,6 @@
 - (NSString *)base64EncodedString;
 + (NSData *)base64DecodedDataForString:(NSString *)string;
 
-// encrypt
-- (NSData *)encryptedWithAESUsingKey:(NSString*)key andIV:(NSData*)iv;
-- (NSData *)decryptedWithAESUsingKey:(NSString*)key andIV:(NSData*)iv;
-- (NSData *)encryptedWith3DESUsingKey:(NSString*)key andIV:(NSData*)iv;
-- (NSData *)decryptedWith3DESUsingKey:(NSString*)key andIV:(NSData*)iv;
-
 // gzip
 - (NSData *)gzip:(NSError *__autoreleasing *)error;
 

@@ -22,8 +22,6 @@
 #import "RDCacheModel.h"
 #import "RDSpeechManager.h"
 #import "RDReadSpeechBar.h"
-#import "RDReadTranslateHelper.h"
-#import "RDAIClient.h"
 #import "RDDisplayBoost.h"
 #import "RDShareCardBuilder.h"
 #import "RDVoiceManager.h"
@@ -65,16 +63,6 @@
 }
 @end
 
-/// 译文缓存存结构化句对+兜底原文/译文,不存已渲染好的富文本——
-/// 展示时才按“当前”字号/字体/主题重新渲染,避免改字号后仍显示旧样式(P1-10 之二)。
-@interface RDCachedTranslation : NSObject
-@property (nonatomic,copy) NSArray <RDTranslatePair *>*pairs;
-@property (nonatomic,copy) NSString *fallbackSource;
-@property (nonatomic,copy) NSString *fallbackTranslation;
-@end
-@implementation RDCachedTranslation
-@end
-
 @interface RDReadPageViewController ()<UIPageViewControllerDelegate,UIPageViewControllerDataSource,RDMenuViewDelegate,RDReadControllerDelegate,RDSpeechManagerDelegate>
 @property (nonatomic,strong) RDReadSpeechBar *speechBar;
 @property (nonatomic,strong) UIPageViewController *pageViewController;
@@ -85,15 +73,6 @@
 @property (nonatomic,assign) BOOL isShowStatusBar;
 @property (nonatomic,strong) RDMenuView *menuView;
 
-/// 后台翻译会话:关闭显示后仍继续预译缓存
-@property (nonatomic,assign) BOOL translateBackgroundEnabled;
-/// 是否在正文区展示译文
-@property (nonatomic,assign) BOOL translateDisplayEnabled;
-/// 译文缓存 key=bookId_chapterId_原文内容哈希(不再用页码,重新分页后同页码可能是不同原文);
-/// 值为结构化句对,NSCache 限量,长会话内存有界
-@property (nonatomic,strong) NSCache <NSString *, RDCachedTranslation *>*translateCache;
-/// 正在后台请求中的 key,防重复打;同时充当在途并发上限
-@property (nonatomic,strong) NSMutableSet <NSString *>*translatePendingKeys;
 @end
 
 @implementation RDReadPageViewController
@@ -174,8 +153,6 @@
     }
     
     [self p_saveRecord];
-    // 点击/滑动翻页(非 curl 动画回调)也要自动译
-    [self p_applyTranslateModeIfNeeded];
 }
 -(void)lastPage:(RDReadController *)controller
 {
@@ -186,7 +163,6 @@
         [self p_setAfterOrBeforeViewControllerWithBefore:YES];
     }
     [self p_saveRecord];
-    [self p_applyTranslateModeIfNeeded];
 }
 -(void)invokeMenu:(RDReadController *)controller
 {
@@ -214,8 +190,6 @@
             : [self p_safePage:self.bookDetail.page totalPages:pages.count];
         self.bookDetail.page = page;
         [self.pageViewController setViewControllers:@[[self p_creatReadController:self.bookDetail.charpterModel.name content:[self p_getCurPageContentWithContent:content page:page pages:pages] page:page totalPage:pages.count charpterIndex:[self p_getCurCharpter] totalCharpter:self.charpters.count charpterModel:self.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
-        // 翻译模式跨章节/重建后继续
-        [self p_applyTranslateModeIfNeeded];
     }];
     //默认加载上一章或下一章的数据
     [self p_downloads];
@@ -421,7 +395,6 @@
 {
     if (completed) {
         [self p_saveRecord];
-        [self p_applyTranslateModeIfNeeded];
     }
 }
 
@@ -746,7 +719,6 @@
 //返回
 -(void)backAction
 {
-    [self p_stopTranslateBackground];
     // 退出阅读:停听书、存进度、清自动续读缓存(业务收敛在这里,dealloc 只做纯清理)
     if ([RDSpeechManager sharedInstance].active) {
         [RDSpeechManager sharedInstance].delegate = nil;
@@ -756,28 +728,6 @@
     [RDCacheModel sharedInstance].book = nil;
     [[RDCacheModel sharedInstance] archive];
     [self.navigationController popViewControllerAnimated:YES];
-}
-
-#pragma mark - AI 翻译
-
-// 在途 LLM 请求上限:当前页 + 前后预取,超出丢弃(翻页停下后会重新补)
-static const NSUInteger kTranslateMaxInflight = 3;
-
-- (NSCache <NSString *, RDCachedTranslation *>*)translateCache
-{
-    if (!_translateCache) {
-        _translateCache = [[NSCache alloc] init];
-        _translateCache.countLimit = 60;
-    }
-    return _translateCache;
-}
-
-- (NSMutableSet <NSString *>*)translatePendingKeys
-{
-    if (!_translatePendingKeys) {
-        _translatePendingKeys = [NSMutableSet set];
-    }
-    return _translatePendingKeys;
 }
 
 - (RDReadController *)p_currentReadController
@@ -792,260 +742,6 @@ static const NSUInteger kTranslateMaxInflight = 3;
         }
     }
     return [current isKindOfClass:RDReadController.class] ? current : nil;
-}
-
-// djb2 变体,足够区分不同原文,不追求密码学强度
-static NSUInteger RDReadTranslateTextHash(NSString *text) {
-    NSUInteger hash = 5381;
-    NSUInteger length = text.length;
-    for (NSUInteger i = 0; i < length; i++) {
-        hash = ((hash << 5) + hash) + [text characterAtIndex:i];
-    }
-    return hash;
-}
-
-/// 按"原文内容"而非页码建 key:重新分页(改字号/字体后)同一页码可能对应不同原文,
-/// 用页码做 key 会让旧译文错配到新原文上(P1-10)。
-- (NSString *)p_translateKeyForBook:(NSInteger)bookId chapter:(NSInteger)cid text:(NSString *)text
-{
-    return [NSString stringWithFormat:@"%ld_%ld_%lu", (long)bookId, (long)cid, (unsigned long)RDReadTranslateTextHash(text ?: @"")];
-}
-
-- (NSString *)p_translateKeyForController:(RDReadController *)c
-{
-    if (!c || c.content.string.length == 0) {
-        return @"";
-    }
-    return [self p_translateKeyForBook:self.bookDetail.bookId chapter:c.charpterModel.charpterId text:c.content.string];
-}
-
-/// 缓存只存结构化句对+兜底文本,展示前按"当前"字号/字体/主题重新渲染
-- (NSAttributedString *)p_renderCachedTranslation:(RDCachedTranslation *)cached
-{
-    if (!cached) {
-        return nil;
-    }
-    return [RDReadTranslateHelper attributedStringForPairs:cached.pairs
-                                              fallbackSource:cached.fallbackSource
-                                          fallbackTranslation:cached.fallbackTranslation];
-}
-
-/// 后台会话开启时:有缓存且「显示开」则套用;始终后台拉当前页+邻页缓存
-- (void)p_applyTranslateModeIfNeeded
-{
-    if (!self.translateBackgroundEnabled) {
-        return;
-    }
-    RDReadController *page = [self p_currentReadController];
-    if (!page) {
-        return;
-    }
-    NSString *key = [self p_translateKeyForController:page];
-    if (key.length == 0) {
-        return;
-    }
-    RDCachedTranslation *cached = [self.translateCache objectForKey:key];
-    if (self.translateDisplayEnabled) {
-        if (cached) {
-            [page showInlineTranslation:[self p_renderCachedTranslation:cached]];
-        } else {
-            // 显示开但无缓存:先原文,后台译完再插
-            if (page.showingInlineTranslation) {
-                [page showInlineTranslation:nil];
-            }
-            [self p_requestTranslateKey:key
-                               pageText:page.content.string
-                            chapterText:page.charpterContent.string
-                             rawContent:page.charpterModel.content
-                             forDisplay:YES
-                                  quiet:YES];
-        }
-    } else {
-        // 仅后台:不展示,继续译当前页写入缓存
-        if (page.showingInlineTranslation) {
-            [page showInlineTranslation:nil];
-        }
-        if (!cached) {
-            [self p_requestTranslateKey:key
-                               pageText:page.content.string
-                            chapterText:page.charpterContent.string
-                             rawContent:page.charpterModel.content
-                             forDisplay:NO
-                                  quiet:YES];
-        }
-    }
-    [self p_prefetchAdjacentTranslationsFrom:page];
-}
-
-/// 预取当前页 ±1(同章),纯后台写缓存
-- (void)p_prefetchAdjacentTranslationsFrom:(RDReadController *)page
-{
-    if (!self.translateBackgroundEnabled || !page.pages.count) {
-        return;
-    }
-    NSArray *pages = page.pages;
-    NSInteger total = pages.count;
-    NSInteger cid = page.charpterModel.charpterId;
-    NSAttributedString *chapterContent = page.charpterContent;
-    NSInteger bookId = self.bookDetail.bookId;
-
-    for (NSNumber *delta in @[@(1), @(-1)]) {
-        NSInteger p = page.page + delta.integerValue;
-        if (p < 0 || p >= total) {
-            continue;
-        }
-        NSAttributedString *slice = [self p_getCurPageContentWithContent:chapterContent page:p pages:pages];
-        NSString *text = slice.string;
-        if (text.length == 0) {
-            continue;
-        }
-        NSString *key = [self p_translateKeyForBook:bookId chapter:cid text:text];
-        if ([self.translateCache objectForKey:key] || [self.translatePendingKeys containsObject:key]) {
-            continue;
-        }
-        // 预取受在途上限约束,快速翻页不堆积请求
-        if (self.translatePendingKeys.count >= kTranslateMaxInflight) {
-            break;
-        }
-        [self p_requestTranslateKey:key
-                           pageText:text
-                        chapterText:nil
-                         rawContent:nil
-                         forDisplay:NO
-                              quiet:YES];
-    }
-}
-
-/// forDisplay 且「显示开」且仍是当前页 → 套 UI;否则只写缓存(后台继续)
-- (void)p_requestTranslateKey:(NSString *)key
-                     pageText:(NSString *)pageText
-                  chapterText:(NSString *)chapterText
-                   rawContent:(NSString *)rawContent
-                   forDisplay:(BOOL)forDisplay
-                        quiet:(BOOL)quiet
-{
-    if (key.length == 0 || !self.translateBackgroundEnabled) {
-        return;
-    }
-    RDCachedTranslation *hit = [self.translateCache objectForKey:key];
-    if (hit) {
-        if (forDisplay && self.translateDisplayEnabled) {
-            RDReadController *cur = [self p_currentReadController];
-            if ([[self p_translateKeyForController:cur] isEqualToString:key]) {
-                [cur showInlineTranslation:[self p_renderCachedTranslation:hit]];
-            }
-        }
-        return;
-    }
-    if ([self.translatePendingKeys containsObject:key]) {
-        return;
-    }
-    // 在途上限:当前页展示请求(forDisplay)始终放行,纯预取超限丢弃
-    if (!forDisplay && self.translatePendingKeys.count >= kTranslateMaxInflight) {
-        return;
-    }
-    [self.translatePendingKeys addObject:key];
-
-    __weak typeof(self) weakSelf = self;
-    [RDReadTranslateHelper translateFromHost:self
-                                    pageText:pageText
-                                 chapterText:chapterText
-                                  rawContent:rawContent
-                                       quiet:quiet
-                                  completion:^(NSArray<RDTranslatePair *> *pairs, NSString *fullTranslation, NSError *error) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
-            return;
-        }
-        [self.translatePendingKeys removeObject:key];
-        // 关闭「显示」后仍写缓存;仅彻底停止后台会话才丢弃
-        if (!self.translateBackgroundEnabled) {
-            return;
-        }
-        if (error || (!pairs.count && fullTranslation.length == 0)) {
-            return;
-        }
-        // 缓存结构化句对而非渲染好的富文本,展示时按当前字号/字体/主题重新渲染(P1-10)
-        RDCachedTranslation *cachedValue = [[RDCachedTranslation alloc] init];
-        cachedValue.pairs = pairs;
-        cachedValue.fallbackSource = pageText;
-        cachedValue.fallbackTranslation = fullTranslation;
-        NSAttributedString *attr = [self p_renderCachedTranslation:cachedValue];
-        if (attr.length == 0) {
-            return;
-        }
-        [self.translateCache setObject:cachedValue forKey:key];
-        // 仅显示开 + 仍在该页 → 插入正文
-        if (self.translateDisplayEnabled) {
-            RDReadController *cur = [self p_currentReadController];
-            if (cur && [[self p_translateKeyForController:cur] isEqualToString:key]) {
-                [cur showInlineTranslation:attr];
-            }
-        }
-        if (!quiet) {
-            [RDToastView showText:@"翻译已开 · 隐藏后后台仍继续 · 再点两次可全停" delay:2.0 inView:self.view];
-        }
-    }];
-}
-
-- (void)p_stopTranslateBackground
-{
-    self.translateBackgroundEnabled = NO;
-    self.translateDisplayEnabled = NO;
-    [self.translatePendingKeys removeAllObjects];
-    // 不 cancel 网络:让已发出的请求写完缓存也可;若需立刻停可 cancel
-    RDReadController *cur = [self p_currentReadController];
-    [cur showInlineTranslation:nil];
-}
-
--(void)translateAction
-{
-    if (self.menuView.superview) {
-        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
-    }
-    RDReadController *currentController = [self p_currentReadController];
-    if (!currentController) {
-        return;
-    }
-
-    // ① 显示中 → 隐藏译文,后台继续译/预取
-    if (self.translateBackgroundEnabled && self.translateDisplayEnabled) {
-        self.translateDisplayEnabled = NO;
-        [currentController showInlineTranslation:nil];
-        [RDToastView showText:@"已隐藏译文 · 后台继续翻译" delay:1.5 inView:self.view];
-        // 继续当前+邻页后台
-        [self p_applyTranslateModeIfNeeded];
-        return;
-    }
-
-    // ② 仅后台中 → 完全停止
-    if (self.translateBackgroundEnabled && !self.translateDisplayEnabled) {
-        [self p_stopTranslateBackground];
-        [RDToastView showText:@"已停止后台翻译" delay:1.2 inView:self.view];
-        return;
-    }
-
-    // ③ 全关 → 开启显示+后台
-    self.translateBackgroundEnabled = YES;
-    self.translateDisplayEnabled = YES;
-    NSString *key = [self p_translateKeyForController:currentController];
-    RDCachedTranslation *cached = [self.translateCache objectForKey:key];
-    if (cached) {
-        [currentController showInlineTranslation:[self p_renderCachedTranslation:cached]];
-        [RDToastView showText:@"翻译已开 · 翻页后台同步 · 点「译」可隐藏" delay:1.6 inView:self.view];
-        [self p_prefetchAdjacentTranslationsFrom:currentController];
-        return;
-    }
-    __weak typeof(self) weakSelf = self;
-    [self p_requestTranslateKey:key
-                       pageText:currentController.content.string
-                    chapterText:currentController.charpterContent.string
-                     rawContent:currentController.charpterModel.content
-                     forDisplay:YES
-                          quiet:NO];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [weakSelf p_prefetchAdjacentTranslationsFrom:currentController];
-    });
 }
 
 #pragma mark - 分享金句 / 词典
@@ -1268,8 +964,6 @@ static NSUInteger RDReadTranslateTextHash(NSString *text) {
     // 进度保存/停听书/清缓存已在 backAction 与 viewWillDisappear 完成;
     // dealloc 期间不再调用业务方法(避免析构中创建弱引用/写库)
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    _translateBackgroundEnabled = NO;
-    _translateDisplayEnabled = NO;
     if ([RDSpeechManager sharedInstance].delegate == self) {
         [RDSpeechManager sharedInstance].delegate = nil;
     }

@@ -172,7 +172,10 @@
 {
     __block NSArray *result = nil;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        result = [db getObjectsOfClass:RDBookDetailModel.class fromTable:kReadRecordTable where:RDBookDetailModel.onBookshelf.is(YES) orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
+        result = [db getObjectsOfClass:RDBookDetailModel.class
+                             fromTable:kReadRecordTable
+                                 where:RDBookDetailModel.onBookshelf.is(YES) && RDBookDetailModel.bookId < 0
+                               orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
     }];
     return result;
 }
@@ -183,7 +186,7 @@
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
         count = [[db getOneValueOnResult:RDBookDetailModel.AnyProperty.count()
                                fromTable:kReadRecordTable
-                                   where:RDBookDetailModel.onBookshelf.is(YES)] integerValue];
+                                   where:RDBookDetailModel.onBookshelf.is(YES) && RDBookDetailModel.bookId < 0] integerValue];
     }];
     return count;
 }
@@ -208,7 +211,7 @@
             RDBookDetailModel.localPath,
             RDBookDetailModel.fileType,
         } fromTable:kReadRecordTable
-             where:RDBookDetailModel.onBookshelf.is(YES)
+             where:RDBookDetailModel.onBookshelf.is(YES) && RDBookDetailModel.bookId < 0
            orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
     }];
     return result ?: @[];

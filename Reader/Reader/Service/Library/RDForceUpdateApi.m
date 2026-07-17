@@ -11,7 +11,7 @@
 
 @implementation RDForceUpdateApi
 - (NSString *)requestUrl {
-    return @"/app/open/api/chapter/updateForce";
+    return @"";
 }
 - (YTKRequestSerializerType)requestSerializerType {
     return YTKRequestSerializerTypeJSON;

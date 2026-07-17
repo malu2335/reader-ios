@@ -11,7 +11,7 @@
 
 @implementation RDCheckApi
 - (NSString *)requestUrl {
-    return @"/app/open/api/book/checkUpdate";
+    return @"";
 }
 - (YTKRequestSerializerType)requestSerializerType {
     return YTKRequestSerializerTypeJSON;

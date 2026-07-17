@@ -22,7 +22,7 @@
 }
 
 - (NSString *)requestUrl {
-    return @"/app/open/api/book/getCategoryId";
+    return @"";
 }
 
 - (id)requestArgument {

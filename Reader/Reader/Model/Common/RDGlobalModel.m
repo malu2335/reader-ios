@@ -7,14 +7,6 @@
 //
 
 #import "RDGlobalModel.h"
-#import "GBDeviceInfo.h"
-#import "UICKeyChainStore.h"
-#import <AdSupport/AdSupport.h>
-#import "RDCommParamManager.h"
-#import "RDConfigModel.h"
-
-
-
 static inline uint32_t fnv_32a(void *buf, size_t len) {
     uint32_t hval = 0x811C9DC5;
     unsigned char *bp = (unsigned char *) buf;
@@ -35,24 +27,8 @@ static inline uint32_t fnv_32a(void *buf, size_t len) {
     dispatch_once(&onceToken, ^{
         if (!sharedInstance) {
             sharedInstance = [[self alloc] init];
-            if ([RDCommParamManager sharedInstance].port == 0) {
-                if ([RDConfigModel getModel].ports.count>0) {
-                    [RDCommParamManager sharedInstance].port = [RDConfigModel getModel].ports.firstObject;
-                }
-                else{
-                    [RDCommParamManager sharedInstance].port = @"80";
-                }
-                [[RDCommParamManager sharedInstance] archive];
-                
-            }
-            if ([[RDCommParamManager sharedInstance].port isEqualToString:@"80"]) {
-                sharedInstance.baseUrl = [NSString stringWithFormat:@"%@%@", [sharedInstance prefix], [sharedInstance domain]];
-                sharedInstance.picBaseUrl = [NSString stringWithFormat:@"%@pt.%@", [sharedInstance prefix], [sharedInstance domain]];
-            }
-            else{
-                sharedInstance.baseUrl = [NSString stringWithFormat:@"%@%@:%@", [sharedInstance prefix], [sharedInstance domain],[RDCommParamManager sharedInstance].port];
-                sharedInstance.picBaseUrl = [NSString stringWithFormat:@"%@pt.%@:%@", [sharedInstance prefix], [sharedInstance domain],[RDCommParamManager sharedInstance].port];
-            }
+            sharedInstance.baseUrl = @"";
+            sharedInstance.picBaseUrl = @"";
         }
     });
 
@@ -60,11 +36,11 @@ static inline uint32_t fnv_32a(void *buf, size_t len) {
 }
 - (NSString *)domain
 {
-    return @"yuenov.com";
+    return @"";
 }
 -(NSString *)prefix
 {
-    return @"http://";
+    return @"";
 }
 
 
@@ -80,29 +56,7 @@ static inline uint32_t fnv_32a(void *buf, size_t len) {
 
 -(void)changePort
 {
-    if ([RDConfigModel getModel].ports == 0) {
-        return;
-    }
-    NSInteger index = [[RDConfigModel getModel].ports indexOfObject:[RDCommParamManager sharedInstance].port];
-    if (index == NSNotFound) {
-        [RDCommParamManager sharedInstance].port = [RDConfigModel getModel].ports.firstObject;
-    }
-    else{
-        index += 1;
-        if (index == [RDConfigModel getModel].ports.count) {
-            index = 0;
-        }
-        [RDCommParamManager sharedInstance].port =[[RDConfigModel getModel].ports objectAtIndex:index];
-    }
-    [[RDCommParamManager sharedInstance] archive];
-    
-    if ([[RDCommParamManager sharedInstance].port isEqualToString:@"80"]) {
-        self.baseUrl = [NSString stringWithFormat:@"%@%@", [self prefix], [self domain]];
-        self.picBaseUrl = [NSString stringWithFormat:@"%@pt.%@", [self prefix], [self domain]];
-    }
-    else{
-        self.baseUrl = [NSString stringWithFormat:@"%@%@:%@", [self prefix], [self domain],[RDCommParamManager sharedInstance].port];
-        self.picBaseUrl = [NSString stringWithFormat:@"%@pt.%@:%@", [self prefix], [self domain],[RDCommParamManager sharedInstance].port];
-    }
+    self.baseUrl = @"";
+    self.picBaseUrl = @"";
 }
 @end

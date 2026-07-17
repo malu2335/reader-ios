@@ -110,7 +110,7 @@
 
 + (NSString *)buildPicUrlWithPath:(NSString *)path
 {
-    return [NSString stringWithFormat:@"%@%@",[RDGlobalModel sharedInstance].picBaseUrl,path];
+    return @"";
 }
 
 + (BOOL)iPad

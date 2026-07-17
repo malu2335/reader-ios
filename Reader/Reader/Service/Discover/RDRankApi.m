@@ -10,7 +10,7 @@
 
 @implementation RDRankApi
 - (NSString *)requestUrl {
-    return @"/app/open/api/rank/getList";
+    return @"";
 }
 -(NSArray <RDChannelModel *>*)channel
 {

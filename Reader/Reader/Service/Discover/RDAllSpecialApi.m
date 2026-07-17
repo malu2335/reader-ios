@@ -20,7 +20,7 @@
 }
 
 - (NSString *)requestUrl {
-    return @"/app/open/api/book/getSpecialPage";
+    return @"";
 }
 
 -(id)requestArgument

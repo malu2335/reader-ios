@@ -21,7 +21,7 @@
 }
 
 - (NSString *)requestUrl {
-    return @"/app/open/api/category/discoveryAll";
+    return @"";
 }
 
 -(id)requestArgument

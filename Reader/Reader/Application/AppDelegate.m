@@ -13,6 +13,38 @@
 #import "RDFontManager.h"
 #import "RDBookDetailModel.h"
 #import "RDDatabaseLifecycle.h"
+#import "RDBookshelfPrefetch.h"
+
+/// 最终网络防线：无论遗留模块、图片加载器还是未来误接入，都不能发出 HTTP(S) 请求。
+@interface RDOfflineURLProtocol : NSURLProtocol
+@end
+
+@implementation RDOfflineURLProtocol
+
++ (BOOL)canInitWithRequest:(NSURLRequest *)request
+{
+    NSString *scheme = request.URL.scheme.lowercaseString;
+    return [scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"];
+}
+
++ (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request
+{
+    return request;
+}
+
+- (void)startLoading
+{
+    NSError *error = [NSError errorWithDomain:NSURLErrorDomain
+                                         code:NSURLErrorNotConnectedToInternet
+                                     userInfo:@{NSLocalizedDescriptionKey: @"纸羽轻阅不支持外部网络请求"}];
+    [self.client URLProtocol:self didFailWithError:error];
+}
+
+- (void)stopLoading
+{
+}
+
+@end
 
 @interface AppDelegate ()
 @property (nonatomic, strong, readwrite) RDMainController *mainController;
@@ -22,6 +54,7 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+    [NSURLProtocol registerClass:RDOfflineURLProtocol.class];
     // 启动关键路径尽量轻量:WebP 延后;字体改由启动页预加载阶段注册,避免与书架抢盘
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         SDImageWebPCoder *webPCoder = [SDImageWebPCoder sharedCoder];
@@ -55,6 +88,8 @@ configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
         return NO;
     }
     [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage, BOOL isDuplicate) {
+        // 与 SceneDelegate 一致:导入后刷新书架预取缓存,避免已入库但不显示
+        [RDBookshelfPrefetch refreshAsync:nil];
         NSString *text = nil;
         if (isDuplicate) {
             text = errorMessage.length ? errorMessage : [NSString stringWithFormat:@"《%@》已在书架", book.title ?: @""];

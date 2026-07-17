@@ -13,10 +13,9 @@
 #import "LEEAlert.h"
 #import "RDFontManager.h"
 #import "RDBackupManager.h"
-#import "RDAIConfigController.h"
-#import "RDAIConfig.h"
 #import "RDReplaceRulesController.h"
 #import "RDVoicePickerController.h"
+#import "RDLegalDocumentController.h"
 #import "RDVoiceManager.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "AppDelegate.h"
@@ -27,12 +26,13 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowImportFont,
     RDSettingRowStorage,
     RDSettingRowClear,
-    RDSettingRowAIConfig,
     RDSettingRowPurify,
     RDSettingRowDictionary,
     RDSettingRowTTSVoice,
     RDSettingRowBackup,
     RDSettingRowRestore,
+    RDSettingRowPrivacy,
+    RDSettingRowOpenSource,
     RDSettingRowVersion,
 };
 
@@ -40,7 +40,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) NSArray <NSArray <NSNumber *>*>*sections;
 @property (nonatomic,copy) NSString *storageText;
-@property (nonatomic,copy) NSString *aiDetailText;
 @property (nonatomic,copy) NSString *voiceDetailText;
 @property (nonatomic,assign) BOOL storageRefreshing;
 @property (nonatomic,assign) BOOL detailsLoadedOnce;
@@ -51,13 +50,12 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    // 书籍 / 阅读增强 / 备份 / 关于
+    // 书籍 / 阅读增强 / 备份 / 关于（隐私声明 · 开源声明 · 版本）
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
-                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowDictionary), @(RDSettingRowTTSVoice)],
+                      @[@(RDSettingRowPurify), @(RDSettingRowDictionary), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
-                      @[@(RDSettingRowVersion)]];
+                      @[@(RDSettingRowPrivacy), @(RDSettingRowOpenSource), @(RDSettingRowVersion)]];
     self.storageText = @"…";
-    self.aiDetailText = @"OpenAI · Anthropic · Gemini";
     self.voiceDetailText = @"自动(中文)";
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
@@ -113,23 +111,12 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)p_refreshDetailsAsync
 {
     self.detailsLoadedOnce = YES;
-    // AI / 语音 / 存储统计全部后台,主线程只更新文案
+    // 语音 / 存储统计全部后台,主线程只更新文案
     if (self.storageRefreshing) {
         return;
     }
     self.storageRefreshing = YES;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        // 首次访问会读盘/Keychain,放后台
-        RDAIConfigProfile *active = [[RDAIConfigStore sharedInstance] activeProfile];
-        NSString *aiText = nil;
-        if (active.isUsable) {
-            NSString *label = active.name.length > 0 ? active.name : active.type;
-            aiText = [NSString stringWithFormat:@"%@ · %@", label, active.model ?: @""];
-        } else if (active) {
-            aiText = @"未完成配置";
-        } else {
-            aiText = @"OpenAI · Anthropic · Gemini";
-        }
         NSString *voiceText = [[RDVoiceManager sharedInstance] preferredDisplayName];
 
         NSInteger count = [RDReadRecordManager countOnBookshelf];
@@ -158,10 +145,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         dispatch_async(dispatch_get_main_queue(), ^{
             self.storageRefreshing = NO;
             BOOL changed = NO;
-            if (![self.aiDetailText isEqualToString:aiText]) {
-                self.aiDetailText = aiText;
-                changed = YES;
-            }
             if (![self.voiceDetailText isEqualToString:voiceText]) {
                 self.voiceDetailText = voiceText;
                 changed = YES;
@@ -216,7 +199,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         return;
     }
     NSMutableArray *paths = [NSMutableArray array];
-    for (NSNumber *n in @[@(RDSettingRowAIConfig), @(RDSettingRowTTSVoice)]) {
+    for (NSNumber *n in @[@(RDSettingRowTTSVoice)]) {
         NSIndexPath *ip = [self p_indexPathForRow:n.integerValue];
         if (ip) {
             [paths addObject:ip];
@@ -289,12 +272,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.textLabel.text = @"清空书架";
             cell.textLabel.textColor = [UIColor systemRedColor];
             break;
-        case RDSettingRowAIConfig: {
-            cell.textLabel.text = @"AI 配置";
-            cell.detailTextLabel.text = self.aiDetailText;
-            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-            break;
-        }
         case RDSettingRowPurify:
             cell.textLabel.text = @"正文净化";
             cell.detailTextLabel.text = @"替换规则 · legado";
@@ -312,11 +289,19 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             break;
         case RDSettingRowBackup:
             cell.textLabel.text = @"备份到文件";
-            cell.detailTextLabel.text = @"书籍 · 进度 · 书签 · 字体 · 规则 · AI";
+            cell.detailTextLabel.text = @"书籍 · 进度 · 书签 · 字体 · 规则";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         case RDSettingRowRestore:
             cell.textLabel.text = @"从备份恢复";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
+        case RDSettingRowPrivacy:
+            cell.textLabel.text = @"隐私声明";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
+        case RDSettingRowOpenSource:
+            cell.textLabel.text = @"开源软件使用声明";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         case RDSettingRowVersion:
@@ -344,13 +329,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     else if (row == RDSettingRowClear) {
         [self p_confirmClear];
     }
-    else if (row == RDSettingRowAIConfig) {
-        // 延后一帧再 push,让 deselect 动画先跑完,避免点选卡顿感
-        dispatch_async(dispatch_get_main_queue(), ^{
-            RDAIConfigController *ai = [[RDAIConfigController alloc] init];
-            [self.navigationController pushViewController:ai animated:YES];
-        });
-    }
     else if (row == RDSettingRowPurify) {
         dispatch_async(dispatch_get_main_queue(), ^{
             RDReplaceRulesController *vc = [[RDReplaceRulesController alloc] init];
@@ -371,6 +349,20 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     }
     else if (row == RDSettingRowRestore) {
         [self p_pickRestore];
+    }
+    else if (row == RDSettingRowPrivacy) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RDLegalDocumentController *vc = [[RDLegalDocumentController alloc] initWithTitle:@"隐私声明"
+                                                                               resourceName:@"PrivacyPolicy.zh-Hans"];
+            [self.navigationController pushViewController:vc animated:YES];
+        });
+    }
+    else if (row == RDSettingRowOpenSource) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RDLegalDocumentController *vc = [[RDLegalDocumentController alloc] initWithTitle:@"开源软件使用声明"
+                                                                               resourceName:@"OpenSourceLicenses"];
+            [self.navigationController pushViewController:vc animated:YES];
+        });
     }
 }
 

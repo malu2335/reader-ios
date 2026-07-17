@@ -14,6 +14,11 @@
 #import "RDSplashViewController.h"
 #import "RDBookshelfPrefetch.h"
 
+@interface SceneDelegate ()
+/// 冷启动时系统传入的待导入文件;主界面呈现后消费一次,避免预加载通知竞态。
+@property (nonatomic, copy) NSSet<UIOpenURLContext *> *pendingOpenURLContexts;
+@end
+
 @implementation SceneDelegate
 
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions
@@ -28,33 +33,37 @@
     window.backgroundColor = [UIColor whiteColor];
     window.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
 
+    // 冷启动「用其他应用打开」:先缓存,等启动页结束后再导入,保证只消费一次
+    if (connectionOptions.URLContexts.count > 0) {
+        self.pendingOpenURLContexts = [connectionOptions.URLContexts copy];
+    }
+
     // 先挂启动页:视觉对齐 LaunchScreen,期间预加载书架 DB
     RDSplashViewController *splash = [[RDSplashViewController alloc] init];
     __weak typeof(self) weakSelf = self;
     __weak AppDelegate *weakApp = appDelegate;
+    __weak UIScene *weakScene = scene;
     splash.onFinished = ^{
-        [weakSelf p_presentMainWithAppDelegate:weakApp];
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        [self p_presentMainWithAppDelegate:weakApp];
+        [self p_importPendingURLsForScene:weakScene];
     };
     window.rootViewController = splash;
     self.window = window;
     appDelegate.window = window;
     [window makeKeyAndVisible];
     [RDDisplayBoost applyToWindow:window];
+}
 
-    // 冷启动「用其他应用打开」等主界面就绪后再导入
-    if (connectionOptions.URLContexts.count > 0) {
-        NSSet *contexts = [connectionOptions.URLContexts copy];
-        __block id token = nil;
-        token = [[NSNotificationCenter defaultCenter] addObserverForName:RDBookshelfPrefetchDidFinishNotification
-                                                                  object:nil
-                                                                   queue:[NSOperationQueue mainQueue]
-                                                              usingBlock:^(NSNotification *note) {
-            if (token) {
-                [[NSNotificationCenter defaultCenter] removeObserver:token];
-                token = nil;
-            }
-            [self scene:scene openURLContexts:contexts];
-        }];
+- (void)p_importPendingURLsForScene:(UIScene *)scene
+{
+    NSSet<UIOpenURLContext *> *contexts = self.pendingOpenURLContexts;
+    self.pendingOpenURLContexts = nil;
+    if (contexts.count > 0) {
+        [self scene:scene openURLContexts:contexts];
     }
 }
 

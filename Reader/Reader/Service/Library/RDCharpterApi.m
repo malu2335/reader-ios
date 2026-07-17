@@ -10,7 +10,7 @@
 #import "RDCharpterModel.h"
 @implementation RDCharpterApi
 - (NSString *)requestUrl {
-    return @"/app/open/api/chapter/getByBookId";
+    return @"";
 }
 -(id)requestArgument
 {

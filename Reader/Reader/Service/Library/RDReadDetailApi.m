@@ -10,7 +10,7 @@
 
 @implementation RDReadDetailApi
 - (NSString *)requestUrl {
-    return @"/app/open/api/book/getDetail";
+    return @"";
 }
 
 -(id)requestArgument

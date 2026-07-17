@@ -47,11 +47,6 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param totalCharpter 总章节数
 -(void)setCharpter:(NSString *)charpter content:(NSAttributedString *)content page:(NSInteger)page totalPage:(NSInteger)totalPage charpterIndex:(NSInteger)chaprterIndex totalCharpter:(NSInteger)totalCharpter;
 
-/// 在正文区以内联方式展示翻译(原文下插译文,可滚动);nil 则恢复纯原文
-- (void)showInlineTranslation:(nullable NSAttributedString *)attributed;
-/// 是否正在展示内联翻译
-@property (nonatomic, assign, readonly) BOOL showingInlineTranslation;
-
 @end
 
 NS_ASSUME_NONNULL_END
