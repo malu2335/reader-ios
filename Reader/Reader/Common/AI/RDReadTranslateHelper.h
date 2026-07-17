@@ -18,6 +18,16 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RDReadTranslateHelper : NSObject
 
 /// 发起翻译;成功后 completion 回主线程 pairs(可能为空时用 fullTranslation 兜底)
+/// quiet=YES 时不弹大 loading(翻页自动翻译用),失败仍 toast
++ (void)translateFromHost:(UIViewController *)host
+                 pageText:(nullable NSString *)pageText
+              chapterText:(nullable NSString *)chapterText
+               rawContent:(nullable NSString *)rawContent
+                    quiet:(BOOL)quiet
+               completion:(nullable void(^)(NSArray <RDTranslatePair *>* _Nullable pairs,
+                                            NSString * _Nullable fullTranslation,
+                                            NSError * _Nullable error))completion;
+
 + (void)translateFromHost:(UIViewController *)host
                  pageText:(nullable NSString *)pageText
               chapterText:(nullable NSString *)chapterText
@@ -26,7 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
                                             NSString * _Nullable fullTranslation,
                                             NSError * _Nullable error))completion;
 
-/// 兼容旧调用(无 completion 时仍走内联由 PageVC 处理;此方法仅发起)
+/// 兼容旧调用
 + (void)translateFromHost:(UIViewController *)host
                  pageText:(nullable NSString *)pageText
               chapterText:(nullable NSString *)chapterText

@@ -82,6 +82,13 @@
 
 
 @property (nonatomic,assign) NSInteger userPages;   //用户翻到第几页，用来记录展示广告的页数
+
+/// 翻译模式:开启后每页自动出译文
+@property (nonatomic,assign) BOOL translateModeEnabled;
+/// 译文缓存 key=bookId_chapterId_page
+@property (nonatomic,strong) NSMutableDictionary <NSString *, NSAttributedString *>*translateCache;
+/// 正在请求的页 key,避免错页套用
+@property (nonatomic,copy) NSString *translateInFlightKey;
 @end
 
 @implementation RDReadPageViewController
@@ -195,6 +202,8 @@
     }
     
     [self p_saveRecord];
+    // 点击/滑动翻页(非 curl 动画回调)也要自动译
+    [self p_applyTranslateModeIfNeeded];
 }
 -(void)lastPage:(RDReadController *)controller
 {
@@ -205,6 +214,7 @@
         [self p_setAfterOrBeforeViewControllerWithBefore:YES];
     }
     [self p_saveRecord];
+    [self p_applyTranslateModeIfNeeded];
 }
 -(void)invokeMenu:(RDReadController *)controller
 {
@@ -232,6 +242,8 @@
             : [self p_safePage:self.bookDetail.page totalPages:pages.count];
         self.bookDetail.page = page;
         [self.pageViewController setViewControllers:@[[self p_creatReadController:self.bookDetail.charpterModel.name content:[self p_getCurPageContentWithContent:content page:page pages:pages] page:page totalPage:pages.count charpterIndex:[self p_getCurCharpter] totalCharpter:self.charpters.count charpterModel:self.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
+        // 翻译模式跨章节/重建后继续
+        [self p_applyTranslateModeIfNeeded];
     }];
     //默认加载上一章或下一章的数据
     [self p_downloads];
@@ -442,6 +454,7 @@
 {
     if (completed) {
         [self p_saveRecord];
+        [self p_applyTranslateModeIfNeeded];
     }
 }
 
@@ -768,59 +781,142 @@
 
 #pragma mark - AI 翻译
 
--(void)translateAction
+- (NSMutableDictionary <NSString *, NSAttributedString *>*)translateCache
 {
-    if (self.menuView.superview) {
-        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
+    if (!_translateCache) {
+        _translateCache = [NSMutableDictionary dictionary];
     }
-    RDReadController *currentController = (RDReadController *)self.pageViewController.viewControllers.firstObject;
-    if (!currentController || currentController.isMirror) {
-        for (UIViewController *vc in self.pageViewController.viewControllers) {
-            if ([vc isKindOfClass:RDReadController.class] && ![(RDReadController *)vc isMirror]) {
-                currentController = (RDReadController *)vc;
-                break;
-            }
+    return _translateCache;
+}
+
+- (RDReadController *)p_currentReadController
+{
+    RDReadController *current = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    if ([current isKindOfClass:RDReadController.class] && !current.isMirror) {
+        return current;
+    }
+    for (UIViewController *vc in self.pageViewController.viewControllers) {
+        if ([vc isKindOfClass:RDReadController.class] && ![(RDReadController *)vc isMirror]) {
+            return (RDReadController *)vc;
         }
     }
-    if (!currentController) {
+    return [current isKindOfClass:RDReadController.class] ? current : nil;
+}
+
+- (NSString *)p_translateKeyForController:(RDReadController *)c
+{
+    if (!c) {
+        return @"";
+    }
+    NSInteger cid = c.charpterModel.charpterId;
+    return [NSString stringWithFormat:@"%ld_%ld_%ld", (long)self.bookDetail.bookId, (long)cid, (long)c.page];
+}
+
+/// 翻译模式开启时:缓存命中直接套用,否则请求并显示
+- (void)p_applyTranslateModeIfNeeded
+{
+    if (!self.translateModeEnabled) {
         return;
     }
-    // 已在展示译文时再点「译」→ 收起,恢复原文
-    if (currentController.showingInlineTranslation) {
-        [currentController showInlineTranslation:nil];
-        [RDToastView showText:@"已关闭译文" delay:1.0 inView:self.view];
+    RDReadController *page = [self p_currentReadController];
+    if (!page) {
         return;
     }
+    NSString *key = [self p_translateKeyForController:page];
+    if (key.length == 0) {
+        return;
+    }
+    NSAttributedString *cached = self.translateCache[key];
+    if (cached.length) {
+        [page showInlineTranslation:cached];
+        return;
+    }
+    [self p_requestTranslateForController:page quiet:YES];
+}
+
+- (void)p_requestTranslateForController:(RDReadController *)controller quiet:(BOOL)quiet
+{
+    if (!controller) {
+        return;
+    }
+    NSString *key = [self p_translateKeyForController:controller];
+    NSString *pageText = controller.content.string ?: @"";
+    self.translateInFlightKey = key;
 
     __weak typeof(self) weakSelf = self;
-    __weak RDReadController *weakPage = currentController;
-    NSString *pageText = currentController.content.string;
+    __weak RDReadController *weakPage = controller;
     [RDReadTranslateHelper translateFromHost:self
                                     pageText:pageText
-                                 chapterText:currentController.charpterContent.string
-                                  rawContent:currentController.charpterModel.content
+                                 chapterText:controller.charpterContent.string
+                                  rawContent:controller.charpterModel.content
+                                       quiet:quiet
                                   completion:^(NSArray<RDTranslatePair *> *pairs, NSString *fullTranslation, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.translateModeEnabled) {
+            return;
+        }
+        if (![key isEqualToString:self.translateInFlightKey]) {
+            return;
+        }
+        RDReadController *cur = [self p_currentReadController];
+        NSString *curKey = [self p_translateKeyForController:cur];
+        if (![curKey isEqualToString:key]) {
+            return;
+        }
         if (error || (!pairs.count && fullTranslation.length == 0)) {
-            return; // toast 已在 helper 中处理
-        }
-        RDReadController *page = weakPage;
-        if (!page || !page.isViewLoaded) {
-            // 页已销毁则找当前页
-            page = (RDReadController *)weakSelf.pageViewController.viewControllers.firstObject;
-        }
-        if (![page isKindOfClass:RDReadController.class]) {
             return;
         }
         NSAttributedString *attr = [RDReadTranslateHelper attributedStringForPairs:pairs
                                                                      fallbackSource:pageText
                                                                  fallbackTranslation:fullTranslation];
         if (attr.length == 0) {
-            [RDToastView showText:@"译文为空" delay:1.2 inView:weakSelf.view];
+            if (!quiet) {
+                [RDToastView showText:@"译文为空" delay:1.2 inView:self.view];
+            }
             return;
         }
+        self.translateCache[key] = attr;
+        RDReadController *page = weakPage;
+        if (!page.isViewLoaded || page != cur) {
+            page = cur;
+        }
         [page showInlineTranslation:attr];
-        [RDToastView showText:@"译文已插入正文下方 · 再点「译」可关闭" delay:1.6 inView:weakSelf.view];
+        if (!quiet) {
+            [RDToastView showText:@"翻译模式已开 · 翻页自动译 · 再点「译」关闭" delay:1.8 inView:self.view];
+        }
     }];
+}
+
+-(void)translateAction
+{
+    if (self.menuView.superview) {
+        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
+    }
+    RDReadController *currentController = [self p_currentReadController];
+    if (!currentController) {
+        return;
+    }
+
+    // 再点「译」→ 关闭翻译模式
+    if (self.translateModeEnabled) {
+        self.translateModeEnabled = NO;
+        self.translateInFlightKey = nil;
+        [[RDAIClient sharedClient] cancelInFlightTranslate];
+        [currentController showInlineTranslation:nil];
+        [RDToastView showText:@"已关闭翻译模式" delay:1.0 inView:self.view];
+        return;
+    }
+
+    // 开启翻译模式并译当前页
+    self.translateModeEnabled = YES;
+    NSString *key = [self p_translateKeyForController:currentController];
+    NSAttributedString *cached = self.translateCache[key];
+    if (cached.length) {
+        [currentController showInlineTranslation:cached];
+        [RDToastView showText:@"翻译模式已开 · 翻页自动译 · 再点「译」关闭" delay:1.8 inView:self.view];
+        return;
+    }
+    [self p_requestTranslateForController:currentController quiet:NO];
 }
 
 #pragma mark - 分享金句 / 词典

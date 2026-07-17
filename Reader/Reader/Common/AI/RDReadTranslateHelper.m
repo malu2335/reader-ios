@@ -54,7 +54,7 @@
               chapterText:(NSString *)chapterText
                rawContent:(NSString *)rawContent
 {
-    [self translateFromHost:host pageText:pageText chapterText:chapterText rawContent:rawContent completion:nil];
+    [self translateFromHost:host pageText:pageText chapterText:chapterText rawContent:rawContent quiet:NO completion:nil];
 }
 
 + (void)translateFromHost:(UIViewController *)host
@@ -63,16 +63,36 @@
                rawContent:(NSString *)rawContent
                completion:(void (^)(NSArray<RDTranslatePair *> *, NSString *, NSError *))completion
 {
+    [self translateFromHost:host pageText:pageText chapterText:chapterText rawContent:rawContent quiet:NO completion:completion];
+}
+
++ (void)translateFromHost:(UIViewController *)host
+                 pageText:(NSString *)pageText
+              chapterText:(NSString *)chapterText
+               rawContent:(NSString *)rawContent
+                    quiet:(BOOL)quiet
+               completion:(void (^)(NSArray<RDTranslatePair *> *, NSString *, NSError *))completion
+{
     if (!host) {
         return;
     }
+    // 进行中:取消旧请求,继续翻页自动译当前页(不 toast 打断)
     if ([RDAIClient sharedClient].isTranslating) {
-        [self p_toast:@"正在翻译,请稍候" on:host];
-        return;
+        if (!quiet) {
+            [self p_toast:@"正在切换翻译…" on:host];
+        }
+        [[RDAIClient sharedClient] cancelInFlightTranslate];
     }
 
     RDAIConfigProfile *profile = [[RDAIConfigStore sharedInstance] activeProfile];
     if (!profile.isUsable) {
+        if (quiet) {
+            [self p_toast:@"请先配置 AI" on:host];
+            if (completion) {
+                completion(nil, nil, [NSError errorWithDomain:@"RDTranslate" code:10 userInfo:@{NSLocalizedDescriptionKey: @"未配置 AI"}]);
+            }
+            return;
+        }
         [LEEAlert alert].config
         .LeeTitle(@"未配置 AI")
         .LeeContent(@"请先在设置中添加 AI 翻译配置,并填写 API Key、模型与 Base URL。")
@@ -96,23 +116,35 @@
     text = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (text.length > 3500) {
         text = [text substringToIndex:3500];
-        [self p_toast:@"本页较长,仅翻译前半部分" on:host];
+        if (!quiet) {
+            [self p_toast:@"本页较长,仅翻译前半部分" on:host];
+        }
     }
     if (text.length == 0) {
-        [self p_toast:@"当前没有可翻译的文本" on:host];
+        if (!quiet) {
+            [self p_toast:@"当前没有可翻译的文本" on:host];
+        }
+        if (completion) {
+            completion(nil, nil, [NSError errorWithDomain:@"RDTranslate" code:11 userInfo:@{NSLocalizedDescriptionKey: @"无文本"}]);
+        }
         return;
     }
 
     RDBaseViewController *base = [host isKindOfClass:RDBaseViewController.class] ? (RDBaseViewController *)host : nil;
-    if (base) {
+    if (base && !quiet) {
         [base showLoading:@"正在翻译..." cancel:^{
             [[RDAIClient sharedClient] cancelInFlightTranslate];
             [base hideLoading];
             [RDToastView showText:@"已取消" delay:1.0 inView:host.view];
         }];
+    } else if (base && quiet) {
+        // 翻页自动译:轻量提示,不挡阅读
+        [base showLoading:@"译…" cancel:^{
+            [[RDAIClient sharedClient] cancelInFlightTranslate];
+            [base hideLoading];
+        }];
     }
 
-    // 要求模型按句输出,便于插入到语句下方
     NSString *prompt = [NSString stringWithFormat:
                         @"你是小说阅读翻译助手。将下面正文按句拆分翻译。"
                         @"若原文主要是中文则译成英文;若主要是英文/其他语言则译成简体中文。"
@@ -134,7 +166,9 @@
                     return;
                 }
                 NSString *msg = error.localizedDescription.length ? error.localizedDescription : @"翻译失败";
-                [self p_toast:msg on:host];
+                if (!quiet) {
+                    [self p_toast:msg on:host];
+                }
                 if (completion) {
                     completion(nil, nil, error ?: [NSError errorWithDomain:@"RDTranslate" code:1 userInfo:@{NSLocalizedDescriptionKey: msg}]);
                 }
