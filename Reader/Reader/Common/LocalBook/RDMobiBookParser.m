@@ -101,11 +101,12 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
         if (mobiHeaderLength >= 0xE4 && record0.length >= 0xF4) {
             extraDataFlags = readBE16(r0 + 0xF2);
         }
-        //书名
+        //书名(两个 uint32_t 直接相加会在 32 位内溢出回绕,绕过越界检查;先转 64 位再判断)
         if (record0.length >= 92) {
             uint32_t nameOffset = readBE32(r0 + 84);
             uint32_t nameLength = readBE32(r0 + 88);
-            if (nameOffset + nameLength <= record0.length && nameLength > 0) {
+            unsigned long long nameEnd = (unsigned long long)nameOffset + (unsigned long long)nameLength;
+            if (nameLength > 0 && nameOffset <= record0.length && nameEnd <= record0.length) {
                 NSData *nameData = [record0 subdataWithRange:NSMakeRange(nameOffset, nameLength)];
                 fullName = [RDBookTextUtil stringFromData:nameData encoding:[self encodingFromMobi:textEncoding]];
             }
@@ -136,11 +137,12 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
                     }
                     cursor += recLen;
                 }
-                //封面:firstImageIndex(记录 0 偏移 108)+ coverOffset
+                //封面:firstImageIndex(记录 0 偏移 108)+ coverOffset;同样先转 64 位再相加防溢出
                 if (coverOffset != UINT32_MAX && record0.length >= 112) {
                     uint32_t firstImageIndex = readBE32(r0 + 108);
-                    if (firstImageIndex != UINT32_MAX) {
-                        coverData = recordData(firstImageIndex + coverOffset);
+                    unsigned long long coverRecordIndex = (unsigned long long)firstImageIndex + (unsigned long long)coverOffset;
+                    if (firstImageIndex != UINT32_MAX && coverRecordIndex < numRecords) {
+                        coverData = recordData((NSUInteger)coverRecordIndex);
                     }
                 }
             }
@@ -148,7 +150,10 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
     }
 
     //---- 解压正文 ----
-    NSMutableData *rawText = [NSMutableData dataWithCapacity:textLength];
+    // textLength 是文件自身声明值,仅作为容量提示;实际内容仍受各 record 真实字节数约束,
+    // 这里封顶避免声明离谱大小时一次性预分配过大内存。
+    NSUInteger textCapacityHint = MIN((NSUInteger)textLength, (NSUInteger)(64 * 1024 * 1024));
+    NSMutableData *rawText = [NSMutableData dataWithCapacity:textCapacityHint];
     for (uint16_t i = 1; i <= textRecordCount && i < numRecords; i++) {
         NSData *record = recordData(i);
         if (!record) {

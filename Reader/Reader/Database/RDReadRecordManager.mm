@@ -110,6 +110,23 @@
     }];
 }
 
++(BOOL)updateCoverImg:(NSString *)coverImg forBookId:(NSInteger)bookId
+{
+    if (bookId == 0 || coverImg.length == 0) {
+        return NO;
+    }
+    RDBookDetailModel *patch = [[RDBookDetailModel alloc] init];
+    patch.coverImg = coverImg;
+    __block BOOL success = NO;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        success = [db updateRowsInTable:kReadRecordTable
+                           onProperties:RDBookDetailModel.coverImg
+                             withObject:patch
+                                  where:RDBookDetailModel.bookId.is(bookId)];
+    }];
+    return success;
+}
+
 +(void)asyncUpdatePage:(NSInteger)page forBookId:(NSInteger)bookId
 {
     if (bookId == 0) {

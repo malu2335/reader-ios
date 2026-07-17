@@ -99,6 +99,11 @@
         if (success) {
             RDBookDetailModel *detail  = [book yy_modelCopy];
             detail.onBookshelf = record.onBookshelf;
+            if (record) {
+                // 阅读记录中的书名/作者可能由用户在书架手动修改,不要被线上详情覆盖。
+                detail.title = record.title;
+                detail.author = record.author;
+            }
             detail.charpterModel = model;
             detail.page = 0;
             detail.charOffset = 0;

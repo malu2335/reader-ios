@@ -35,6 +35,23 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 /// 本地书封面(内嵌封面文件,或按标题生成的纸质风格封面)
 + (nullable UIImage *)coverForBook:(RDBookDetailModel *)book;
 
+/// 同步串行回填旧 PDF 的首页封面;内部在导入队列执行,请从后台队列调用。
++ (void)preparePDFCoversForBooks:(NSArray <RDBookDetailModel *>*)books;
+
+/// 手动封面独立于 coverImg,正数在线书与负数本地书均可使用。
++ (nullable NSString *)customCoverPathForBook:(RDBookDetailModel *)book;
++ (nullable UIImage *)customCoverForBook:(RDBookDetailModel *)book;
++ (NSUInteger)beginCustomCoverRequestForBook:(RDBookDetailModel *)book;
++ (BOOL)isCustomCoverRequestCurrent:(NSUInteger)requestVersion
+                            forBook:(RDBookDetailModel *)book;
++ (BOOL)saveCustomCover:(UIImage *)cover
+                forBook:(RDBookDetailModel *)book
+         requestVersion:(NSUInteger)requestVersion
+           errorMessage:(NSString * _Nullable * _Nullable)errorMessage;
++ (nullable NSData *)customCoverDataForBook:(RDBookDetailModel *)book;
++ (BOOL)restoreCustomCoverData:(nullable NSData *)data forBook:(RDBookDetailModel *)book;
++ (void)removeCustomCoverForBook:(RDBookDetailModel *)book;
+
 /// 删除本地书:阅读记录、章节与文件
 + (void)removeLocalBook:(RDBookDetailModel *)book;
 

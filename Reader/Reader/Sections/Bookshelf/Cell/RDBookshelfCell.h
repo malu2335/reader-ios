@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RDBookshelfCell : RDBookshelfBaseCell
 @property (nonatomic,strong) NSArray <RDBookDetailModel *>*books;
 @property (nonatomic,copy) void (^needReload)(void);
+@property (nonatomic,copy) void (^changeCover)(RDBookDetailModel *book);
+@property (nonatomic,copy) void (^resetCover)(RDBookDetailModel *book);
 +(CGFloat )cellHeight;
 @end
 

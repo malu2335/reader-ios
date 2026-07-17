@@ -51,16 +51,22 @@
 -(void)setBook:(RDBookDetailModel *)book
 {
     _book = book;
-    if (book.isLocalBook) {
+    UIImage *cover = [RDLocalBookManager coverForBook:book];
+    if (cover) {
         [self.cover sd_cancelCurrentImageLoad];
-        self.cover.image = [RDLocalBookManager coverForBook:book] ?: [UIImage imageNamed:@"app_placeholder"];
-        self.typeTag.hidden = NO;
+        self.cover.image = cover;
+    } else if (!book.isLocalBook && book.coverImg.length) {
+        [self.cover sd_setImageWithURL:[NSURL URLWithString:[RDUtilities buildPicUrlWithPath:book.coverImg]] placeholderImage:[UIImage imageNamed:@"app_placeholder"]];
+    } else {
+        [self.cover sd_cancelCurrentImageLoad];
+        self.cover.image = [UIImage imageNamed:@"app_placeholder"];
+    }
+
+    self.typeTag.hidden = !book.isLocalBook;
+    if (book.isLocalBook) {
         self.typeTag.text = book.fileType.uppercaseString;
         [self.typeTag sizeToFit];
         [self setNeedsLayout];
-    } else {
-        self.typeTag.hidden = YES;
-        [self.cover sd_setImageWithURL:[NSURL URLWithString:[RDUtilities buildPicUrlWithPath:book.coverImg]] placeholderImage:[UIImage imageNamed:@"app_placeholder"]];
     }
     self.updateTag.hidden = !book.bookUpdate;
     self.bookLabel.text = book.title;
@@ -246,7 +252,32 @@
         action.clickBlock = ^{
             [weakSelf p_renameBook:book];
         };
+    })
+    .LeeAddAction(^(LEEAction *action) {
+        action.type = LEEActionTypeDefault;
+        action.title = @"更换封面";
+        action.titleColor = RDBlackColor;
+        action.font = RDBoldFont17;
+        action.clickBlock = ^{
+            if (weakSelf.changeCover) {
+                weakSelf.changeCover(book);
+            }
+        };
     });
+
+    if ([RDLocalBookManager customCoverForBook:book]) {
+        config.LeeAddAction(^(LEEAction *action) {
+            action.type = LEEActionTypeDefault;
+            action.title = @"恢复默认封面";
+            action.titleColor = RDBlackColor;
+            action.font = RDBoldFont17;
+            action.clickBlock = ^{
+                if (weakSelf.resetCover) {
+                    weakSelf.resetCover(book);
+                }
+            };
+        });
+    }
 
     config.LeeAddAction(^(LEEAction *action) {
         action.type = LEEActionTypeDestructive;
@@ -281,10 +312,7 @@
                       book.title ?: @"",
                       book.author.length ? [NSString stringWithFormat:@"（%@）", book.author] : @""];
     NSMutableArray *items = [NSMutableArray arrayWithObject:text];
-    UIImage *cover = nil;
-    if (book.isLocalBook) {
-        cover = [RDLocalBookManager coverForBook:book];
-    }
+    UIImage *cover = [RDLocalBookManager coverForBook:book];
     if (cover) {
         [items addObject:cover];
     }
@@ -347,19 +375,24 @@
         action.title = @"删除";
         action.titleColor = [UIColor systemRedColor];
         action.clickBlock = ^{
-            if (book.isLocalBook) {
-                [RDLocalBookManager removeLocalBook:book];
-            } else {
-                [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
-                [RDBookmarkManager deleteAllForBookId:book.bookId];
-                [RDHistoryRecordManager deleteHistoryWithBookId:book.bookId];
-                dispatch_async(dispatch_get_global_queue(0, 0), ^{
+            // 文件/PDF 回填可能正在串行队列中，删除放后台避免阻塞主线程。
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+                if (book.isLocalBook) {
+                    [RDLocalBookManager removeLocalBook:book];
+                } else {
+                    // 先删记录，迟到的封面保存会校验失败；再串行清理磁盘文件。
+                    [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
+                    [RDLocalBookManager removeCustomCoverForBook:book];
+                    [RDBookmarkManager deleteAllForBookId:book.bookId];
+                    [RDHistoryRecordManager deleteHistoryWithBookId:book.bookId];
                     [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (weakSelf.needReload) {
+                        weakSelf.needReload();
+                    }
                 });
-            }
-            if (weakSelf.needReload) {
-                weakSelf.needReload();
-            }
+            });
         };
     })
     .LeeShow();

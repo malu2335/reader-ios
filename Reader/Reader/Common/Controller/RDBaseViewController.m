@@ -39,7 +39,7 @@
         [self.navigationController setNavigationBarHidden:YES animated:NO];
     }
 }
-- (void)viewDisappear:(BOOL)animated {
+- (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
 
     if (_loadingView && _cancelRequest) {

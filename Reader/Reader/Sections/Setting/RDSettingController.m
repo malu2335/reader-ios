@@ -9,6 +9,7 @@
 #import "RDReadRecordManager.h"
 #import "RDCharpterDataManager.h"
 #import "RDHistoryRecordManager.h"
+#import "RDBookmarkManager.h"
 #import "LEEAlert.h"
 #import "RDFontManager.h"
 #import "RDBackupManager.h"
@@ -388,6 +389,10 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [self showText:@"备份文件不存在"];
             return;
         }
+        if (errorMessage.length > 0) {
+            // zip 已生成但存在部分内容缺失/写入失败,不能只提示"成功"却把警告吞掉
+            [self showText:[NSString stringWithFormat:@"备份已生成,但%@", errorMessage]];
+        }
         // 写在 Caches/Exports 下的 fileURL;比 tmp 更适合系统分享
         NSURL *fileURL = [NSURL fileURLWithPath:zipPath isDirectory:NO];
         [fileURL setResourceValue:@(YES) forKey:NSURLIsExcludedFromBackupKey error:nil];
@@ -491,10 +496,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         NSArray *books = [RDReadRecordManager getAllOnBookshelf];
         for (RDBookDetailModel *book in books) {
             if (book.isLocalBook) {
+                // 本地书由 manager 在同一串行队列内删除记录、源文件与两类封面。
                 [RDLocalBookManager removeLocalBook:book];
             }
             else{
+                // 在线书先删记录，迟到的封面保存会校验失败，再清理确定性文件。
                 [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
+                [RDLocalBookManager removeCustomCoverForBook:book];
+                [RDBookmarkManager deleteAllForBookId:book.bookId];
                 [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
             }
         }

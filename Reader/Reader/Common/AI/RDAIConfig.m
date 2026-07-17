@@ -129,6 +129,15 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
     RDAISaveAPIKey(profileId, @"");
 }
 
+/// 粗粒度 origin 归一化(去首尾空白、去掉末尾斜杠),仅用于备份恢复时的密钥重新绑定判断
+static NSString *RDAINormalizedOrigin(NSString *baseURL) {
+    NSString *url = [baseURL stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    while ([url hasSuffix:@"/"]) {
+        url = [url substringToIndex:url.length - 1];
+    }
+    return url.lowercaseString;
+}
+
 @implementation RDAIConfigProfile
 
 - (instancetype)init
@@ -389,13 +398,11 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
         return NO;
     }
     @synchronized (self) {
-        // 保留同 profileId 已有 Keychain key(备份不含 key 时)
-        NSMutableDictionary *previousKeys = [NSMutableDictionary dictionary];
-        for (RDAIConfigProfile *old in self.mutableProfiles) {
-            if (old.apiKey.length > 0) {
-                previousKeys[old.profileId] = old.apiKey;
-            }
-        }
+        // 备份里的 profileId 不可信:如果直接沿用,一旦与本机现有 id 撞上(即便是恶意构造的
+        // "同 id、换 baseURL" 备份),旧 Keychain 密钥会被原样保留,同时把请求目标换成攻击者
+        // 服务器。这里先快照导入前(可信)的 profile 列表,随后一律重新生成 profileId,
+        // 密钥只按 "provider 类型 + 规范化 baseURL" 内容匹配重新绑定,而不是按不可信的 id。
+        NSArray <RDAIConfigProfile *>*previousProfiles = [self.mutableProfiles copy];
 
         NSDictionary *root = (NSDictionary *)json;
         [self.mutableProfiles removeAllObjects];
@@ -406,25 +413,39 @@ static void RDAIDeleteAPIKey(NSString *profileId) {
                 if (!p) {
                     continue;
                 }
+                p.profileId = [[NSUUID UUID] UUIDString];
                 if (p.apiKey.length == 0) {
-                    // 优先 Keychain,其次本机旧值
-                    NSString *secure = RDAILoadAPIKey(p.profileId);
-                    if (secure.length > 0) {
-                        p.apiKey = secure;
-                    } else if (previousKeys[p.profileId]) {
-                        p.apiKey = previousKeys[p.profileId];
-                    }
+                    p.apiKey = [self p_matchingKeyForType:p.type baseURL:p.baseURL amongProfiles:previousProfiles] ?: @"";
                 } else {
-                    // 旧版备份含明文 key:迁入 Keychain
+                    // 旧版备份自身携带明文 key(用户自己刚导出的备份):迁入 Keychain
                     RDAISaveAPIKey(p.profileId, p.apiKey);
                 }
                 [self.mutableProfiles addObject:p];
             }
         }
-        NSString *active = root[@"activeProfileId"];
-        _activeProfileId = ([active isKindOfClass:NSString.class] && active.length > 0) ? [active copy] : nil;
+        // activeProfileId 同样不沿用备份声明的值(全部 profileId 已重新生成,旧 id 也不再有效);
+        // 交给 -activeProfile 的默认规则(优先选可用项)重新选择——没有匹配到真实密钥的新导入
+        // profile 不可用,不会被自动选中,避免恶意配置未经用户确认就投入使用。
+        _activeProfileId = nil;
         return [self saveToDisk];
     }
+}
+
+/// 仅按 (provider 类型, 规范化 baseURL) 在导入前的本机 profile 中找同源密钥;找不到返回 nil。
+- (nullable NSString *)p_matchingKeyForType:(NSString *)type
+                                     baseURL:(NSString *)baseURL
+                               amongProfiles:(NSArray <RDAIConfigProfile *>*)profiles
+{
+    NSString *incomingOrigin = RDAINormalizedOrigin(baseURL ?: @"");
+    for (RDAIConfigProfile *old in profiles) {
+        if (old.apiKey.length == 0 || ![old.type isEqualToString:type]) {
+            continue;
+        }
+        if ([RDAINormalizedOrigin(old.baseURL ?: @"") isEqualToString:incomingOrigin]) {
+            return old.apiKey;
+        }
+    }
+    return nil;
 }
 
 - (RDAIConfigProfile *)activeProfile

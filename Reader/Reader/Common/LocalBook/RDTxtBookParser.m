@@ -9,8 +9,8 @@
 
 //没有识别到章节时按该长度分段
 static const NSUInteger kTxtFallbackChunkLength = 8000;
-//章节数上限,防止异常文本切出海量章节
-static const NSUInteger kTxtMaxChapterCount = 8000;
+//章节数上限,防止异常文本切出海量章节(超限后剩余内容并入末章,不静默丢弃)
+static const NSUInteger kTxtMaxChapterCount = 50000;
 
 @implementation RDTxtBookParser
 
@@ -54,7 +54,8 @@ static const NSUInteger kTxtMaxChapterCount = 8000;
                 [chapters addObject:[self chapterWithName:@"开篇" content:preface index:chapters.count]];
             }
         }
-        for (NSUInteger i = 0; i < matches.count && chapters.count < kTxtMaxChapterCount; i++) {
+        NSUInteger titledCount = MIN(matches.count, kTxtMaxChapterCount);
+        for (NSUInteger i = 0; i < titledCount; i++) {
             NSRange titleRange = matches[i].range;
             NSUInteger contentStart = NSMaxRange(titleRange);
             NSUInteger contentEnd = (i + 1 < matches.count) ? matches[i + 1].range.location : text.length;
@@ -64,6 +65,14 @@ static const NSUInteger kTxtMaxChapterCount = 8000;
                 name = [NSString stringWithFormat:@"第%@章", @(chapters.count + 1)];
             }
             [chapters addObject:[self chapterWithName:name content:content index:chapters.count]];
+        }
+        // 章节标题数超过上限:不再逐章拆分,但绝不能静默丢弃剩余正文,并入最后一章
+        if (matches.count > kTxtMaxChapterCount) {
+            NSUInteger tailStart = matches[kTxtMaxChapterCount].range.location;
+            NSString *tail = [self trimmed:[text substringFromIndex:tailStart]];
+            if (tail.length > 0) {
+                [chapters addObject:[self chapterWithName:@"其余内容" content:tail index:chapters.count]];
+            }
         }
     }
     else {
@@ -87,6 +96,14 @@ static const NSUInteger kTxtMaxChapterCount = 8000;
                 [chapters addObject:[self chapterWithName:name content:content index:chapters.count]];
             }
             loc = NSMaxRange(safe);
+        }
+        // part 达到上限时循环提前退出,剩余正文并入末章,不静默丢弃
+        if (loc < body.length) {
+            NSString *content = [self trimmed:[body substringFromIndex:loc]];
+            if (content.length > 0) {
+                NSString *name = [NSString stringWithFormat:@"第%@部分", @(part + 1)];
+                [chapters addObject:[self chapterWithName:name content:content index:chapters.count]];
+            }
         }
     }
     return chapters.copy;

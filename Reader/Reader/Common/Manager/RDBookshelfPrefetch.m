@@ -10,6 +10,7 @@
 #import "RDFontManager.h"
 #import "RDAIConfig.h"
 #import "RDVoiceManager.h"
+#import "RDLocalBookManager.h"
 #import <QuartzCore/QuartzCore.h>
 
 NSString * const RDBookshelfPrefetchDidFinishNotification = @"RDBookshelfPrefetchDidFinishNotification";
@@ -69,6 +70,8 @@ static NSMutableArray <dispatch_block_t>*s_waiters = nil;
 {
     // 轻量列表:getBookshelfDisplayList 内部会打开 DB,不反序列化章节正文
     NSArray *books = [RDReadRecordManager getBookshelfDisplayList];
+    // 旧版本导入的 PDF 只有文字占位封面；在后台预取阶段串行回填第一页。
+    [RDLocalBookManager preparePDFCoversForBooks:books];
     NSArray *rows = nil;
     NSArray *groups = nil;
     [self buildRowsFromBooks:books columns:columns dataSource:&rows groups:&groups];

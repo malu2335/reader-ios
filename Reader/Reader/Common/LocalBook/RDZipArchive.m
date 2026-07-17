@@ -11,9 +11,19 @@ static const uint32_t kZipEOCDSignature = 0x06054b50;
 static const uint32_t kZipCentralSignature = 0x02014b50;
 static const uint32_t kZipLocalSignature = 0x04034b50;
 
+//恶意/损坏归档防护预算:条目数量、单条目解压后大小、整包累计解压量(仅内存路径)、
+//压缩比上限(deflate 理论极限约 1032:1,留有余量)。stored 落盘路径(书籍源文件)
+//允许更大的单文件上限,但仍需有界,避免声明离谱大小耗尽磁盘。
+static const NSUInteger kRDZipMaxEntryCount = 20000;
+static const unsigned long long kRDZipMaxEntryUncompressedBytes = 200ull * 1024 * 1024;
+static const unsigned long long kRDZipMaxArchiveUncompressedBytes = 1024ull * 1024 * 1024;
+static const double kRDZipMaxCompressionRatio = 1200.0;
+static const unsigned long long kRDZipMaxExtractedFileBytes = 3ull * 1024 * 1024 * 1024;
+
 @interface RDZipEntry : NSObject
 @property (nonatomic,copy) NSString *name;
 @property (nonatomic,assign) uint16_t method;
+@property (nonatomic,assign) uint32_t crc;
 @property (nonatomic,assign) uint32_t compressedSize;
 @property (nonatomic,assign) uint32_t uncompressedSize;
 @property (nonatomic,assign) uint32_t localHeaderOffset;
@@ -25,6 +35,7 @@ static const uint32_t kZipLocalSignature = 0x04034b50;
 @property (nonatomic,strong) NSData *data;
 @property (nonatomic,strong) NSDictionary <NSString *,RDZipEntry *>*entries;
 @property (nonatomic,copy) NSArray <NSString *>*entryNames;
+@property (nonatomic,assign) unsigned long long totalDecompressedBytes;
 @end
 
 @implementation RDZipArchive
@@ -67,6 +78,10 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     if (centralOffset >= length) {
         return NO;
     }
+    if (total > kRDZipMaxEntryCount) {
+        // 条目数量本身就是资源耗尽手段之一(如 10 万条空文件),直接拒绝整个归档
+        return NO;
+    }
 
     NSMutableDictionary *entries = [NSMutableDictionary dictionary];
     NSMutableArray *names = [NSMutableArray array];
@@ -77,6 +92,7 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
         }
         RDZipEntry *entry = [[RDZipEntry alloc] init];
         entry.method = readU16(bytes + cursor + 10);
+        entry.crc = readU32(bytes + cursor + 16);
         entry.compressedSize = readU32(bytes + cursor + 20);
         entry.uncompressedSize = readU32(bytes + cursor + 24);
         uint16_t nameLen = readU16(bytes + cursor + 28);
@@ -108,6 +124,19 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     if (!entry) {
         return nil;
     }
+    //单条目/累计解压量与压缩比预算:防止声明离谱大小或高倍率炸弹式条目
+    if (entry.uncompressedSize > kRDZipMaxEntryUncompressedBytes) {
+        return nil;
+    }
+    if (self.totalDecompressedBytes + entry.uncompressedSize > kRDZipMaxArchiveUncompressedBytes) {
+        return nil;
+    }
+    if (entry.method == 8) {
+        double ratio = (double)entry.uncompressedSize / (double)MAX(entry.compressedSize, (uint32_t)1);
+        if (ratio > kRDZipMaxCompressionRatio) {
+            return nil;
+        }
+    }
     const uint8_t *bytes = self.data.bytes;
     NSUInteger length = self.data.length;
     NSUInteger offset = entry.localHeaderOffset;
@@ -122,13 +151,22 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
         return nil;
     }
     NSData *compressed = [self.data subdataWithRange:NSMakeRange(dataStart, entry.compressedSize)];
+    NSData *result = nil;
     if (entry.method == 0) {
-        return compressed;
+        result = compressed;
     }
-    if (entry.method == 8) {
-        return [self inflate:compressed expectedSize:entry.uncompressedSize];
+    else if (entry.method == 8) {
+        result = [self inflate:compressed expectedSize:entry.uncompressedSize];
     }
-    return nil;
+    if (!result) {
+        return nil;
+    }
+    //central directory 中的 CRC32 校验:损坏/篡改/截断归档在此处即失败,不放行到解析层
+    if ((uint32_t)crc32(0, result.bytes, (uInt)result.length) != entry.crc) {
+        return nil;
+    }
+    self.totalDecompressedBytes += result.length;
+    return result;
 }
 
 - (NSData *)inflate:(NSData *)compressed expectedSize:(uint32_t)expectedSize
@@ -136,19 +174,28 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     if (compressed.length == 0) {
         return [NSData data];
     }
+    //expectedSize 来自归档自身声明,不可全信;真正的硬上限是单条目预算
+    NSUInteger capacityHint = MIN((NSUInteger)expectedSize, (NSUInteger)kRDZipMaxEntryUncompressedBytes);
     z_stream stream;
     memset(&stream, 0, sizeof(stream));
     //windowBits 为负:raw deflate(ZIP 条目无 zlib 头)
     if (inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
         return nil;
     }
-    NSMutableData *output = [NSMutableData dataWithLength:MAX(expectedSize, 4096u)];
+    NSMutableData *output = [NSMutableData dataWithLength:MAX(capacityHint, (NSUInteger)4096)];
     stream.next_in = (Bytef *)compressed.bytes;
     stream.avail_in = (uInt)compressed.length;
     int status = Z_OK;
     while (status == Z_OK) {
         if (stream.total_out >= output.length) {
-            [output increaseLengthBy:output.length / 2 + 4096];
+            if (output.length >= kRDZipMaxEntryUncompressedBytes) {
+                //实际解压量已越过硬上限,声明的 expectedSize 撒谎也不再放行(真正的炸弹防线)
+                inflateEnd(&stream);
+                return nil;
+            }
+            //increaseLengthBy: 传入的是增量,不是新总长;先算目标总长再回推增量,避免下溢
+            NSUInteger targetLength = MIN(output.length + (output.length / 2 + 4096), (NSUInteger)kRDZipMaxEntryUncompressedBytes);
+            [output increaseLengthBy:targetLength - output.length];
         }
         stream.next_out = (Bytef *)output.mutableBytes + stream.total_out;
         stream.avail_out = (uInt)(output.length - stream.total_out);
@@ -183,9 +230,13 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
         return NO;
     }
     if (entry.method != 0) {
-        // deflate 条目量级小(json/封面),回退内存解压
+        // deflate 条目量级小(json/封面),回退内存解压(已带资源预算与 CRC 校验)
         NSData *data = [self dataForEntry:name];
         return data ? [data writeToFile:path atomically:YES] : NO;
+    }
+    // stored 条目 compressedSize == uncompressedSize,单独放宽到更大的落盘上限(书籍源文件)
+    if (entry.uncompressedSize > kRDZipMaxExtractedFileBytes) {
+        return NO;
     }
     const uint8_t *bytes = self.data.bytes;
     NSUInteger length = self.data.length;
@@ -199,7 +250,7 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     if (dataStart + entry.compressedSize > length) {
         return NO;
     }
-    // 分块从 mmap 数据拷贝到目标文件,峰值内存恒定
+    // 分块从 mmap 数据拷贝到目标文件,峰值内存恒定;边拷贝边累计 CRC32,校验损坏/篡改归档
     NSString *tmp = [path stringByAppendingString:@".part"];
     [[NSFileManager defaultManager] removeItemAtPath:tmp error:nil];
     if (![[NSFileManager defaultManager] createFileAtPath:tmp contents:nil attributes:nil]) {
@@ -210,12 +261,14 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
         return NO;
     }
     BOOL ok = YES;
+    uLong runningCrc = crc32(0, NULL, 0);
     const NSUInteger chunk = 1024 * 1024;
     @try {
         NSUInteger written = 0;
         while (written < entry.compressedSize) {
             NSUInteger n = MIN(chunk, entry.compressedSize - written);
             @autoreleasepool {
+                runningCrc = crc32(runningCrc, bytes + dataStart + written, (uInt)n);
                 NSData *slice = [NSData dataWithBytes:bytes + dataStart + written length:n];
                 [out writeData:slice];
             }
@@ -226,7 +279,7 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     @catch (NSException *exception) {
         ok = NO;
     }
-    if (!ok) {
+    if (!ok || (uint32_t)runningCrc != entry.crc) {
         [[NSFileManager defaultManager] removeItemAtPath:tmp error:nil];
         return NO;
     }

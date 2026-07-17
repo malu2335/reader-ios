@@ -250,8 +250,6 @@ static void test_backup_ai_roundtrip(NSString *dir, NSString *scratch) {
         assert_true(![k isKindOfClass:NSString.class] || k.length == 0, @"backup export redacts apiKey");
     }
 
-    NSString *pid1 = p1.profileId;
-    NSString *pid2 = p2.profileId;
     [store clearAll];
     assert_true(store.profiles.count == 0, @"AI config cleared");
     assert_true(store.activeProfileId.length == 0, @"active cleared");
@@ -273,18 +271,25 @@ static void test_backup_ai_roundtrip(NSString *dir, NSString *scratch) {
     BOOL ok = [store importBackupData:aiData error:&impErr];
     assert_true(ok, @"importBackupData succeeds");
     assert_true(store.profiles.count == 2, @"2 profiles restored");
-    RDAIConfigProfile *r1 = [store profileWithId:pid1];
-    RDAIConfigProfile *r2 = [store profileWithId:pid2];
-    assert_true(r1 != nil && [r1.model isEqualToString:@"claude-3-5-sonnet-latest"], @"p1 model restored");
-    assert_true(r2 != nil && [r2.baseURL isEqualToString:@"https://gem.proxy.local"], @"p2 baseURL restored");
-    assert_true([store.activeProfileId isEqualToString:pid2], @"activeProfileId restored");
+    // P1-03 修复后 profileId 在导入时总是重新生成(备份里的 id 不可信,不能作为密钥绑定依据),
+    // 所以按内容(model/baseURL)查找,而不是按导入前的旧 id。
+    RDAIConfigProfile *r1 = nil, *r2 = nil;
+    for (RDAIConfigProfile *p in store.profiles) {
+        if ([p.model isEqualToString:@"claude-3-5-sonnet-latest"]) r1 = p;
+        if ([p.baseURL isEqualToString:@"https://gem.proxy.local"]) r2 = p;
+    }
+    assert_true(r1 != nil, @"p1 model restored");
+    assert_true(r2 != nil, @"p2 baseURL restored");
+    assert_true(![r1.profileId isEqualToString:p1.profileId] && ![r2.profileId isEqualToString:p2.profileId],
+                @"profileId regenerated on import, not reused from untrusted backup manifest");
+    // 本次恢复前 Keychain/沙盒 sidecar 已被 clearAll 清空,两份 profile 都找不到同源旧密钥,
+    // 因此都不可用;activeProfileId 不会盲目沿用备份声明值,交给默认规则(无可用项时留空/退回首项)。
+    assert_true(store.activeProfileId.length == 0, @"activeProfileId not blindly carried over from untrusted backup");
 
-    // Equality with pre-backup export (metadata; keys redacted on both sides)
+    // Equality with pre-backup export (profile count only; ids/active intentionally do not round-trip verbatim)
     NSData *post = [store exportBackupData];
-    NSDictionary *preObj = [NSJSONSerialization JSONObjectWithData:preBackup options:0 error:nil];
     NSDictionary *postObj = [NSJSONSerialization JSONObjectWithData:post options:0 error:nil];
-    assert_true([preObj[@"activeProfileId"] isEqual:postObj[@"activeProfileId"]], @"active matches pre-backup");
-    assert_true([preObj[@"profiles"] count] == [postObj[@"profiles"] count], @"profile count matches pre-backup");
+    assert_true([preJSON[@"profiles"] count] == [postObj[@"profiles"] count], @"profile count matches pre-backup");
 
     // Keychain/sidecar 本机持久化(不经备份)
     RDAIConfigProfile *kCheck = makeProfile(RDAIProviderTypeOpenAI, @"");
@@ -297,6 +302,78 @@ static void test_backup_ai_roundtrip(NSString *dir, NSString *scratch) {
 
     logline(@"backup entry name constant: %@", RDAIConfigBackupEntryName);
     logline(@"zip entries: %@", [names componentsJoinedByString:@", "]);
+}
+
+// P1-03 回归测试:恶意备份声明与本机现有 profile 相同的 profileId,但把 baseURL 换成攻击者
+// 服务器,企图借壳沿用本机已保存的真实密钥。修复后必须:profileId 被重新生成、密钥不附着、
+// 且不会被自动设为 active。
+static void test_backup_ai_hijack_rejected(NSString *dir) {
+    logline(@"\n== AI config backup profileId-hijack rejected (P1-03) ==");
+    [RDAIConfigStore setStorageDirectoryOverride:dir];
+    RDAIConfigStore *store = [RDAIConfigStore sharedInstance];
+    [store clearAll];
+
+    RDAIConfigProfile *real = makeProfile(RDAIProviderTypeOpenAI, @"");
+    real.name = @"Real";
+    real.apiKey = @"real-secret-key";
+    real.model = @"gpt-4o-mini";
+    [store upsertProfile:real];
+    [store setActiveProfileId:real.profileId];
+    NSString *realId = real.profileId;
+
+    NSDictionary *maliciousProfile = @{
+        @"profileId": realId,
+        @"name": @"Real",
+        @"type": RDAIProviderTypeOpenAICompat,
+        @"apiKey": @"",
+        @"model": @"gpt-4o-mini",
+        @"baseURL": @"https://attacker.example.com",
+    };
+    NSDictionary *maliciousRoot = @{
+        @"version": @2,
+        @"activeProfileId": realId,
+        @"profiles": @[maliciousProfile],
+    };
+    NSData *maliciousData = [NSJSONSerialization dataWithJSONObject:maliciousRoot options:0 error:nil];
+
+    NSError *impErr = nil;
+    BOOL ok = [store importBackupData:maliciousData error:&impErr];
+    assert_true(ok, @"malicious-shaped import still parses (no JSON error)");
+    assert_true(store.profiles.count == 1, @"one profile after malicious import");
+    RDAIConfigProfile *restored = store.profiles.firstObject;
+    assert_true(restored != nil, @"restored profile exists");
+    assert_true(![restored.profileId isEqualToString:realId], @"profileId regenerated, not reused from untrusted backup");
+    assert_true(restored.apiKey.length == 0, @"attacker-origin profile does NOT inherit the real key");
+    assert_true(![restored isUsable], @"unmatched imported profile is not usable (no auto key attach)");
+    assert_true(store.activeProfileId.length == 0, @"activeProfileId not blindly carried over from untrusted backup");
+    logline(@"hijack attempt correctly rejected: key not attached, profileId not reused, not auto-active");
+
+    // 反向验证:同一 provider+baseURL(即便 profileId 是全新随机值)应当按内容正常重新绑定密钥,
+    // 这样合法的"备份后在同一台设备恢复"体验不会被误伤。前一步的恶意导入已替换掉内存中的
+    // profile 列表,这里重新放入一个真实、有 key 的 profile,让匹配对象只有它自己。
+    [store clearAll];
+    RDAIConfigProfile *real2 = makeProfile(RDAIProviderTypeOpenAI, @"");
+    real2.apiKey = @"real-secret-key";
+    real2.model = @"gpt-4o-mini";
+    [store upsertProfile:real2];
+
+    NSDictionary *legitimateProfile = @{
+        @"profileId": [[NSUUID UUID] UUIDString],
+        @"name": @"Real",
+        @"type": RDAIProviderTypeOpenAI,
+        @"apiKey": @"",
+        @"model": @"gpt-4o-mini",
+        @"baseURL": @"",
+    };
+    NSDictionary *legitimateRoot = @{@"version": @2, @"activeProfileId": @"", @"profiles": @[legitimateProfile]};
+    NSData *legitimateData = [NSJSONSerialization dataWithJSONObject:legitimateRoot options:0 error:nil];
+    NSError *legErr = nil;
+    BOOL legOk = [store importBackupData:legitimateData error:&legErr];
+    assert_true(legOk, @"same-origin import succeeds");
+    RDAIConfigProfile *legRestored = store.profiles.firstObject;
+    assert_true(legRestored != nil && [legRestored.apiKey isEqualToString:@"real-secret-key"],
+                @"same provider+origin reattaches existing local key by content match");
+    logline(@"same-origin legitimate restore correctly reattached key by content match");
 }
 
 int main(int argc, const char * argv[]) {
@@ -313,6 +390,7 @@ int main(int argc, const char * argv[]) {
         test_config_persistence(storeDir);
         test_six_providers();
         test_backup_ai_roundtrip(storeDir, scratch);
+        test_backup_ai_hijack_rejected(storeDir);
 
         logline(@"\n== Summary ==");
         if (g_failures == 0) {

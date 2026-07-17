@@ -14,19 +14,23 @@
 #import "RDLocalBookManager.h"
 #import "RDBookshelfPrefetch.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <PhotosUI/PhotosUI.h>
+#import <ImageIO/ImageIO.h>
 
 
 #import "RDCharpterModel.h"
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
 
-@interface RDBookshelfController ()<UIDocumentPickerDelegate>
+@interface RDBookshelfController ()<UIDocumentPickerDelegate, PHPickerViewControllerDelegate>
 @property (nonatomic,strong) NSMutableArray *dataSource;
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) NSMutableArray *bookSource;
 @property (nonatomic,assign) BOOL didApplyPrefetch;
 @property (nonatomic,assign) BOOL isReloading;
 @property (nonatomic,assign) BOOL skipNextAppearReload;
+@property (nonatomic,strong) RDBookDetailModel *pendingCoverBook;
+@property (nonatomic,assign) NSUInteger pendingCoverRequestVersion;
 @end
 
 @implementation RDBookshelfController
@@ -240,6 +244,12 @@
                 [RDBookshelfPrefetch invalidate];
                 [weakSelf p_reload];
             };
+            cell.changeCover = ^(RDBookDetailModel *book) {
+                [weakSelf p_changeCoverForBook:book];
+            };
+            cell.resetCover = ^(RDBookDetailModel *book) {
+                [weakSelf p_resetCoverForBook:book];
+            };
         }
         cell.books = model;
         return cell;
@@ -287,7 +297,7 @@
     UILabel *lab = [[UILabel alloc] initWithFrame:CGRectMake(22, 4, tableView.width - 44, 28)];
     lab.font = RDFont13;
     lab.textColor = RDLightGrayColor;
-    lab.text = [NSString stringWithFormat:@"共 %@ 本 · 长按书籍可分享、改名、删除", @(count)];
+    lab.text = [NSString stringWithFormat:@"共 %@ 本 · 长按书籍可分享、改名、换封面", @(count)];
     [header addSubview:lab];
     return header;
 }
@@ -296,6 +306,171 @@
     return CGFLOAT_MIN;
 }
 #pragma mark - action
+
+-(NSUInteger)p_advanceCoverRequestForBook:(RDBookDetailModel *)book
+{
+    return [RDLocalBookManager beginCustomCoverRequestForBook:book];
+}
+
+-(BOOL)p_isCurrentCoverRequest:(NSUInteger)version forBook:(RDBookDetailModel *)book
+{
+    return [RDLocalBookManager isCustomCoverRequestCurrent:version forBook:book];
+}
+
+-(void)p_changeCoverForBook:(RDBookDetailModel *)book
+{
+    if (!book) {
+        return;
+    }
+    PHPickerConfiguration *configuration = [[PHPickerConfiguration alloc] init];
+    configuration.filter = [PHPickerFilter imagesFilter];
+    configuration.selectionLimit = 1;
+    PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:configuration];
+    picker.delegate = self;
+    self.pendingCoverBook = book;
+    self.pendingCoverRequestVersion = [self p_advanceCoverRequestForBook:book];
+
+    UIPopoverPresentationController *popover = picker.popoverPresentationController;
+    if (popover) {
+        popover.sourceView = self.view;
+        popover.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1, 1);
+        popover.permittedArrowDirections = 0;
+    }
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+-(void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results
+{
+    RDBookDetailModel *book = self.pendingCoverBook;
+    NSUInteger requestVersion = self.pendingCoverRequestVersion;
+    self.pendingCoverBook = nil;
+    self.pendingCoverRequestVersion = 0;
+    [picker dismissViewControllerAnimated:YES completion:nil];
+    if (results.count == 0 || !book) {
+        return;
+    }
+
+    NSItemProvider *provider = results.firstObject.itemProvider;
+    if (![provider hasItemConformingToTypeIdentifier:UTTypeImage.identifier]) {
+        [self showText:@"无法读取所选图片"];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [provider loadFileRepresentationForTypeIdentifier:UTTypeImage.identifier completionHandler:^(NSURL *url, NSError *error) {
+        if (![weakSelf p_isCurrentCoverRequest:requestVersion forBook:book]) {
+            return;
+        }
+        UIImage *image = nil;
+        if (url) {
+            CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
+            if (source) {
+                image = [weakSelf p_thumbnailFromImageSource:source];
+                CFRelease(source);
+            }
+        }
+        if (image) {
+            [weakSelf p_saveCustomCoverImage:image forBook:book requestVersion:requestVersion];
+            return;
+        }
+        [weakSelf p_loadCoverDataFromProvider:provider
+                                      forBook:book
+                               requestVersion:requestVersion
+                                fallbackError:error];
+    }];
+}
+
+-(UIImage *)p_thumbnailFromImageSource:(CGImageSourceRef)source
+{
+    if (!source) {
+        return nil;
+    }
+    NSDictionary *options = @{
+        (__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+        (__bridge NSString *)kCGImageSourceCreateThumbnailWithTransform: @YES,
+        (__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize: @1200,
+        (__bridge NSString *)kCGImageSourceShouldCacheImmediately: @YES
+    };
+    CGImageRef thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+    if (!thumbnail) {
+        return nil;
+    }
+    UIImage *image = [UIImage imageWithCGImage:thumbnail];
+    CGImageRelease(thumbnail);
+    return image;
+}
+
+-(void)p_loadCoverDataFromProvider:(NSItemProvider *)provider
+                           forBook:(RDBookDetailModel *)book
+                    requestVersion:(NSUInteger)requestVersion
+                     fallbackError:(NSError *)fallbackError
+{
+    __weak typeof(self) weakSelf = self;
+    [provider loadDataRepresentationForTypeIdentifier:UTTypeImage.identifier completionHandler:^(NSData *data, NSError *error) {
+        if (![weakSelf p_isCurrentCoverRequest:requestVersion forBook:book]) {
+            return;
+        }
+        UIImage *image = nil;
+        if (data.length > 0) {
+            CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
+            if (source) {
+                image = [weakSelf p_thumbnailFromImageSource:source];
+                CFRelease(source);
+            }
+        }
+        if (!image) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (![weakSelf p_isCurrentCoverRequest:requestVersion forBook:book]) {
+                    return;
+                }
+                [weakSelf showText:error.localizedDescription ?: fallbackError.localizedDescription ?: @"无法读取所选图片"];
+            });
+            return;
+        }
+        [weakSelf p_saveCustomCoverImage:image forBook:book requestVersion:requestVersion];
+    }];
+}
+
+-(void)p_saveCustomCoverImage:(UIImage *)image
+                      forBook:(RDBookDetailModel *)book
+               requestVersion:(NSUInteger)requestVersion
+{
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        if (![weakSelf p_isCurrentCoverRequest:requestVersion forBook:book]) {
+            return;
+        }
+        NSString *errorMessage = nil;
+        BOOL success = [RDLocalBookManager saveCustomCover:image
+                                                   forBook:book
+                                            requestVersion:requestVersion
+                                              errorMessage:&errorMessage];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (![weakSelf p_isCurrentCoverRequest:requestVersion forBook:book]) {
+                return;
+            }
+            if (success) {
+                [RDBookshelfPrefetch invalidate];
+                [weakSelf p_reload];
+                [weakSelf showText:@"封面已更新"];
+            } else {
+                [weakSelf showText:errorMessage ?: @"封面保存失败"];
+            }
+        });
+    });
+}
+
+-(void)p_resetCoverForBook:(RDBookDetailModel *)book
+{
+    if (!book) {
+        return;
+    }
+    // manager 会在同一临界区推进全局代次并删除文件，先前 picker 回调随后必定失效。
+    [RDLocalBookManager removeCustomCoverForBook:book];
+    [RDBookshelfPrefetch invalidate];
+    [self p_reload];
+    [self showText:@"已恢复默认封面"];
+}
 
 -(void)p_applyPrefetchCache
 {
@@ -326,6 +501,7 @@
     NSInteger columns = kItemCount;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSArray *books = [RDReadRecordManager getBookshelfDisplayList];
+        [RDLocalBookManager preparePDFCoversForBooks:books];
         NSArray *rows = nil;
         NSArray *groups = nil;
         [RDBookshelfPrefetch buildRowsFromBooks:books columns:columns dataSource:&rows groups:&groups];

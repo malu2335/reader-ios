@@ -25,6 +25,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 仅改书名/作者,不触碰进度与 readTime(书架长按改名用)
 +(void)updateTitle:(NSString *)title author:(NSString *)author forBookId:(NSInteger)bookId;
 
+/// 仅改封面字段,不触碰进度、书名与 readTime(PDF 自动封面回填用)
++(BOOL)updateCoverImg:(NSString *)coverImg forBookId:(NSInteger)bookId;
+
 /// PDF/漫画进度:仅 page+readTime,异步写(高频翻页不阻塞主线程)
 +(void)asyncUpdatePage:(NSInteger)page forBookId:(NSInteger)bookId;
 

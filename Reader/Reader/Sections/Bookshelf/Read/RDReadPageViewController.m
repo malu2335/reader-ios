@@ -65,6 +65,16 @@
 }
 @end
 
+/// 译文缓存存结构化句对+兜底原文/译文,不存已渲染好的富文本——
+/// 展示时才按“当前”字号/字体/主题重新渲染,避免改字号后仍显示旧样式(P1-10 之二)。
+@interface RDCachedTranslation : NSObject
+@property (nonatomic,copy) NSArray <RDTranslatePair *>*pairs;
+@property (nonatomic,copy) NSString *fallbackSource;
+@property (nonatomic,copy) NSString *fallbackTranslation;
+@end
+@implementation RDCachedTranslation
+@end
+
 @interface RDReadPageViewController ()<UIPageViewControllerDelegate,UIPageViewControllerDataSource,RDMenuViewDelegate,RDReadControllerDelegate,RDSpeechManagerDelegate>
 @property (nonatomic,strong) RDReadSpeechBar *speechBar;
 @property (nonatomic,strong) UIPageViewController *pageViewController;
@@ -79,8 +89,9 @@
 @property (nonatomic,assign) BOOL translateBackgroundEnabled;
 /// 是否在正文区展示译文
 @property (nonatomic,assign) BOOL translateDisplayEnabled;
-/// 译文缓存 key=bookId_chapterId_page(NSCache 限量,长会话内存有界)
-@property (nonatomic,strong) NSCache <NSString *, NSAttributedString *>*translateCache;
+/// 译文缓存 key=bookId_chapterId_原文内容哈希(不再用页码,重新分页后同页码可能是不同原文);
+/// 值为结构化句对,NSCache 限量,长会话内存有界
+@property (nonatomic,strong) NSCache <NSString *, RDCachedTranslation *>*translateCache;
 /// 正在后台请求中的 key,防重复打;同时充当在途并发上限
 @property (nonatomic,strong) NSMutableSet <NSString *>*translatePendingKeys;
 @end
@@ -752,7 +763,7 @@
 // 在途 LLM 请求上限:当前页 + 前后预取,超出丢弃(翻页停下后会重新补)
 static const NSUInteger kTranslateMaxInflight = 3;
 
-- (NSCache <NSString *, NSAttributedString *>*)translateCache
+- (NSCache <NSString *, RDCachedTranslation *>*)translateCache
 {
     if (!_translateCache) {
         _translateCache = [[NSCache alloc] init];
@@ -783,17 +794,40 @@ static const NSUInteger kTranslateMaxInflight = 3;
     return [current isKindOfClass:RDReadController.class] ? current : nil;
 }
 
-- (NSString *)p_translateKeyForBook:(NSInteger)bookId chapter:(NSInteger)cid page:(NSInteger)page
+// djb2 变体,足够区分不同原文,不追求密码学强度
+static NSUInteger RDReadTranslateTextHash(NSString *text) {
+    NSUInteger hash = 5381;
+    NSUInteger length = text.length;
+    for (NSUInteger i = 0; i < length; i++) {
+        hash = ((hash << 5) + hash) + [text characterAtIndex:i];
+    }
+    return hash;
+}
+
+/// 按"原文内容"而非页码建 key:重新分页(改字号/字体后)同一页码可能对应不同原文,
+/// 用页码做 key 会让旧译文错配到新原文上(P1-10)。
+- (NSString *)p_translateKeyForBook:(NSInteger)bookId chapter:(NSInteger)cid text:(NSString *)text
 {
-    return [NSString stringWithFormat:@"%ld_%ld_%ld", (long)bookId, (long)cid, (long)page];
+    return [NSString stringWithFormat:@"%ld_%ld_%lu", (long)bookId, (long)cid, (unsigned long)RDReadTranslateTextHash(text ?: @"")];
 }
 
 - (NSString *)p_translateKeyForController:(RDReadController *)c
 {
-    if (!c) {
+    if (!c || c.content.string.length == 0) {
         return @"";
     }
-    return [self p_translateKeyForBook:self.bookDetail.bookId chapter:c.charpterModel.charpterId page:c.page];
+    return [self p_translateKeyForBook:self.bookDetail.bookId chapter:c.charpterModel.charpterId text:c.content.string];
+}
+
+/// 缓存只存结构化句对+兜底文本,展示前按"当前"字号/字体/主题重新渲染
+- (NSAttributedString *)p_renderCachedTranslation:(RDCachedTranslation *)cached
+{
+    if (!cached) {
+        return nil;
+    }
+    return [RDReadTranslateHelper attributedStringForPairs:cached.pairs
+                                              fallbackSource:cached.fallbackSource
+                                          fallbackTranslation:cached.fallbackTranslation];
 }
 
 /// 后台会话开启时:有缓存且「显示开」则套用;始终后台拉当前页+邻页缓存
@@ -810,10 +844,10 @@ static const NSUInteger kTranslateMaxInflight = 3;
     if (key.length == 0) {
         return;
     }
-    NSAttributedString *cached = [self.translateCache objectForKey:key];
+    RDCachedTranslation *cached = [self.translateCache objectForKey:key];
     if (self.translateDisplayEnabled) {
-        if (cached.length) {
-            [page showInlineTranslation:cached];
+        if (cached) {
+            [page showInlineTranslation:[self p_renderCachedTranslation:cached]];
         } else {
             // 显示开但无缓存:先原文,后台译完再插
             if (page.showingInlineTranslation) {
@@ -831,7 +865,7 @@ static const NSUInteger kTranslateMaxInflight = 3;
         if (page.showingInlineTranslation) {
             [page showInlineTranslation:nil];
         }
-        if (!cached.length) {
+        if (!cached) {
             [self p_requestTranslateKey:key
                                pageText:page.content.string
                             chapterText:page.charpterContent.string
@@ -860,18 +894,18 @@ static const NSUInteger kTranslateMaxInflight = 3;
         if (p < 0 || p >= total) {
             continue;
         }
-        NSString *key = [self p_translateKeyForBook:bookId chapter:cid page:p];
-        if ([self.translateCache objectForKey:key].length || [self.translatePendingKeys containsObject:key]) {
+        NSAttributedString *slice = [self p_getCurPageContentWithContent:chapterContent page:p pages:pages];
+        NSString *text = slice.string;
+        if (text.length == 0) {
+            continue;
+        }
+        NSString *key = [self p_translateKeyForBook:bookId chapter:cid text:text];
+        if ([self.translateCache objectForKey:key] || [self.translatePendingKeys containsObject:key]) {
             continue;
         }
         // 预取受在途上限约束,快速翻页不堆积请求
         if (self.translatePendingKeys.count >= kTranslateMaxInflight) {
             break;
-        }
-        NSAttributedString *slice = [self p_getCurPageContentWithContent:chapterContent page:p pages:pages];
-        NSString *text = slice.string;
-        if (text.length == 0) {
-            continue;
         }
         [self p_requestTranslateKey:key
                            pageText:text
@@ -893,12 +927,12 @@ static const NSUInteger kTranslateMaxInflight = 3;
     if (key.length == 0 || !self.translateBackgroundEnabled) {
         return;
     }
-    NSAttributedString *hit = [self.translateCache objectForKey:key];
-    if (hit.length) {
+    RDCachedTranslation *hit = [self.translateCache objectForKey:key];
+    if (hit) {
         if (forDisplay && self.translateDisplayEnabled) {
             RDReadController *cur = [self p_currentReadController];
             if ([[self p_translateKeyForController:cur] isEqualToString:key]) {
-                [cur showInlineTranslation:hit];
+                [cur showInlineTranslation:[self p_renderCachedTranslation:hit]];
             }
         }
         return;
@@ -931,13 +965,16 @@ static const NSUInteger kTranslateMaxInflight = 3;
         if (error || (!pairs.count && fullTranslation.length == 0)) {
             return;
         }
-        NSAttributedString *attr = [RDReadTranslateHelper attributedStringForPairs:pairs
-                                                                     fallbackSource:pageText
-                                                                 fallbackTranslation:fullTranslation];
+        // 缓存结构化句对而非渲染好的富文本,展示时按当前字号/字体/主题重新渲染(P1-10)
+        RDCachedTranslation *cachedValue = [[RDCachedTranslation alloc] init];
+        cachedValue.pairs = pairs;
+        cachedValue.fallbackSource = pageText;
+        cachedValue.fallbackTranslation = fullTranslation;
+        NSAttributedString *attr = [self p_renderCachedTranslation:cachedValue];
         if (attr.length == 0) {
             return;
         }
-        [self.translateCache setObject:attr forKey:key];
+        [self.translateCache setObject:cachedValue forKey:key];
         // 仅显示开 + 仍在该页 → 插入正文
         if (self.translateDisplayEnabled) {
             RDReadController *cur = [self p_currentReadController];
@@ -992,9 +1029,9 @@ static const NSUInteger kTranslateMaxInflight = 3;
     self.translateBackgroundEnabled = YES;
     self.translateDisplayEnabled = YES;
     NSString *key = [self p_translateKeyForController:currentController];
-    NSAttributedString *cached = [self.translateCache objectForKey:key];
-    if (cached.length) {
-        [currentController showInlineTranslation:cached];
+    RDCachedTranslation *cached = [self.translateCache objectForKey:key];
+    if (cached) {
+        [currentController showInlineTranslation:[self p_renderCachedTranslation:cached]];
         [RDToastView showText:@"翻译已开 · 翻页后台同步 · 点「译」可隐藏" delay:1.6 inView:self.view];
         [self p_prefetchAdjacentTranslationsFrom:currentController];
         return;

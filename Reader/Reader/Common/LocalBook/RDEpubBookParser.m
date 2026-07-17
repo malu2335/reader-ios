@@ -429,7 +429,11 @@ static NSString *RDEpubAttrValue(NSString *tag, NSString *attr)
     NSMutableArray *parts = [NSMutableArray array];
     for (NSString *component in joined.pathComponents) {
         if ([component isEqualToString:@".."]) {
-            [parts removeLastObject];
+            // 空数组上调用 removeLastObject 会因 count-1 下溢而抛异常崩溃;
+            // 开头多余的 ".."(越过根目录)直接忽略,而不是让它逃出书籍根目录。
+            if (parts.count > 0) {
+                [parts removeLastObject];
+            }
         }
         else if (![component isEqualToString:@"."]) {
             [parts addObject:component];
