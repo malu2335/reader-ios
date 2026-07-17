@@ -1,9 +1,17 @@
 # Reader iOS 系统性代码审查报告
 
+> **状态更新（2026-07-17 之后）**  
+> 本报告记录审查当时的发现。下列项在后续提交中**已处理或缓解**，阅读问题清单时请对照现状代码：  
+> - **P0-B1 API Key 明文 / 备份泄露**：Key 已迁 **Keychain**；磁盘 JSON 与备份 zip 中 `apiKey` 故意为空。  
+> - **P0-F1 硬编码本机 debug 日志路径**：生产路径中的 `/Users/luma/...debug-603e3d.log` 已移除。  
+> - 产品展示名已改为 **轻阅**；主线能力以本地书 + AI 翻译 + 备份为主。  
+> - 公开仓库：https://github.com/malu2335/reader-ios（`master` 已包含 feature 合并结果）。  
+> 其余架构债、遗留在线模块、测试覆盖等条目仍可作为后续排期参考，**不保证分数与清单仍全部适用**。
+
 | 项 | 内容 |
 |----|------|
-| 分支 | `feature/code-review-ai-translate`（gitflow feature） |
-| 基线 | `master` @ `7a21cea` + 当前工作区本地化/AI/备份改造 |
+| 分支 | `feature/code-review-ai-translate`（已合并进 `master`） |
+| 基线 | 审查时相对 `master` @ `7a21cea` 的工作区 |
 | 审查日期 | 2026-07-17 |
 | 应用类型 | iOS 本地优先阅读器（Objective-C + WCDB + CocoaPods） |
 | 审查原则 | 从业务链路出发；不凭空猜测；未确认项标注「需要进一步验证」 |

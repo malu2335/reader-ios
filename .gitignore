@@ -66,3 +66,26 @@ fastlane/test_output
 # https://github.com/johnno1962/injectionforxcode
 
 iOSInjectionProject/
+
+# macOS / IDE clutter
+.DS_Store
+**/.DS_Store
+.cursor/
+.idea/
+*.swp
+*~
+
+# Local sim / debug screenshots (do not ship personal UI captures)
+/reader-*.png
+/reader-*.jpg
+/*.screenshot.png
+
+# Runtime secrets & local data (never commit)
+**/*apikey*
+**/*secret*
+**/AIConfig/
+*.pem
+*.p12
+*.mobileprovision
+.env
+.env.*
