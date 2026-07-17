@@ -7,102 +7,329 @@
 #import "RDBookDetailModel.h"
 #import "RDLocalBookManager.h"
 
+#pragma mark - 意境主题
+
+typedef NS_ENUM(NSInteger, RDCardMood) {
+    RDCardMoodPaper = 0,   //纸墨(默认,契合 app 纸质风)
+    RDCardMoodNight,       //星夜
+    RDCardMoodRain,        //雨声
+    RDCardMoodBlade,       //锋芒
+    RDCardMoodBloom,       //花信
+    RDCardMoodMountain,    //山远
+    RDCardMoodSnow,        //霜雪
+    RDCardMoodSea,         //海阔
+    RDCardMoodEmber,       //炽焰
+    RDCardMoodDusk,        //暮色
+};
+static const NSInteger kRDCardMoodCount = 10;
+
+//可复现的轻量伪随机:同一句话每次生成完全相同的画面
+static uint32_t RDCardRandNext(uint32_t *state) {
+    *state = (*state * 1664525u) + 1013904223u;
+    return *state;
+}
+static CGFloat RDCardRand01(uint32_t *state) {
+    return (CGFloat)((RDCardRandNext(state) >> 8) & 0xFFFFFF) / (CGFloat)0xFFFFFF;
+}
+
+static uint32_t RDCardHash(NSString *text) {
+    uint32_t hash = 5381;
+    for (NSUInteger i = 0; i < text.length; i++) {
+        hash = ((hash << 5) + hash) ^ [text characterAtIndex:i];
+    }
+    return hash;
+}
+
 @implementation RDShareCardBuilder
 
-+ (RDShareCardGenre)genreForBook:(RDBookDetailModel *)book
+///内容意境分析:各主题关键词计分,最高者胜;零命中按哈希稳定散列
++ (RDCardMood)p_moodForQuote:(NSString *)quote
 {
-    NSString *blob = [NSString stringWithFormat:@"%@ %@", book.category ?: @"", book.title ?: @""].lowercaseString;
-    // 中文关键字
-    if ([blob containsString:@"玄幻"] || [blob containsString:@"修仙"] || [blob containsString:@"仙侠"] || [blob containsString:@"异界"]) {
-        return RDShareCardGenreXuanhuan;
+    if (quote.length == 0) {
+        return RDCardMoodPaper;
     }
-    if ([blob containsString:@"都市"] || [blob containsString:@"职场"] || [blob containsString:@"重生"]) {
-        return RDShareCardGenreDushi;
+    NSDictionary <NSNumber *, NSArray <NSString *>*>*keywords = @{
+        @(RDCardMoodNight):    @[@"夜", @"月", @"星", @"灯火", @"黑暗", @"梦乡"],
+        @(RDCardMoodRain):     @[@"雨", @"泪", @"哭", @"伤", @"离别", @"愁", @"湿"],
+        @(RDCardMoodBlade):    @[@"剑", @"刀", @"血", @"战", @"杀", @"敌", @"锋", @"枪"],
+        @(RDCardMoodBloom):    @[@"花", @"春", @"暖", @"笑", @"爱", @"甜", @"吻", @"喜欢"],
+        @(RDCardMoodMountain): @[@"山", @"云", @"风", @"江", @"湖", @"林", @"远方", @"路"],
+        @(RDCardMoodSnow):     @[@"雪", @"冬", @"寒", @"冰", @"霜", @"冷"],
+        @(RDCardMoodSea):      @[@"海", @"浪", @"波", @"舟", @"帆", @"潮"],
+        @(RDCardMoodEmber):    @[@"火", @"焰", @"燃", @"烈", @"怒", @"灼", @"光芒"],
+        @(RDCardMoodDusk):     @[@"梦", @"忆", @"时光", @"黄昏", @"岁月", @"从前", @"往事"],
+    };
+    RDCardMood best = RDCardMoodPaper;
+    NSInteger bestScore = 0;
+    for (NSNumber *mood in keywords) {
+        NSInteger score = 0;
+        for (NSString *word in keywords[mood]) {
+            if ([quote containsString:word]) {
+                score++;
+            }
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            best = (RDCardMood)mood.integerValue;
+        }
     }
-    if ([blob containsString:@"言情"] || [blob containsString:@"甜宠"] || [blob containsString:@"恋爱"] || [blob containsString:@"总裁"]) {
-        return RDShareCardGenreYanqing;
+    if (bestScore > 0) {
+        return best;
     }
-    if ([blob containsString:@"武侠"] || [blob containsString:@"江湖"] || [blob containsString:@"侠客"]) {
-        return RDShareCardGenreWuxia;
-    }
-    if ([blob containsString:@"历史"] || [blob containsString:@"穿越"] || [blob containsString:@"王朝"]) {
-        return RDShareCardGenreLishi;
-    }
-    if ([blob containsString:@"科幻"] || [blob containsString:@"星际"] || [blob containsString:@"末世"] || [blob containsString:@"机甲"]) {
-        return RDShareCardGenreKehuan;
-    }
-    if ([blob containsString:@"悬疑"] || [blob containsString:@"推理"] || [blob containsString:@"惊悚"] || [blob containsString:@"犯罪"]) {
-        return RDShareCardGenreXuanyi;
-    }
-    return RDShareCardGenreDefault;
+    return (RDCardMood)(RDCardHash(quote) % kRDCardMoodCount);
 }
 
-+ (void)p_colorsForGenre:(RDShareCardGenre)genre top:(UIColor **)top bottom:(UIColor **)bottom accent:(UIColor **)accent
++ (NSString *)p_moodTitle:(RDCardMood)mood
 {
-    switch (genre) {
-        case RDShareCardGenreXuanhuan:
-            *top = [UIColor colorWithRed:0.18 green:0.12 blue:0.38 alpha:1];
-            *bottom = [UIColor colorWithRed:0.45 green:0.22 blue:0.55 alpha:1];
-            *accent = [UIColor colorWithRed:0.95 green:0.78 blue:0.35 alpha:1];
-            break;
-        case RDShareCardGenreDushi:
-            *top = [UIColor colorWithRed:0.12 green:0.18 blue:0.28 alpha:1];
-            *bottom = [UIColor colorWithRed:0.25 green:0.38 blue:0.48 alpha:1];
-            *accent = [UIColor colorWithRed:0.45 green:0.75 blue:0.95 alpha:1];
-            break;
-        case RDShareCardGenreYanqing:
-            *top = [UIColor colorWithRed:0.42 green:0.18 blue:0.28 alpha:1];
-            *bottom = [UIColor colorWithRed:0.85 green:0.45 blue:0.55 alpha:1];
-            *accent = [UIColor colorWithRed:1.0 green:0.88 blue:0.90 alpha:1];
-            break;
-        case RDShareCardGenreWuxia:
-            *top = [UIColor colorWithRed:0.15 green:0.18 blue:0.15 alpha:1];
-            *bottom = [UIColor colorWithRed:0.35 green:0.40 blue:0.32 alpha:1];
-            *accent = [UIColor colorWithRed:0.85 green:0.75 blue:0.45 alpha:1];
-            break;
-        case RDShareCardGenreLishi:
-            *top = [UIColor colorWithRed:0.28 green:0.18 blue:0.10 alpha:1];
-            *bottom = [UIColor colorWithRed:0.55 green:0.38 blue:0.22 alpha:1];
-            *accent = [UIColor colorWithRed:0.92 green:0.82 blue:0.55 alpha:1];
-            break;
-        case RDShareCardGenreKehuan:
-            *top = [UIColor colorWithRed:0.05 green:0.08 blue:0.18 alpha:1];
-            *bottom = [UIColor colorWithRed:0.10 green:0.25 blue:0.40 alpha:1];
-            *accent = [UIColor colorWithRed:0.35 green:0.90 blue:0.95 alpha:1];
-            break;
-        case RDShareCardGenreXuanyi:
-            *top = [UIColor colorWithRed:0.08 green:0.08 blue:0.12 alpha:1];
-            *bottom = [UIColor colorWithRed:0.25 green:0.12 blue:0.18 alpha:1];
-            *accent = [UIColor colorWithRed:0.90 green:0.35 blue:0.40 alpha:1];
-            break;
-        default:
-            *top = [UIColor colorWithRed:0.22 green:0.20 blue:0.18 alpha:1];
-            *bottom = [UIColor colorWithRed:0.42 green:0.36 blue:0.30 alpha:1];
-            *accent = [UIColor colorWithRed:0.95 green:0.90 blue:0.80 alpha:1];
-            break;
+    switch (mood) {
+        case RDCardMoodNight:    return @"星夜 · 摘句";
+        case RDCardMoodRain:     return @"雨声 · 摘句";
+        case RDCardMoodBlade:    return @"锋芒 · 摘句";
+        case RDCardMoodBloom:    return @"花信 · 摘句";
+        case RDCardMoodMountain: return @"山远 · 摘句";
+        case RDCardMoodSnow:     return @"霜雪 · 摘句";
+        case RDCardMoodSea:      return @"海阔 · 摘句";
+        case RDCardMoodEmber:    return @"炽焰 · 摘句";
+        case RDCardMoodDusk:     return @"暮色 · 摘句";
+        default:                 return @"纸墨 · 摘句";
     }
 }
 
-+ (NSString *)p_genreTitle:(RDShareCardGenre)genre
+//主题配色:top/bottom 渐变、accent 点缀、isLight 表示浅底(正文用深色)
++ (void)p_mood:(RDCardMood)mood top:(UIColor **)top bottom:(UIColor **)bottom accent:(UIColor **)accent isLight:(BOOL *)isLight
 {
-    switch (genre) {
-        case RDShareCardGenreXuanhuan: return @"玄幻 · 一念成神";
-        case RDShareCardGenreDushi: return @"都市 · 人间烟火";
-        case RDShareCardGenreYanqing: return @"言情 · 心跳片段";
-        case RDShareCardGenreWuxia: return @"武侠 · 刀光剑影";
-        case RDShareCardGenreLishi: return @"历史 · 长河落日";
-        case RDShareCardGenreKehuan: return @"科幻 · 星际回响";
-        case RDShareCardGenreXuanyi: return @"悬疑 · 真相一角";
-        default: return @"阅读 · 摘句";
+    BOOL light = NO;
+    switch (mood) {
+        case RDCardMoodNight:
+            *top = [UIColor colorWithRed:0.05 green:0.06 blue:0.16 alpha:1];
+            *bottom = [UIColor colorWithRed:0.16 green:0.18 blue:0.35 alpha:1];
+            *accent = [UIColor colorWithRed:0.95 green:0.88 blue:0.60 alpha:1];
+            break;
+        case RDCardMoodRain:
+            *top = [UIColor colorWithRed:0.16 green:0.22 blue:0.28 alpha:1];
+            *bottom = [UIColor colorWithRed:0.30 green:0.38 blue:0.44 alpha:1];
+            *accent = [UIColor colorWithRed:0.70 green:0.82 blue:0.90 alpha:1];
+            break;
+        case RDCardMoodBlade:
+            *top = [UIColor colorWithRed:0.10 green:0.07 blue:0.09 alpha:1];
+            *bottom = [UIColor colorWithRed:0.28 green:0.12 blue:0.15 alpha:1];
+            *accent = [UIColor colorWithRed:0.90 green:0.55 blue:0.45 alpha:1];
+            break;
+        case RDCardMoodBloom:
+            *top = [UIColor colorWithRed:1.00 green:0.94 blue:0.93 alpha:1];
+            *bottom = [UIColor colorWithRed:0.97 green:0.80 blue:0.80 alpha:1];
+            *accent = [UIColor colorWithRed:0.72 green:0.32 blue:0.40 alpha:1];
+            light = YES;
+            break;
+        case RDCardMoodMountain:
+            *top = [UIColor colorWithRed:0.91 green:0.94 blue:0.91 alpha:1];
+            *bottom = [UIColor colorWithRed:0.76 green:0.83 blue:0.78 alpha:1];
+            *accent = [UIColor colorWithRed:0.28 green:0.40 blue:0.34 alpha:1];
+            light = YES;
+            break;
+        case RDCardMoodSnow:
+            *top = [UIColor colorWithRed:0.93 green:0.96 blue:0.98 alpha:1];
+            *bottom = [UIColor colorWithRed:0.78 green:0.86 blue:0.92 alpha:1];
+            *accent = [UIColor colorWithRed:0.30 green:0.45 blue:0.58 alpha:1];
+            light = YES;
+            break;
+        case RDCardMoodSea:
+            *top = [UIColor colorWithRed:0.04 green:0.22 blue:0.30 alpha:1];
+            *bottom = [UIColor colorWithRed:0.09 green:0.40 blue:0.48 alpha:1];
+            *accent = [UIColor colorWithRed:0.60 green:0.90 blue:0.90 alpha:1];
+            break;
+        case RDCardMoodEmber:
+            *top = [UIColor colorWithRed:0.12 green:0.06 blue:0.05 alpha:1];
+            *bottom = [UIColor colorWithRed:0.38 green:0.14 blue:0.07 alpha:1];
+            *accent = [UIColor colorWithRed:1.00 green:0.70 blue:0.35 alpha:1];
+            break;
+        case RDCardMoodDusk:
+            *top = [UIColor colorWithRed:0.22 green:0.16 blue:0.33 alpha:1];
+            *bottom = [UIColor colorWithRed:0.48 green:0.30 blue:0.48 alpha:1];
+            *accent = [UIColor colorWithRed:0.98 green:0.80 blue:0.60 alpha:1];
+            break;
+        default: //纸墨
+            *top = [UIColor colorWithRed:0.96 green:0.94 blue:0.89 alpha:1];
+            *bottom = [UIColor colorWithRed:0.91 green:0.87 blue:0.79 alpha:1];
+            *accent = [UIColor colorWithRed:0.56 green:0.36 blue:0.23 alpha:1];
+            light = YES;
+            break;
+    }
+    if (isLight) {
+        *isLight = light;
     }
 }
 
-+ (UIImage *)cardImageWithQuote:(NSString *)quote book:(RDBookDetailModel *)book genre:(RDShareCardGenre)genre
+//主题装饰:纯 CoreGraphics 程序化绘制,seed 保证同句同画
++ (void)p_drawMotif:(RDCardMood)mood context:(CGContextRef)c size:(CGSize)size accent:(UIColor *)accent seed:(uint32_t)seed
+{
+    uint32_t state = seed ?: 1;
+    switch (mood) {
+        case RDCardMoodNight: {
+            //星子 + 弯月
+            for (int i = 0; i < 46; i++) {
+                CGFloat x = RDCardRand01(&state) * size.width;
+                CGFloat y = RDCardRand01(&state) * size.height * 0.7;
+                CGFloat r = 1.5 + RDCardRand01(&state) * 3.5;
+                CGFloat a = 0.25 + RDCardRand01(&state) * 0.6;
+                CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
+                CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
+            }
+            CGFloat mx = size.width - 240 - RDCardRand01(&state) * 120;
+            CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:0.85].CGColor);
+            CGContextFillEllipseInRect(c, CGRectMake(mx, 120, 120, 120));
+            CGContextSetFillColorWithColor(c, [[UIColor colorWithRed:0.05 green:0.06 blue:0.16 alpha:1] colorWithAlphaComponent:0.92].CGColor);
+            CGContextFillEllipseInRect(c, CGRectMake(mx - 34, 108, 120, 120));
+            break;
+        }
+        case RDCardMoodRain: {
+            //斜落雨丝
+            CGContextSetLineCap(c, kCGLineCapRound);
+            for (int i = 0; i < 36; i++) {
+                CGFloat x = RDCardRand01(&state) * size.width;
+                CGFloat y = RDCardRand01(&state) * size.height;
+                CGFloat len = 40 + RDCardRand01(&state) * 90;
+                CGFloat a = 0.10 + RDCardRand01(&state) * 0.22;
+                CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
+                CGContextSetLineWidth(c, 2 + RDCardRand01(&state) * 2);
+                CGContextMoveToPoint(c, x, y);
+                CGContextAddLineToPoint(c, x - len * 0.35, y + len);
+                CGContextStrokePath(c);
+            }
+            break;
+        }
+        case RDCardMoodBlade: {
+            //两道交错锋光 + 溅火
+            for (int i = 0; i < 2; i++) {
+                CGFloat y0 = size.height * (0.18 + 0.5 * i) + RDCardRand01(&state) * 60;
+                CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:0.30].CGColor);
+                CGContextSetLineWidth(c, 5);
+                CGContextMoveToPoint(c, -50, y0 + 180);
+                CGContextAddLineToPoint(c, size.width + 50, y0 - 180);
+                CGContextStrokePath(c);
+            }
+            for (int i = 0; i < 18; i++) {
+                CGFloat x = RDCardRand01(&state) * size.width;
+                CGFloat y = RDCardRand01(&state) * size.height;
+                CGFloat r = 1.5 + RDCardRand01(&state) * 3;
+                CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:0.20 + RDCardRand01(&state) * 0.35].CGColor);
+                CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
+            }
+            break;
+        }
+        case RDCardMoodBloom: {
+            //飘散花瓣(柔圆)
+            for (int i = 0; i < 22; i++) {
+                CGFloat x = RDCardRand01(&state) * size.width;
+                CGFloat y = RDCardRand01(&state) * size.height;
+                CGFloat r = 8 + RDCardRand01(&state) * 26;
+                CGFloat a = 0.08 + RDCardRand01(&state) * 0.18;
+                CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
+                CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r * (0.55 + RDCardRand01(&state) * 0.45)));
+            }
+            break;
+        }
+        case RDCardMoodMountain: {
+            //层叠远山剪影
+            for (int layer = 0; layer < 3; layer++) {
+                CGFloat base = size.height * (0.72 + 0.09 * layer);
+                CGFloat alpha = 0.10 + 0.08 * layer;
+                CGMutablePathRef path = CGPathCreateMutable();
+                CGPathMoveToPoint(path, NULL, 0, size.height);
+                CGPathAddLineToPoint(path, NULL, 0, base);
+                CGFloat x = 0;
+                while (x < size.width) {
+                    CGFloat peakW = 180 + RDCardRand01(&state) * 240;
+                    CGFloat peakH = 60 + RDCardRand01(&state) * 140;
+                    CGPathAddQuadCurveToPoint(path, NULL, x + peakW / 2, base - peakH, x + peakW, base);
+                    x += peakW;
+                }
+                CGPathAddLineToPoint(path, NULL, size.width, size.height);
+                CGPathCloseSubpath(path);
+                CGContextAddPath(c, path);
+                CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:alpha].CGColor);
+                CGContextFillPath(c);
+                CGPathRelease(path);
+            }
+            break;
+        }
+        case RDCardMoodSnow: {
+            //落雪
+            for (int i = 0; i < 42; i++) {
+                CGFloat x = RDCardRand01(&state) * size.width;
+                CGFloat y = RDCardRand01(&state) * size.height;
+                CGFloat r = 2 + RDCardRand01(&state) * 6;
+                CGFloat a = 0.20 + RDCardRand01(&state) * 0.45;
+                CGContextSetFillColorWithColor(c, [[UIColor whiteColor] colorWithAlphaComponent:a].CGColor);
+                CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
+            }
+            break;
+        }
+        case RDCardMoodSea: {
+            //叠浪弧线
+            CGContextSetLineWidth(c, 4);
+            for (int row = 0; row < 5; row++) {
+                CGFloat y = size.height * (0.62 + row * 0.08);
+                CGFloat a = 0.12 + row * 0.06;
+                CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
+                CGFloat x = -40 + RDCardRand01(&state) * 60;
+                while (x < size.width + 40) {
+                    CGFloat w = 140 + RDCardRand01(&state) * 60;
+                    CGContextMoveToPoint(c, x, y);
+                    CGContextAddQuadCurveToPoint(c, x + w / 2, y - 34, x + w, y);
+                    CGContextStrokePath(c);
+                    x += w;
+                }
+            }
+            break;
+        }
+        case RDCardMoodEmber: {
+            //升腾火星
+            for (int i = 0; i < 34; i++) {
+                CGFloat x = RDCardRand01(&state) * size.width;
+                CGFloat y = size.height * 0.3 + RDCardRand01(&state) * size.height * 0.7;
+                CGFloat r = 2 + RDCardRand01(&state) * 5;
+                CGFloat a = 0.20 + RDCardRand01(&state) * 0.55;
+                CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
+                CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
+            }
+            break;
+        }
+        case RDCardMoodDusk: {
+            //暮云圆晕 + 地平线
+            for (int i = 0; i < 4; i++) {
+                CGFloat r = 160 + RDCardRand01(&state) * 260;
+                CGFloat x = RDCardRand01(&state) * size.width - r / 2;
+                CGFloat y = RDCardRand01(&state) * size.height * 0.5 - r / 2;
+                CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:0.06 + RDCardRand01(&state) * 0.08].CGColor);
+                CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
+            }
+            CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:0.35].CGColor);
+            CGContextSetLineWidth(c, 3);
+            CGContextMoveToPoint(c, 0, size.height * 0.78);
+            CGContextAddLineToPoint(c, size.width, size.height * 0.78);
+            CGContextStrokePath(c);
+            break;
+        }
+        default: {
+            //纸墨:细双边框 + 一枚朱印
+            CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:0.45].CGColor);
+            CGContextSetLineWidth(c, 3);
+            CGContextStrokeRect(c, CGRectMake(46, 46, size.width - 92, size.height - 92));
+            CGContextSetLineWidth(c, 1.5);
+            CGContextStrokeRect(c, CGRectMake(62, 62, size.width - 124, size.height - 124));
+            CGContextSetFillColorWithColor(c, [[UIColor colorWithRed:0.72 green:0.25 blue:0.20 alpha:1] colorWithAlphaComponent:0.85].CGColor);
+            UIBezierPath *seal = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(size.width - 170, 108, 64, 64) cornerRadius:8];
+            CGContextAddPath(c, seal.CGPath);
+            CGContextFillPath(c);
+            break;
+        }
+    }
+}
+
++ (UIImage *)cardImageWithQuote:(NSString *)quote book:(RDBookDetailModel *)book
 {
     CGSize size = CGSizeMake(1080, 1440);
-    UIColor *top = nil, *bottom = nil, *accent = nil;
-    [self p_colorsForGenre:genre top:&top bottom:&bottom accent:&accent];
-
     NSString *body = [quote stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (body.length > 180) {
         body = [[body substringToIndex:180] stringByAppendingString:@"…"];
@@ -110,6 +337,15 @@
     if (body.length == 0) {
         body = @"好书值得分享。";
     }
+
+    RDCardMood mood = [self p_moodForQuote:body];
+    uint32_t seed = RDCardHash(body);
+    UIColor *top = nil, *bottom = nil, *accent = nil;
+    BOOL isLight = NO;
+    [self p_mood:mood top:&top bottom:&bottom accent:&accent isLight:&isLight];
+    UIColor *bodyColor = isLight ? [UIColor colorWithRed:0.18 green:0.15 blue:0.12 alpha:1] : [UIColor whiteColor];
+    UIColor *metaColor = isLight ? [bodyColor colorWithAlphaComponent:0.75] : [UIColor colorWithWhite:1 alpha:0.85];
+    UIColor *footColor = isLight ? [bodyColor colorWithAlphaComponent:0.45] : [UIColor colorWithWhite:1 alpha:0.55];
 
     // 固定 1x:1080×1440 已是输出像素;默认跟随屏幕倍率会在 3x 机型渲出 3240×4320 的巨图
     UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
@@ -123,18 +359,15 @@
         NSArray *colors = @[(__bridge id)top.CGColor, (__bridge id)bottom.CGColor];
         CGFloat locs[] = {0, 1};
         CGGradientRef grad = CGGradientCreateWithColors(space, (__bridge CFArrayRef)colors, locs);
-        CGContextDrawLinearGradient(c, grad, CGPointMake(0, 0), CGPointMake(size.width, size.height), 0);
+        CGContextDrawLinearGradient(c, grad, CGPointMake(0, 0), CGPointMake(size.width * 0.35, size.height), 0);
         CGGradientRelease(grad);
         CGColorSpaceRelease(space);
 
-        // 装饰圆环
-        CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:0.25].CGColor);
-        CGContextSetLineWidth(c, 6);
-        CGContextStrokeEllipseInRect(c, CGRectMake(size.width - 420, -120, 520, 520));
-        CGContextStrokeEllipseInRect(c, CGRectMake(-180, size.height - 380, 420, 420));
+        // 内容驱动的意境装饰
+        [self p_drawMotif:mood context:c size:size accent:accent seed:seed];
 
-        // 类型标签
-        NSString *tag = [self p_genreTitle:genre];
+        // 意境标签
+        NSString *tag = [self p_moodTitle:mood];
         NSDictionary *tagAttr = @{
             NSFontAttributeName: [UIFont systemFontOfSize:36 weight:UIFontWeightSemibold],
             NSForegroundColorAttributeName: accent,
@@ -154,7 +387,7 @@
         ps.alignment = NSTextAlignmentLeft;
         NSDictionary *bodyAttr = @{
             NSFontAttributeName: [UIFont systemFontOfSize:52 weight:UIFontWeightMedium],
-            NSForegroundColorAttributeName: [UIColor whiteColor],
+            NSForegroundColorAttributeName: bodyColor,
             NSParagraphStyleAttributeName: ps,
         };
         CGRect bodyRect = CGRectMake(100, 380, size.width - 200, 620);
@@ -164,7 +397,7 @@
         NSString *meta = [NSString stringWithFormat:@"—— 《%@》%@", book.title ?: @"未知", book.author.length ? [NSString stringWithFormat:@" · %@", book.author] : @""];
         NSDictionary *metaAttr = @{
             NSFontAttributeName: [UIFont systemFontOfSize:34 weight:UIFontWeightRegular],
-            NSForegroundColorAttributeName: [UIColor colorWithWhite:1 alpha:0.85],
+            NSForegroundColorAttributeName: metaColor,
         };
         [meta drawInRect:CGRectMake(100, size.height - 220, size.width - 200, 80) withAttributes:metaAttr];
 
@@ -174,31 +407,21 @@
             cover = [RDLocalBookManager coverForBook:book];
         }
         if (cover) {
+            CGContextSaveGState(c);
             CGRect coverRect = CGRectMake(size.width - 260, size.height - 340, 160, 220);
             UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:coverRect cornerRadius:12];
             [path addClip];
             [cover drawInRect:coverRect];
+            CGContextRestoreGState(c);
         }
 
         // 品牌脚注
         NSDictionary *footAttr = @{
             NSFontAttributeName: [UIFont systemFontOfSize:28 weight:UIFontWeightLight],
-            NSForegroundColorAttributeName: [UIColor colorWithWhite:1 alpha:0.55],
+            NSForegroundColorAttributeName: footColor,
         };
         [@"轻阅 · 本地阅读" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
     }];
-}
-
-+ (NSString *)shareTextWithQuote:(NSString *)quote book:(RDBookDetailModel *)book
-{
-    NSString *q = [quote stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (q.length > 200) {
-        q = [[q substringToIndex:200] stringByAppendingString:@"…"];
-    }
-    return [NSString stringWithFormat:@"「%@」\n——《%@》%@\n#轻阅 #读书摘句",
-            q.length ? q : @"好书值得一读",
-            book.title ?: @"未知",
-            book.author.length ? [NSString stringWithFormat:@" · %@", book.author] : @""];
 }
 
 + (NSString *)quoteFromText:(NSString *)text
@@ -267,7 +490,7 @@
     [self.view addSubview:self.closeButton];
 
     self.hintLabel = [[UILabel alloc] init];
-    self.hintLabel.text = @"长按下方文字选句,上方卡片实时更新;不选则用本页首句";
+    self.hintLabel.text = @"长按下方文字选句,背景随内容意境变化;不选则用本页首句";
     self.hintLabel.font = RDFont13;
     self.hintLabel.textColor = RDLightGrayColor;
     self.hintLabel.numberOfLines = 2;
@@ -328,13 +551,12 @@
         self.previewView.image = nil;
         return;
     }
-    RDShareCardGenre genre = [RDShareCardBuilder genreForBook:self.book];
-    self.previewView.image = [RDShareCardBuilder cardImageWithQuote:quote book:self.book genre:genre];
+    self.previewView.image = [RDShareCardBuilder cardImageWithQuote:quote book:self.book];
 }
 
 - (void)textViewDidChangeSelection:(UITextView *)textView
 {
-    //选中变化即重绘预览(1080×1440 绘制在真机 <10ms,可直绘)
+    //选中变化即重绘预览(1080×1440@1x 直绘 <10ms)
     [self p_refreshPreview];
 }
 
