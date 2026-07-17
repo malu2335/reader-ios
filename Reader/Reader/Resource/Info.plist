@@ -67,7 +67,7 @@
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.yuenov.reader.mobi</string>
+				<string>xyz.malu2335.reader.mobi</string>
 			</array>
 		</dict>
 	</array>
@@ -81,7 +81,7 @@
 			<key>UTTypeDescription</key>
 			<string>MOBI 电子书</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.yuenov.reader.mobi</string>
+			<string>xyz.malu2335.reader.mobi</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

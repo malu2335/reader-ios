@@ -5,6 +5,7 @@
 | 项 | 说明 |
 |----|------|
 | 应用名 | **轻阅**（`CFBundleDisplayName`） |
+| Bundle ID | `xyz.malu2335.reader` |
 | 语言 | Objective-C |
 | 最低系统 | iOS 15.0 |
 | 依赖管理 | CocoaPods |
