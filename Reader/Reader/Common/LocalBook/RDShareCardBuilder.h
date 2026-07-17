@@ -41,4 +41,10 @@ typedef NS_ENUM(NSInteger, RDShareCardGenre) {
 
 @end
 
+/// 阅读页内的选句分享面板:长按选中本页字句 → 生成金句卡片(仅图片)分享
+@interface RDQuoteShareController : UIViewController
+@property (nonatomic,strong) RDBookDetailModel *book;
+@property (nonatomic,copy) NSString *pageText;
+@end
+
 NS_ASSUME_NONNULL_END

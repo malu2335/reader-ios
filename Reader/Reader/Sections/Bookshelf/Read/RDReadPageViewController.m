@@ -1018,27 +1018,21 @@ static const NSUInteger kTranslateMaxInflight = 3;
     if (self.menuView.superview) {
         [self invokeMenu:self.pageViewController.viewControllers.firstObject];
     }
-    RDReadController *currentController = (RDReadController *)self.pageViewController.viewControllers.firstObject;
+    RDReadController *currentController = [self p_currentReadController];
     NSString *source = currentController.content.string;
     if (source.length == 0) {
         source = currentController.charpterContent.string;
     }
     if (source.length == 0) {
-        source = self.bookDetail.charpterModel.content;
+        [RDToastView showText:@"本页没有可分享的文字" delay:1.2 inView:self.view];
+        return;
     }
-    NSString *quote = [RDShareCardBuilder quoteFromText:source minSentenceLength:4 maxLength:60];
-    if (quote.length == 0) {
-        quote = [NSString stringWithFormat:@"正在阅读《%@》", self.bookDetail.title ?: @"好书"];
-    }
-
-    RDShareCardGenre genre = [RDShareCardBuilder genreForBook:self.bookDetail];
-    UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote book:self.bookDetail genre:genre];
-    NSString *text = [RDShareCardBuilder shareTextWithQuote:quote book:self.bookDetail];
-    NSArray *items = card ? @[text, card] : @[text];
-    UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
-    avc.popoverPresentationController.sourceView = self.view;
-    avc.popoverPresentationController.sourceRect = CGRectMake(self.view.width/2, self.view.height/2, 1, 1);
-    [self presentViewController:avc animated:YES completion:nil];
+    //选句面板:长按选中要分享的字句,生成卡片后仅以图片分享
+    RDQuoteShareController *picker = [[RDQuoteShareController alloc] init];
+    picker.book = self.bookDetail;
+    picker.pageText = source;
+    picker.modalPresentationStyle = UIModalPresentationPageSheet;
+    [self presentViewController:picker animated:YES completion:nil];
 }
 
 -(void)dictionaryAction

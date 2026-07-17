@@ -230,3 +230,115 @@
 }
 
 @end
+
+#pragma mark - 选句分享面板
+
+@interface RDQuoteShareController ()
+@property (nonatomic,strong) UILabel *titleLabel;
+@property (nonatomic,strong) UILabel *hintLabel;
+@property (nonatomic,strong) UITextView *textView;
+@property (nonatomic,strong) UIButton *shareButton;
+@property (nonatomic,strong) UIButton *closeButton;
+@end
+
+@implementation RDQuoteShareController
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    self.view.backgroundColor = RDSurfaceColor;
+
+    self.titleLabel = [[UILabel alloc] init];
+    self.titleLabel.text = @"分享金句";
+    self.titleLabel.font = RDTitleFont19;
+    self.titleLabel.textColor = RDBlackColor;
+    [self.view addSubview:self.titleLabel];
+
+    self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.closeButton setTitle:@"关闭" forState:UIControlStateNormal];
+    self.closeButton.titleLabel.font = RDFont16;
+    [self.closeButton setTitleColor:RDGrayColor forState:UIControlStateNormal];
+    [self.closeButton addTarget:self action:@selector(p_close) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.closeButton];
+
+    self.hintLabel = [[UILabel alloc] init];
+    self.hintLabel.text = @"长按下方文字选取要分享的句子;不选则自动摘取本页首句";
+    self.hintLabel.font = RDFont13;
+    self.hintLabel.textColor = RDLightGrayColor;
+    self.hintLabel.numberOfLines = 2;
+    [self.view addSubview:self.hintLabel];
+
+    self.textView = [[UITextView alloc] init];
+    self.textView.editable = NO;
+    self.textView.selectable = YES;
+    self.textView.backgroundColor = RDBackgroudColor;
+    self.textView.layer.cornerRadius = 12;
+    self.textView.textContainerInset = UIEdgeInsetsMake(14, 12, 14, 12);
+    NSMutableParagraphStyle *ps = [[NSMutableParagraphStyle alloc] init];
+    ps.lineSpacing = 8;
+    self.textView.attributedText = [[NSAttributedString alloc] initWithString:self.pageText ?: @""
+                                                                   attributes:@{
+        NSFontAttributeName: RDFont16,
+        NSForegroundColorAttributeName: RDBlackColor,
+        NSParagraphStyleAttributeName: ps,
+    }];
+    [self.view addSubview:self.textView];
+
+    self.shareButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.shareButton setTitle:@"生成卡片并分享" forState:UIControlStateNormal];
+    self.shareButton.titleLabel.font = RDBoldFont17;
+    [self.shareButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    self.shareButton.backgroundColor = RDAccentColor;
+    self.shareButton.layer.cornerRadius = 24;
+    [self.shareButton addTarget:self action:@selector(p_share) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.shareButton];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    CGFloat width = self.view.bounds.size.width;
+    CGFloat top = 18;
+    self.titleLabel.frame = CGRectMake(20, top, width - 100, 28);
+    self.closeButton.frame = CGRectMake(width - 76, top, 56, 28);
+    self.hintLabel.frame = CGRectMake(20, CGRectGetMaxY(self.titleLabel.frame) + 6, width - 40, 36);
+    CGFloat bottomSafe = self.view.safeAreaInsets.bottom;
+    CGFloat buttonHeight = 48;
+    self.shareButton.frame = CGRectMake(20, self.view.bounds.size.height - bottomSafe - buttonHeight - 14, width - 40, buttonHeight);
+    CGFloat textTop = CGRectGetMaxY(self.hintLabel.frame) + 10;
+    self.textView.frame = CGRectMake(20, textTop, width - 40, CGRectGetMinY(self.shareButton.frame) - textTop - 14);
+}
+
+- (void)p_close
+{
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)p_share
+{
+    NSString *quote = nil;
+    NSRange sel = self.textView.selectedRange;
+    if (sel.length > 0 && NSMaxRange(sel) <= self.textView.text.length) {
+        quote = [[self.textView.text substringWithRange:sel] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
+    if (quote.length == 0) {
+        quote = [RDShareCardBuilder quoteFromText:self.pageText minSentenceLength:4 maxLength:60];
+    }
+    if (quote.length == 0) {
+        [RDToastView showText:@"本页没有可分享的文字" delay:1.2 inView:self.view];
+        return;
+    }
+    RDShareCardGenre genre = [RDShareCardBuilder genreForBook:self.book];
+    UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote book:self.book genre:genre];
+    if (!card) {
+        [RDToastView showText:@"卡片生成失败" delay:1.2 inView:self.view];
+        return;
+    }
+    //只分享图片,避免部分目标应用优先取文本
+    UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:@[card] applicationActivities:nil];
+    avc.popoverPresentationController.sourceView = self.shareButton;
+    avc.popoverPresentationController.sourceRect = self.shareButton.bounds;
+    [self presentViewController:avc animated:YES completion:nil];
+}
+
+@end

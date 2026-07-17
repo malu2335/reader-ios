@@ -15,11 +15,9 @@
 #import "LEEAlert.h"
 #import "RDCharpterDataManager.h"
 #import "RDLocalBookManager.h"
-#import "RDShareCardBuilder.h"
 #import "RDCharpterModel.h"
 #import "RDBookmarkManager.h"
 #import "RDHistoryRecordManager.h"
-#import "RDReplaceRule.h"
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
 #define kShelfTopPad 14.f
@@ -242,15 +240,6 @@
     })
     .LeeAddAction(^(LEEAction *action) {
         action.type = LEEActionTypeDefault;
-        action.title = @"分享金句卡片";
-        action.titleColor = RDBlackColor;
-        action.font = RDBoldFont17;
-        action.clickBlock = ^{
-            [weakSelf p_shareQuoteCard:book];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDefault;
         action.title = @"修改书名";
         action.titleColor = RDBlackColor;
         action.font = RDBoldFont17;
@@ -299,48 +288,6 @@
     if (cover) {
         [items addObject:cover];
     }
-    UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
-    UIViewController *vc = [RDUtilities getCurrentVC];
-    avc.popoverPresentationController.sourceView = vc.view;
-    avc.popoverPresentationController.sourceRect = CGRectMake(vc.view.width/2, vc.view.height/2, 1, 1);
-    [vc presentViewController:avc animated:YES completion:nil];
-}
-
-- (void)p_shareQuoteCard:(RDBookDetailModel *)book
-{
-    // 书架传入的是轻量投影(charpterModel 为空);按阅读记录去章节表取「读到位置」附近的正文截金句
-    NSString *source = nil;
-    RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId];
-    NSInteger cid = record.charpterModel.charpterId;
-    if (cid <= 0) {
-        cid = [RDCharpterDataManager getFirstCharpterIdWirhBookId:book.bookId];
-    }
-    if (cid > 0) {
-        RDCharpterModel *chapter = [RDCharpterDataManager getCharpterWithBookId:book.bookId charpterId:cid];
-        NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:chapter.content ?: @""];
-        if (cleaned.length > 0) {
-            // charOffset 基于「章节名\n+净化正文」的排版文本,先补齐前缀再取位
-            NSString *display = [NSString stringWithFormat:@"%@\n%@", chapter.name ?: @"", cleaned];
-            NSInteger offset = MIN(MAX(0, record.charOffset), (NSInteger)display.length - 1);
-            NSRange safe = [display rangeOfComposedCharacterSequenceAtIndex:offset];
-            source = [display substringFromIndex:safe.location];
-            if (source.length > 600) {
-                source = [source substringToIndex:600];
-            }
-        }
-    }
-    if (source.length == 0) {
-        source = book.desc;
-    }
-    NSString *quote = [RDShareCardBuilder quoteFromText:source minSentenceLength:6 maxLength:40];
-    if (quote.length == 0) {
-        quote = [NSString stringWithFormat:@"正在阅读《%@》，值得一读。", book.title ?: @"好书"];
-    }
-
-    RDShareCardGenre genre = [RDShareCardBuilder genreForBook:book];
-    UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote book:book genre:genre];
-    NSString *text = [RDShareCardBuilder shareTextWithQuote:quote book:book];
-    NSArray *items = card ? @[text, card] : @[text];
     UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
     UIViewController *vc = [RDUtilities getCurrentVC];
     avc.popoverPresentationController.sourceView = vc.view;
