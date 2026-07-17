@@ -111,7 +111,11 @@
         body = @"好书值得分享。";
     }
 
-    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
+    // 固定 1x:1080×1440 已是输出像素;默认跟随屏幕倍率会在 3x 机型渲出 3240×4320 的巨图
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+    format.scale = 1;
+    format.opaque = YES;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
     return [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
         CGContextRef c = ctx.CGContext;
         // 渐变背景
@@ -367,10 +371,11 @@
         [RDToastView showText:@"本页没有可分享的文字" delay:1.2 inView:self.view];
         return;
     }
-    //落成 png 文件后以 fileURL 分享:预览带缩略图,微信等目标按图片接收
-    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"quote_card.png"];
-    NSData *png = UIImagePNGRepresentation(card);
-    if (!png || ![png writeToFile:path atomically:YES]) {
+    //落成 jpg 文件后以 fileURL 分享:预览带缩略图,微信等目标按图片接收;
+    //渐变底的卡片 PNG 压缩极差,JPEG 0.88 质量肉眼无差、体积小一个量级
+    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"quote_card.jpg"];
+    NSData *jpg = UIImageJPEGRepresentation(card, 0.88);
+    if (!jpg || ![jpg writeToFile:path atomically:YES]) {
         [RDToastView showText:@"卡片生成失败" delay:1.2 inView:self.view];
         return;
     }
