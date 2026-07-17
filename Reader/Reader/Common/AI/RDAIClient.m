@@ -420,8 +420,18 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
               profile:(RDAIConfigProfile *)profile
            completion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion
 {
-    // 取消上一次,避免连点乱序
-    [self cancelInFlightTranslate];
+    [self translateText:text profile:profile concurrent:NO completion:completion];
+}
+
+- (void)translateText:(NSString *)text
+              profile:(RDAIConfigProfile *)profile
+           concurrent:(BOOL)concurrent
+           completion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion
+{
+    if (!concurrent) {
+        // 前台/手动:取消上一次,避免连点乱序
+        [self cancelInFlightTranslate];
+    }
     NSError *buildError = nil;
     NSURLRequest *request = [[self class] requestForProfile:profile text:text error:&buildError];
     if (!request) {
@@ -431,19 +441,24 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         return;
     }
     id<RDAIHTTPTransport> transport = self.transport ?: [[RDAIURLSessionTransport alloc] init];
-    NSUInteger generation = self.translateGeneration;
-    self.isTranslating = YES;
+    NSUInteger generation = concurrent ? 0 : self.translateGeneration;
+    if (!concurrent) {
+        self.isTranslating = YES;
+    }
     __weak typeof(self) weakSelf = self;
     id token = [transport sendRequest:request completion:^(NSData *data, NSHTTPURLResponse *response, NSError *error) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self || generation != self.translateGeneration) {
-            return; // 已取消/被替换
+        if (!concurrent) {
+            if (!self || generation != self.translateGeneration) {
+                return; // 已取消/被替换
+            }
+            self.inFlightToken = nil;
+            self.isTranslating = NO;
+        } else if (!self) {
+            return;
         }
-        self.inFlightToken = nil;
-        self.isTranslating = NO;
         if (error) {
             if ([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) {
-                // 取消时也回调,便于 UI 关掉 loading
                 if (completion) {
                     completion(nil, error);
                 }
@@ -482,7 +497,6 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
                         bodyHint = [NSString stringWithFormat:@": %@", raw];
                     }
                 }
-                // 不把超长 body 抛给 UI
                 httpErr = [NSError errorWithDomain:kRDAIErrorDomain
                                               code:response.statusCode
                                           userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"翻译服务返回错误(%ld)%@", (long)response.statusCode, bodyHint]}];
@@ -498,7 +512,9 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
             completion(result, result ? nil : parseError);
         }
     }];
-    self.inFlightToken = token;
+    if (!concurrent) {
+        self.inFlightToken = token;
+    }
 }
 
 - (NSString *)translateTextSync:(NSString *)text profile:(RDAIConfigProfile *)profile error:(NSError **)error

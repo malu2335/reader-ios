@@ -37,12 +37,18 @@ typedef void (^RDAITransportCompletion)(NSData * _Nullable data, NSHTTPURLRespon
 
 + (instancetype)sharedClient;
 
-/// 取消进行中的翻译
+/// 取消「可取消」类进行中的翻译(Replace 策略)
 - (void)cancelInFlightTranslate;
 
-/// 统一翻译入口;若已有进行中请求会先取消再发新请求(由调用方门闩可阻止)
+/// 统一翻译入口;默认会取消上一次 Replace 请求
 - (void)translateText:(NSString *)text
               profile:(RDAIConfigProfile *)profile
+           completion:(void (^)(NSString * _Nullable translated, NSError * _Nullable error))completion;
+
+/// concurrent=YES:不取消其他请求,适合翻页后台预取;不置 isTranslating 门闩
+- (void)translateText:(NSString *)text
+              profile:(RDAIConfigProfile *)profile
+           concurrent:(BOOL)concurrent
            completion:(void (^)(NSString * _Nullable translated, NSError * _Nullable error))completion;
 
 - (nullable NSString *)translateTextSync:(NSString *)text

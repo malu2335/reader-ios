@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RDReadTranslateHelper : NSObject
 
 /// 发起翻译;成功后 completion 回主线程 pairs(可能为空时用 fullTranslation 兜底)
-/// quiet=YES 时不弹大 loading(翻页自动翻译用),失败仍 toast
+/// quiet=YES: 无 loading、并发后台请求(翻页/预取),不打断阅读
 + (void)translateFromHost:(UIViewController *)host
                  pageText:(nullable NSString *)pageText
               chapterText:(nullable NSString *)chapterText

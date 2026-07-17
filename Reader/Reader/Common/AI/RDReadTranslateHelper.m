@@ -73,42 +73,33 @@
                     quiet:(BOOL)quiet
                completion:(void (^)(NSArray<RDTranslatePair *> *, NSString *, NSError *))completion
 {
-    if (!host) {
+    if (!host && !quiet) {
         return;
-    }
-    // 进行中:取消旧请求,继续翻页自动译当前页(不 toast 打断)
-    if ([RDAIClient sharedClient].isTranslating) {
-        if (!quiet) {
-            [self p_toast:@"正在切换翻译…" on:host];
-        }
-        [[RDAIClient sharedClient] cancelInFlightTranslate];
     }
 
     RDAIConfigProfile *profile = [[RDAIConfigStore sharedInstance] activeProfile];
     if (!profile.isUsable) {
-        if (quiet) {
-            [self p_toast:@"请先配置 AI" on:host];
-            if (completion) {
-                completion(nil, nil, [NSError errorWithDomain:@"RDTranslate" code:10 userInfo:@{NSLocalizedDescriptionKey: @"未配置 AI"}]);
-            }
-            return;
+        if (!quiet) {
+            [LEEAlert alert].config
+            .LeeTitle(@"未配置 AI")
+            .LeeContent(@"请先在设置中添加 AI 翻译配置,并填写 API Key、模型与 Base URL。")
+            .LeeAddAction(^(LEEAction *action) {
+                action.type = LEEActionTypeCancel;
+                action.title = @"取消";
+                action.titleColor = RDGrayColor;
+            })
+            .LeeAddAction(^(LEEAction *action) {
+                action.title = @"去设置";
+                action.titleColor = [UIColor systemBlueColor];
+                action.clickBlock = ^{
+                    [RDReadTranslateHelper p_openAISettingsFrom:host];
+                };
+            })
+            .LeeShow();
         }
-        [LEEAlert alert].config
-        .LeeTitle(@"未配置 AI")
-        .LeeContent(@"请先在设置中添加 AI 翻译配置,并填写 API Key、模型与 Base URL。")
-        .LeeAddAction(^(LEEAction *action) {
-            action.type = LEEActionTypeCancel;
-            action.title = @"取消";
-            action.titleColor = RDGrayColor;
-        })
-        .LeeAddAction(^(LEEAction *action) {
-            action.title = @"去设置";
-            action.titleColor = [UIColor systemBlueColor];
-            action.clickBlock = ^{
-                [RDReadTranslateHelper p_openAISettingsFrom:host];
-            };
-        })
-        .LeeShow();
+        if (completion) {
+            completion(nil, nil, [NSError errorWithDomain:@"RDTranslate" code:10 userInfo:@{NSLocalizedDescriptionKey: @"未配置 AI"}]);
+        }
         return;
     }
 
@@ -130,18 +121,13 @@
         return;
     }
 
-    RDBaseViewController *base = [host isKindOfClass:RDBaseViewController.class] ? (RDBaseViewController *)host : nil;
-    if (base && !quiet) {
+    // quiet=后台:不挡 UI、不 cancel 其他预取; 非 quiet=手动:可显示 loading
+    RDBaseViewController *base = (!quiet && [host isKindOfClass:RDBaseViewController.class]) ? (RDBaseViewController *)host : nil;
+    if (base) {
         [base showLoading:@"正在翻译..." cancel:^{
             [[RDAIClient sharedClient] cancelInFlightTranslate];
             [base hideLoading];
             [RDToastView showText:@"已取消" delay:1.0 inView:host.view];
-        }];
-    } else if (base && quiet) {
-        // 翻页自动译:轻量提示,不挡阅读
-        [base showLoading:@"译…" cancel:^{
-            [[RDAIClient sharedClient] cancelInFlightTranslate];
-            [base hideLoading];
         }];
     }
 
@@ -153,7 +139,8 @@
                         @"下一句继续 [S] ... [T] ...\n"
                         @"保持句序与原文一致。\n\n正文:\n%@", text];
 
-    [[RDAIClient sharedClient] translateText:prompt profile:profile completion:^(NSString *translated, NSError *error) {
+    BOOL concurrent = quiet; // 后台并发,不取消其它页
+    [[RDAIClient sharedClient] translateText:prompt profile:profile concurrent:concurrent completion:^(NSString *translated, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (base) {
                 [base hideLoading];
