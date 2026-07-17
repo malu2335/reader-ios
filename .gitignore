@@ -87,6 +87,11 @@ AppStoreScreenshots/
 *.xcarchive/
 export/
 
+# 本地文档与 agent 说明（不推远端）
+docs/
+CLAUDE.md
+Claude.md
+
 # Runtime secrets & local data (never commit)
 **/*apikey*
 **/*secret*
