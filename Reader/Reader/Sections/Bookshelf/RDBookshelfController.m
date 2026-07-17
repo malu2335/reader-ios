@@ -28,6 +28,8 @@
 @property (nonatomic,strong) NSMutableArray *bookSource;
 @property (nonatomic,assign) BOOL didApplyPrefetch;
 @property (nonatomic,assign) BOOL isReloading;
+/// 运行期间又有新的刷新请求(如批量导入的后续通知)时置位,不丢失该请求
+@property (nonatomic,assign) BOOL pendingReload;
 @property (nonatomic,assign) BOOL skipNextAppearReload;
 @property (nonatomic,strong) RDBookDetailModel *pendingCoverBook;
 @property (nonatomic,assign) NSUInteger pendingCoverRequestVersion;
@@ -494,29 +496,47 @@
 -(void)p_reload
 {
     if (self.isReloading) {
+        // 已有刷新在跑:记下"还需要再刷一次",完成后自动补跑,不丢失这次请求(P1-09)。
+        // 例如批量导入时前一本书的通知触发的刷新还没完成,后一本书的通知就到了。
+        self.pendingReload = YES;
         return;
     }
     self.isReloading = YES;
-    // 读库放到后台,主线程只做组装与刷新
+    self.pendingReload = NO;
+    // 读库放到后台,主线程只做组装与刷新;代次保证较慢完成的旧一轮不会覆盖更新的结果。
     NSInteger columns = kItemCount;
+    NSUInteger generation = [RDBookshelfPrefetch beginRefreshGeneration];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSArray *books = [RDReadRecordManager getBookshelfDisplayList];
         [RDLocalBookManager preparePDFCoversForBooks:books];
-        NSArray *rows = nil;
-        NSArray *groups = nil;
-        [RDBookshelfPrefetch buildRowsFromBooks:books columns:columns dataSource:&rows groups:&groups];
-        [RDBookshelfPrefetch updateCacheWithBooks:books columns:columns];
+        [RDBookshelfPrefetch commitBooks:books columns:columns generation:generation];
         dispatch_async(dispatch_get_main_queue(), ^{
             self.isReloading = NO;
             if (!self.isViewLoaded) {
+                if (self.pendingReload) {
+                    self.pendingReload = NO;
+                    [self p_reload];
+                }
                 return;
             }
+            // 无论这份是否被更新的一轮抢先提交,dataSourceRows/bookGroups 都是当前
+            // 已提交的最新快照,直接读出来展示即可。
+            NSArray *rows = [RDBookshelfPrefetch dataSourceRows];
+            NSArray *groups = [RDBookshelfPrefetch bookGroups];
             [self.dataSource removeAllObjects];
             [self.bookSource removeAllObjects];
-            [self.bookSource addObjectsFromArray:groups];
-            [self.dataSource addObjectsFromArray:rows];
+            if (groups) {
+                [self.bookSource addObjectsFromArray:groups];
+            }
+            if (rows) {
+                [self.dataSource addObjectsFromArray:rows];
+            }
             self.didApplyPrefetch = YES;
             [self.tableView reloadData];
+            if (self.pendingReload) {
+                self.pendingReload = NO;
+                [self p_reload];
+            }
         });
     });
 }

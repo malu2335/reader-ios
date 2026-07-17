@@ -17,7 +17,16 @@
 {
     // legado 风格净化:分页前应用启用中的替换规则
     NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:content ?: @""];
-    
+
+    // 分页目前是主线程同步 CoreText 排版(P1-11);正常章节耗时很短,但异常解析或恶意文件
+    // 可能产生几 MB 的单"章",一次性排版会长时间阻塞主线程甚至触发 watchdog 强杀。
+    // 这里先加一道硬上限兜底,真正的后台可取消分页是更大的架构改动,留作后续。
+    static const NSUInteger kMaxPaginateCharacters = 300000;
+    if (cleaned.length > kMaxPaginateCharacters) {
+        NSRange safe = [cleaned rangeOfComposedCharacterSequencesForRange:NSMakeRange(0, kMaxPaginateCharacters)];
+        cleaned = [[cleaned substringWithRange:safe] stringByAppendingString:@"\n\n(内容过长,本章已在此截断)"];
+    }
+
     NSMutableArray *pageArray = [NSMutableArray array];
     CTFramesetterRef frameSetter;
     CGPathRef path;

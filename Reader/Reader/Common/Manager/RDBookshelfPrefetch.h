@@ -26,14 +26,23 @@ extern NSString * const RDBookshelfPrefetchDidFinishNotification;
 /// 在后台打开数据库 + 拉书架;complete 在主线程
 + (void)runWithComplete:(nullable void(^)(void))complete;
 
-/// 失效缓存(导入/删除后)
+/// 失效缓存(导入/删除后);同时推进代次,尚在进行中的旧快照之后不能再提交覆盖
 + (void)invalidate;
 
 /// 同步用最新库刷新缓存(后台),complete 主线程
 + (void)refreshAsync:(nullable void(^)(void))complete;
 
-/// 用已有 books 更新内存缓存(主线程/后台均可)
-+ (void)updateCacheWithBooks:(NSArray <RDBookDetailModel *>*)books columns:(NSInteger)columns;
+/// 领取一个刷新代次;必须在发起真正的慢读(DB 查询/PDF 封面回填)之前调用。
+/// 多个调用方(controller 自身的 p_reload、prefetch 的后台刷新)各自独立发起刷新时,
+/// 用代次保证"更晚开始的一次"最终生效,较慢完成的旧一轮不会在之后覆盖新结果。
++ (NSUInteger)beginRefreshGeneration;
+
+/// 尝试用给定代次提交 books 快照;仅当该代次仍是最新时才真正写入缓存并返回 YES,
+/// 否则说明已有更新的刷新在此期间开始,本次结果作废,返回 NO(调用方仍可放心读取
+/// dataSourceRows/bookGroups 拿到最新已提交的快照)。
++ (BOOL)commitBooks:(NSArray <RDBookDetailModel *>*)books
+            columns:(NSInteger)columns
+         generation:(NSUInteger)generation;
 
 /// 按列数组装 dataSource / groups(columns 一般为 3 或 5)
 + (void)buildRowsFromBooks:(NSArray <RDBookDetailModel *>*)books

@@ -5,6 +5,46 @@
 基线：`master@201ef75`  
 审查对象：当前工作区完整状态（包含尚未提交的 PDF 首页封面、手动封面和书籍信息修改相关改动）
 
+> **修复记录（2026-07-17 之后，同分支）**
+>
+> 已修复并通过 AIHarness / 独立 fixtest / 无签名模拟器 Debug 构建验证（提交 `19038e4`，版本 1.2.1）：
+>
+> - **P1-01** 备份恢复路径穿越：`localPath`/`coverImg` 规约为纯文件名并校验落盘目标仍在书籍目录内
+> - **P1-02** ZIP 资源预算：条目数/单条目/累计解压量/压缩比上限 + CRC32 校验；MOBI 两处 32 位相加溢出改
+>   64 位判断；EPUB 空数组 `removeLastObject` 崩溃修复；TXT 章节上限提高且超限内容并入末章而非静默丢弃
+> - **P1-03** AI profile 备份劫持：恢复时 profileId 一律重新生成，密钥只按 `(provider, 规范化 baseURL)`
+>   内容匹配重新绑定，不再信任清单里的 id；`activeProfileId` 不再盲目沿用备份声明值
+> - **P1-04** 删除/重导竞态：`removeLocalBook` 的章节清理从无关全局队列改到 import 串行队列
+> - **P1-06** 备份静默失败：源文件缺失的书不再进清单；可选内容写入失败作为警告随成功结果一起展示
+> - **P1-08** 清空书架遗漏：在线书分支补齐与单本删除一致的书签清理
+> - **P1-09** 书架刷新竞态：`RDBookshelfController.isReloading` 改 `pendingReload` 排队模式；
+>   `RDBookshelfPrefetch` 静态缓存补齐 `@synchronized` 与递增代次，旧快照不能覆盖新快照
+> - **P1-10** 翻译缓存 identity 错误：缓存 key 从页码改为原文内容哈希；缓存值改存结构化句对，
+>   展示时按当前字号/字体/主题重新渲染
+> - **P1-12** 隐私清单未申报：补充 `NSUserDefaults`（CA92.1）与文件元数据（3B52.1）Required Reason
+> - **P2-01** `viewDisappear:` 拼写错误改为 `viewWillDisappear:`
+>
+> 部分缓解（未完整解决，原因见下）：
+>
+> - **P1-11** 大章节主线程分页：仅加了 30 万字符硬上限防御极端/恶意超长单章阻塞主线程或触发
+>   watchdog；真正的后台可取消分页涉及 `UIPageViewControllerDataSource` 的同步契约（4/6 调用点结构上
+>   必须同步返回），需要先补齐 XCUITest 才能安全重构翻页交互，本次未做。
+>
+> 评估后判断本次不适合动手、留待专门排期（原因见下）：
+>
+> - **P1-13 / P2-17** 遗留在线模块物理删除：实际排查发现死代码簇比报告估计的「~51 个文件」更大，
+>   达 **118 个文件**（`Sections/Discover`、`Library`、`Search`、`Bookshelf/BookDetail`、
+>   `Bookshelf/Catalog`、`Bookshelf/Read/View/Download`、整个 `Service/` 目录，以及
+>   `RDBookshelfSearchCell` 等散落在 Bookshelf 目录下但已不可达的文件），且彼此交叉引用；完整安全删除
+>   需要先做一次完整可达性分析、同步调整 Podfile（移除 AFNetworking/YTKNetwork）并重新 `pod install`，
+>   人工编辑 pbxproj 移除百余个文件引用风险较高，建议单独开分支、每步都跑一次完整构建验证，而不是作为
+>   本轮众多修复之一顺带处理。另外即使完整执行，P1-13 仍不会完全解决——`MBProgressHUD`/`SDWebImage`
+>   是书架封面与全局 HUD 仍在使用的依赖，其隐私清单缺失需要单独的版本升级评估，与本项删除无关。
+> - **P1-05**（备份恢复整体原子性/staging）、**P1-07**（WCDB 全量错误传播与迁移完成标志）：本轮修复
+>   覆盖了两者的部分具体场景（备份创建诚实性、恢复路径安全性），但未建立报告建议的统一
+>   `RDLibraryMutationCoordinator`/`Result` 错误模型/迁移状态机,这两项的完整方案仍是独立的架构性工作。
+> - 其余 P2/P3 与第 12 节「需要进一步验证」事项（真机权限、服务端契约、CI/Archive/SBOM 等）现状不变。
+
 ## 1. 审查边界与方法
 
 本次审查覆盖 UIKit 前端、客户端业务层、WCDB/SQLite 持久化、文件生命周期、备份恢复、AI 网络、遗留在线接口、权限/隐私、构建发布和测试。采用了静态调用链追踪、并发与失败路径推演、数据模型/索引检查、依赖与发布配置核对，以及现有测试和无签名模拟器构建验证。
