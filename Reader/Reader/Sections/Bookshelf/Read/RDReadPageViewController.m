@@ -83,8 +83,10 @@
 
 @property (nonatomic,assign) NSInteger userPages;   //用户翻到第几页，用来记录展示广告的页数
 
-/// 翻译模式:开启后每页自动出译文(后台,不挡翻页)
-@property (nonatomic,assign) BOOL translateModeEnabled;
+/// 后台翻译会话:关闭显示后仍继续预译缓存
+@property (nonatomic,assign) BOOL translateBackgroundEnabled;
+/// 是否在正文区展示译文
+@property (nonatomic,assign) BOOL translateDisplayEnabled;
 /// 译文缓存 key=bookId_chapterId_page
 @property (nonatomic,strong) NSMutableDictionary <NSString *, NSAttributedString *>*translateCache;
 /// 正在后台请求中的 key,防重复打
@@ -776,6 +778,7 @@
 //返回
 -(void)backAction
 {
+    [self p_stopTranslateBackground];
     [self.navigationController popViewControllerAnimated:YES];
 }
 
@@ -824,10 +827,10 @@
     return [self p_translateKeyForBook:self.bookDetail.bookId chapter:c.charpterModel.charpterId page:c.page];
 }
 
-/// 翻译模式:有缓存立刻套;无缓存先显示原文,后台拉译文再插入(不挡翻页)
+/// 后台会话开启时:有缓存且「显示开」则套用;始终后台拉当前页+邻页缓存
 - (void)p_applyTranslateModeIfNeeded
 {
-    if (!self.translateModeEnabled) {
+    if (!self.translateBackgroundEnabled) {
         return;
     }
     RDReadController *page = [self p_currentReadController];
@@ -839,28 +842,42 @@
         return;
     }
     NSAttributedString *cached = self.translateCache[key];
-    if (cached.length) {
-        [page showInlineTranslation:cached];
+    if (self.translateDisplayEnabled) {
+        if (cached.length) {
+            [page showInlineTranslation:cached];
+        } else {
+            // 显示开但无缓存:先原文,后台译完再插
+            if (page.showingInlineTranslation) {
+                [page showInlineTranslation:nil];
+            }
+            [self p_requestTranslateKey:key
+                               pageText:page.content.string
+                            chapterText:page.charpterContent.string
+                             rawContent:page.charpterModel.content
+                             forDisplay:YES
+                                  quiet:YES];
+        }
     } else {
-        // 保持原文可见,后台译完再替换
+        // 仅后台:不展示,继续译当前页写入缓存
         if (page.showingInlineTranslation) {
             [page showInlineTranslation:nil];
         }
-        [self p_requestTranslateKey:key
-                           pageText:page.content.string
-                        chapterText:page.charpterContent.string
-                         rawContent:page.charpterModel.content
-                         forDisplay:YES
-                              quiet:YES];
+        if (!cached.length) {
+            [self p_requestTranslateKey:key
+                               pageText:page.content.string
+                            chapterText:page.charpterContent.string
+                             rawContent:page.charpterModel.content
+                             forDisplay:NO
+                                  quiet:YES];
+        }
     }
-    // 预取相邻页,翻过去时尽量已有缓存
     [self p_prefetchAdjacentTranslationsFrom:page];
 }
 
 /// 预取当前页 ±1(同章),纯后台写缓存
 - (void)p_prefetchAdjacentTranslationsFrom:(RDReadController *)page
 {
-    if (!self.translateModeEnabled || !page.pages.count) {
+    if (!self.translateBackgroundEnabled || !page.pages.count) {
         return;
     }
     NSArray *pages = page.pages;
@@ -892,7 +909,7 @@
     }
 }
 
-/// forDisplay=YES 时,若仍是当前页则套用 UI;否则只写缓存
+/// forDisplay 且「显示开」且仍是当前页 → 套 UI;否则只写缓存(后台继续)
 - (void)p_requestTranslateKey:(NSString *)key
                      pageText:(NSString *)pageText
                   chapterText:(NSString *)chapterText
@@ -900,11 +917,11 @@
                    forDisplay:(BOOL)forDisplay
                         quiet:(BOOL)quiet
 {
-    if (key.length == 0 || !self.translateModeEnabled) {
+    if (key.length == 0 || !self.translateBackgroundEnabled) {
         return;
     }
     if (self.translateCache[key].length) {
-        if (forDisplay) {
+        if (forDisplay && self.translateDisplayEnabled) {
             RDReadController *cur = [self p_currentReadController];
             if ([[self p_translateKeyForController:cur] isEqualToString:key]) {
                 [cur showInlineTranslation:self.translateCache[key]];
@@ -929,7 +946,8 @@
             return;
         }
         [self.translatePendingKeys removeObject:key];
-        if (!self.translateModeEnabled) {
+        // 关闭「显示」后仍写缓存;仅彻底停止后台会话才丢弃
+        if (!self.translateBackgroundEnabled) {
             return;
         }
         if (error || (!pairs.count && fullTranslation.length == 0)) {
@@ -942,15 +960,27 @@
             return;
         }
         self.translateCache[key] = attr;
-        // 仅当仍停留在该页时插入 UI(后台完成不打扰已翻走的页)
-        RDReadController *cur = [self p_currentReadController];
-        if (cur && [[self p_translateKeyForController:cur] isEqualToString:key]) {
-            [cur showInlineTranslation:attr];
+        // 仅显示开 + 仍在该页 → 插入正文
+        if (self.translateDisplayEnabled) {
+            RDReadController *cur = [self p_currentReadController];
+            if (cur && [[self p_translateKeyForController:cur] isEqualToString:key]) {
+                [cur showInlineTranslation:attr];
+            }
         }
         if (!quiet) {
-            [RDToastView showText:@"翻译模式已开 · 后台同步 · 翻页不等待 · 再点「译」关闭" delay:1.8 inView:self.view];
+            [RDToastView showText:@"翻译已开 · 隐藏后后台仍继续 · 再点两次可全停" delay:2.0 inView:self.view];
         }
     }];
+}
+
+- (void)p_stopTranslateBackground
+{
+    self.translateBackgroundEnabled = NO;
+    self.translateDisplayEnabled = NO;
+    [self.translatePendingKeys removeAllObjects];
+    // 不 cancel 网络:让已发出的请求写完缓存也可;若需立刻停可 cancel
+    RDReadController *cur = [self p_currentReadController];
+    [cur showInlineTranslation:nil];
 }
 
 -(void)translateAction
@@ -963,26 +993,34 @@
         return;
     }
 
-    // 再点「译」→ 关闭翻译模式
-    if (self.translateModeEnabled) {
-        self.translateModeEnabled = NO;
-        [self.translatePendingKeys removeAllObjects];
+    // ① 显示中 → 隐藏译文,后台继续译/预取
+    if (self.translateBackgroundEnabled && self.translateDisplayEnabled) {
+        self.translateDisplayEnabled = NO;
         [currentController showInlineTranslation:nil];
-        [RDToastView showText:@"已关闭翻译模式" delay:1.0 inView:self.view];
+        [RDToastView showText:@"已隐藏译文 · 后台继续翻译" delay:1.5 inView:self.view];
+        // 继续当前+邻页后台
+        [self p_applyTranslateModeIfNeeded];
         return;
     }
 
-    // 开启:先出原文,后台译;并预取邻页
-    self.translateModeEnabled = YES;
+    // ② 仅后台中 → 完全停止
+    if (self.translateBackgroundEnabled && !self.translateDisplayEnabled) {
+        [self p_stopTranslateBackground];
+        [RDToastView showText:@"已停止后台翻译" delay:1.2 inView:self.view];
+        return;
+    }
+
+    // ③ 全关 → 开启显示+后台
+    self.translateBackgroundEnabled = YES;
+    self.translateDisplayEnabled = YES;
     NSString *key = [self p_translateKeyForController:currentController];
     NSAttributedString *cached = self.translateCache[key];
     if (cached.length) {
         [currentController showInlineTranslation:cached];
-        [RDToastView showText:@"翻译模式已开 · 后台同步 · 翻页不等待" delay:1.5 inView:self.view];
+        [RDToastView showText:@"翻译已开 · 翻页后台同步 · 点「译」可隐藏" delay:1.6 inView:self.view];
         [self p_prefetchAdjacentTranslationsFrom:currentController];
         return;
     }
-    // 手动开启时 quiet=NO 可显示一次 loading;完成后预取
     __weak typeof(self) weakSelf = self;
     [self p_requestTranslateKey:key
                        pageText:currentController.content.string
@@ -990,7 +1028,6 @@
                      rawContent:currentController.charpterModel.content
                      forDisplay:YES
                           quiet:NO];
-    // 同时预取邻页(真正 quiet)
     dispatch_async(dispatch_get_main_queue(), ^{
         [weakSelf p_prefetchAdjacentTranslationsFrom:currentController];
     });
@@ -1261,6 +1298,9 @@
 -(void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    self.translateBackgroundEnabled = NO;
+    self.translateDisplayEnabled = NO;
+    [self.translatePendingKeys removeAllObjects];
     [self p_saveRecord];
     if ([RDSpeechManager sharedInstance].active) {
         [RDSpeechManager sharedInstance].delegate = nil;
