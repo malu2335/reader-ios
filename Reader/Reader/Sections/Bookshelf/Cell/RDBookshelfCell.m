@@ -19,6 +19,7 @@
 #import "RDCharpterModel.h"
 #import "RDBookmarkManager.h"
 #import "RDHistoryRecordManager.h"
+#import "RDReplaceRule.h"
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
 #define kShelfTopPad 14.f
@@ -186,7 +187,7 @@
             RDBookshelfCoverView *view = [[RDBookshelfCoverView alloc] init];
             [view addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)]];
             UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
-            lp.minimumPressDuration = 0.45;
+            lp.minimumPressDuration = 0.22;
             [view addGestureRecognizer:lp];
             [array addObject:view];
         }
@@ -307,8 +308,27 @@
 
 - (void)p_shareQuoteCard:(RDBookDetailModel *)book
 {
-    // 取当前章节内容(书架轻量模型通常为空,退化到简介)前一段作为金句
-    NSString *source = book.charpterModel.content;
+    // 书架传入的是轻量投影(charpterModel 为空);按阅读记录去章节表取「读到位置」附近的正文截金句
+    NSString *source = nil;
+    RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId];
+    NSInteger cid = record.charpterModel.charpterId;
+    if (cid <= 0) {
+        cid = [RDCharpterDataManager getFirstCharpterIdWirhBookId:book.bookId];
+    }
+    if (cid > 0) {
+        RDCharpterModel *chapter = [RDCharpterDataManager getCharpterWithBookId:book.bookId charpterId:cid];
+        NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:chapter.content ?: @""];
+        if (cleaned.length > 0) {
+            // charOffset 基于「章节名\n+净化正文」的排版文本,先补齐前缀再取位
+            NSString *display = [NSString stringWithFormat:@"%@\n%@", chapter.name ?: @"", cleaned];
+            NSInteger offset = MIN(MAX(0, record.charOffset), (NSInteger)display.length - 1);
+            NSRange safe = [display rangeOfComposedCharacterSequenceAtIndex:offset];
+            source = [display substringFromIndex:safe.location];
+            if (source.length > 600) {
+                source = [source substringToIndex:600];
+            }
+        }
+    }
     if (source.length == 0) {
         source = book.desc;
     }
