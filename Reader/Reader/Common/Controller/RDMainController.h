@@ -15,4 +15,7 @@ typedef NS_ENUM(NSInteger,RDMainBarItemType){
 
 @interface RDMainController : RDVTabBarController <RDVTabBarControllerDelegate>
 
+/// 启动后预加载设置页 view,避免首次点 Tab 卡顿
+- (void)preloadSettingIfNeeded;
+
 @end

@@ -42,16 +42,23 @@
 }
 
 -(void)initSetup{
-    // 首屏只创建书架,设置页延后到首次点 Tab 时再实例化(见 tabBarController:shouldSelectViewController:)
+    // 设置页与书架一并创建,避免首次点 Tab 时替换 VC + 重建 tab 栏导致卡顿
     RDBookshelfController *bookshelfController = [[RDBookshelfController alloc] init];
-    UIViewController *settingsPlaceholder = [[UIViewController alloc] init];
-    settingsPlaceholder.view.backgroundColor = RDBackgroudColor;
-    self.viewControllers = @[bookshelfController, settingsPlaceholder];
+    RDSettingController *settingController = [[RDSettingController alloc] init];
+    self.viewControllers = @[bookshelfController, settingController];
+    [self p_applyTabBarChrome];
 
+    UIView *separatorView = [[UIView alloc] initWithFrame:CGRectMake(0, -1 / [UIScreen mainScreen].scale, self.tabBar.width, 1 / [UIScreen mainScreen].scale)];
+    separatorView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    separatorView.backgroundColor = RDSeparatorColor;
+    [self.tabBar addSubview:separatorView];
+}
+
+- (void)p_applyTabBarChrome
+{
     UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
     UIImage *gear = [UIImage systemImageNamed:@"gearshape" withConfiguration:symbolConfig];
     UIImage *gearFill = [UIImage systemImageNamed:@"gearshape.fill" withConfiguration:symbolConfig];
-
     NSArray *normalIcons = @[[UIImage imageNamed:@"tabbar_unselect"], gear];
     NSArray *selectedIcons = @[[UIImage imageNamed:@"tabbar_select"], gearFill];
     NSArray *titleArray = @[@"书架", @"设置"];
@@ -60,57 +67,31 @@
         item.backgroundColor = RDSurfaceColor;
         item.title = [titleArray objectAtIndexSafely:i];
         item.titlePositionAdjustment = UIOffsetMake(0, 4);
-        NSDictionary *tabBarTitleUnselectedDic = @{NSForegroundColorAttributeName: RDLightGrayColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
-        NSDictionary *tabBarTitleSelectedDic = @{NSForegroundColorAttributeName: RDAccentColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
-        item.selectedTitleAttributes = tabBarTitleSelectedDic;
-        item.unselectedTitleAttributes = tabBarTitleUnselectedDic;
+        item.selectedTitleAttributes = @{NSForegroundColorAttributeName: RDAccentColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
+        item.unselectedTitleAttributes = @{NSForegroundColorAttributeName: RDLightGrayColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
         UIImage *selectedImage = [selectedIcons[i] imageWithTintColor:RDAccentColor];
         UIImage *normalImage = [normalIcons[i] imageWithTintColor:RDLightGrayColor];
         [item setFinishedSelectedImage:selectedImage withFinishedUnselectedImage:normalImage];
         [item removeTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchDown];
         [item addTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchUpInside];
     }
-    UIView *separatorView = [[UIView alloc] initWithFrame:CGRectMake(0, -1 / [UIScreen mainScreen].scale, self.tabBar.width, 1 / [UIScreen mainScreen].scale)];
-    separatorView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    separatorView.backgroundColor = RDSeparatorColor;
-    [self.tabBar addSubview:separatorView];
 }
 
-- (BOOL)tabBarController:(RDVTabBarController *)tabBarController shouldSelectViewController:(UIViewController *)viewController
+/// 启动后预加载设置页 view,首次点 Tab 只做切换不创建
+- (void)preloadSettingIfNeeded
 {
-    // 首次点「设置」时替换占位 VC
-    NSArray *vcs = self.viewControllers;
-    if (vcs.count >= 2 && viewController == vcs[1] && ![viewController isKindOfClass:RDSettingController.class]) {
-        RDSettingController *setting = [[RDSettingController alloc] init];
-        NSMutableArray *next = [vcs mutableCopy];
-        next[1] = setting;
-        self.viewControllers = next;
-        // 重新套用 tab 标题/图标(viewControllers 重置会刷 item)
-        [self p_reapplyTabBarChrome];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self setSelectedIndex:RDMainSetting];
-        });
-        return NO;
+    if (self.viewControllers.count < 2) {
+        return;
     }
-    return YES;
-}
-
-- (void)p_reapplyTabBarChrome
-{
-    UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
-    UIImage *gear = [UIImage systemImageNamed:@"gearshape" withConfiguration:symbolConfig];
-    UIImage *gearFill = [UIImage systemImageNamed:@"gearshape.fill" withConfiguration:symbolConfig];
-    NSArray *normalIcons = @[[UIImage imageNamed:@"tabbar_unselect"], gear];
-    NSArray *selectedIcons = @[[UIImage imageNamed:@"tabbar_select"], gearFill];
-    NSArray *titleArray = @[@"书架", @"设置"];
-    for (int i = 0; i < self.tabBar.items.count; ++i) {
-        RDVTabBarItem *item = self.tabBar.items[i];
-        item.title = [titleArray objectAtIndexSafely:i];
-        item.selectedTitleAttributes = @{NSForegroundColorAttributeName: RDAccentColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
-        item.unselectedTitleAttributes = @{NSForegroundColorAttributeName: RDLightGrayColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
-        [item setFinishedSelectedImage:[selectedIcons[i] imageWithTintColor:RDAccentColor]
-           withFinishedUnselectedImage:[normalIcons[i] imageWithTintColor:RDLightGrayColor]];
+    UIViewController *setting = self.viewControllers[1];
+    if (![setting isKindOfClass:RDSettingController.class]) {
+        return;
     }
+    if (setting.isViewLoaded) {
+        return;
+    }
+    // 触发 viewDidLoad / 表布局,但不切 Tab
+    (void)setting.view;
 }
 
 

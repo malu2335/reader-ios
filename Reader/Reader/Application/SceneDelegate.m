@@ -63,7 +63,8 @@
     if (!appDelegate) {
         appDelegate = (AppDelegate *)UIApplication.sharedApplication.delegate;
     }
-    RDNavigationController *nav = [[RDNavigationController alloc] initWithRootViewController:appDelegate.mainController];
+    RDMainController *main = appDelegate.mainController;
+    RDNavigationController *nav = [[RDNavigationController alloc] initWithRootViewController:main];
     UIWindow *window = self.window;
     // 淡入主界面,避免硬切
     [UIView transitionWithView:window
@@ -71,7 +72,12 @@
                        options:UIViewAnimationOptionTransitionCrossDissolve
                     animations:^{
         window.rootViewController = nav;
-    } completion:nil];
+    } completion:^(BOOL finished) {
+        // 主界面出来后空闲预热设置页,首次点 Tab 不再创建 view
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [main preloadSettingIfNeeded];
+        });
+    }];
     window.backgroundColor = RDBackgroudColor;
     [RDDisplayBoost applyToWindow:window];
 }

@@ -41,6 +41,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 @property (nonatomic,copy) NSString *aiDetailText;
 @property (nonatomic,copy) NSString *voiceDetailText;
 @property (nonatomic,assign) BOOL storageRefreshing;
+@property (nonatomic,assign) BOOL detailsLoadedOnce;
 @end
 
 @implementation RDSettingController
@@ -58,14 +59,19 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     self.voiceDetailText = @"自动(中文)";
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
-    // 首屏先出表,再异步填副标题,避免卡 Tab 切换
-    [self p_refreshDetailsAsync];
+    // 首屏只用占位文案出表;重活放到 view 出现后的下一帧,避免卡 Tab
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self p_refreshDetailsAsync];
+    });
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    // 只轻量刷新副标题,禁止整表 reload + 重扫 TTS/全量书架
+    // 首次已在 viewDidLoad 排队刷新;之后返回再刷
+    if (!self.detailsLoadedOnce) {
+        return;
+    }
     [self p_refreshDetailsAsync];
 }
 
@@ -104,25 +110,26 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 
 - (void)p_refreshDetailsAsync
 {
-    // AI / 语音展示名:主线程轻量读缓存
-    RDAIConfigProfile *active = [[RDAIConfigStore sharedInstance] activeProfile];
-    if (active.isUsable) {
-        NSString *label = active.name.length > 0 ? active.name : active.type;
-        self.aiDetailText = [NSString stringWithFormat:@"%@ · %@", label, active.model ?: @""];
-    } else if (active) {
-        self.aiDetailText = @"未完成配置";
-    } else {
-        self.aiDetailText = @"OpenAI · Anthropic · Gemini";
-    }
-    self.voiceDetailText = [[RDVoiceManager sharedInstance] preferredDisplayName];
-    [self p_reloadDetailRows];
-
+    self.detailsLoadedOnce = YES;
+    // AI / 语音 / 存储统计全部后台,主线程只更新文案
     if (self.storageRefreshing) {
         return;
     }
     self.storageRefreshing = YES;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        // 只 count,不拉全书+章节正文
+        // 首次访问会读盘/Keychain,放后台
+        RDAIConfigProfile *active = [[RDAIConfigStore sharedInstance] activeProfile];
+        NSString *aiText = nil;
+        if (active.isUsable) {
+            NSString *label = active.name.length > 0 ? active.name : active.type;
+            aiText = [NSString stringWithFormat:@"%@ · %@", label, active.model ?: @""];
+        } else if (active) {
+            aiText = @"未完成配置";
+        } else {
+            aiText = @"OpenAI · Anthropic · Gemini";
+        }
+        NSString *voiceText = [[RDVoiceManager sharedInstance] preferredDisplayName];
+
         NSInteger count = [RDReadRecordManager countOnBookshelf];
         unsigned long long bytes = 0;
         NSString *dir = [PATH_DOCUMENT stringByAppendingPathComponent:@"LocalBooks"];
@@ -139,21 +146,32 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         NSString *dbPath = [PATH_DOCUMENT stringByAppendingPathComponent:@"book"];
         NSDictionary *dbAttrs = [[NSFileManager defaultManager] attributesOfItemAtPath:dbPath error:nil];
         bytes += dbAttrs.fileSize;
-        // WAL 也算一点
         for (NSString *suf in @[@"-wal", @"-shm"]) {
             NSDictionary *a = [[NSFileManager defaultManager] attributesOfItemAtPath:[dbPath stringByAppendingString:suf] error:nil];
             bytes += a.fileSize;
         }
-
         NSString *size = [NSByteCountFormatter stringFromByteCount:bytes countStyle:NSByteCountFormatterCountStyleFile];
-        NSString *text = [NSString stringWithFormat:@"%@ 本 · %@", @(count), size];
+        NSString *storageText = [NSString stringWithFormat:@"%@ 本 · %@", @(count), size];
+
         dispatch_async(dispatch_get_main_queue(), ^{
             self.storageRefreshing = NO;
-            if ([self.storageText isEqualToString:text]) {
-                return;
+            BOOL changed = NO;
+            if (![self.aiDetailText isEqualToString:aiText]) {
+                self.aiDetailText = aiText;
+                changed = YES;
             }
-            self.storageText = text;
-            [self p_reloadRow:RDSettingRowStorage];
+            if (![self.voiceDetailText isEqualToString:voiceText]) {
+                self.voiceDetailText = voiceText;
+                changed = YES;
+            }
+            if (![self.storageText isEqualToString:storageText]) {
+                self.storageText = storageText;
+                changed = YES;
+            }
+            if (changed) {
+                [self p_reloadDetailRows];
+                [self p_reloadRow:RDSettingRowStorage];
+            }
         });
     });
 }
