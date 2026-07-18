@@ -38,8 +38,8 @@ DerivedData/
 #
 Pods/
 #
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-*.xcworkspace
+# 本项目使用 CocoaPods：需要提交 Reader.xcworkspace（勿忽略 *.xcworkspace）
+# xcuserdata/ 已在上方忽略，用户本地状态不会进库
 
 # Carthage
 #
@@ -79,6 +79,13 @@ iOSInjectionProject/
 /reader-*.png
 /reader-*.jpg
 /*.screenshot.png
+
+# App Store Connect 营销截图本地导出（体积大、可随时重新导出，不进主仓库）
+AppStoreScreenshots/
+
+# 本地 Archive / 导出残留（若误放在仓库根目录）
+*.xcarchive/
+export/
 
 # 本地文档与 agent 说明（不推远端）
 docs/

@@ -17,6 +17,7 @@
 #import "RDAIConfig.h"
 #import "RDReplaceRulesController.h"
 #import "RDVoicePickerController.h"
+#import "RDLegalDocumentController.h"
 #import "RDVoiceManager.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "AppDelegate.h"
@@ -33,6 +34,8 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowTTSVoice,
     RDSettingRowBackup,
     RDSettingRowRestore,
+    RDSettingRowPrivacy,
+    RDSettingRowOpenSource,
     RDSettingRowVersion,
 };
 
@@ -51,11 +54,11 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    // 书籍 / 阅读增强 / 备份 / 关于
+    // 书籍 / 阅读增强 / 备份 / 关于（隐私声明 · 开源声明 · 版本）
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
                       @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowDictionary), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
-                      @[@(RDSettingRowVersion)]];
+                      @[@(RDSettingRowPrivacy), @(RDSettingRowOpenSource), @(RDSettingRowVersion)]];
     self.storageText = @"…";
     self.aiDetailText = @"OpenAI · Anthropic · Gemini";
     self.voiceDetailText = @"自动(中文)";
@@ -319,6 +322,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.textLabel.text = @"从备份恢复";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
+        case RDSettingRowPrivacy:
+            cell.textLabel.text = @"隐私声明";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
+        case RDSettingRowOpenSource:
+            cell.textLabel.text = @"开源软件使用声明";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
         case RDSettingRowVersion:
             cell.textLabel.text = @"版本";
             cell.detailTextLabel.text = [self p_version];
@@ -371,6 +382,20 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     }
     else if (row == RDSettingRowRestore) {
         [self p_pickRestore];
+    }
+    else if (row == RDSettingRowPrivacy) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RDLegalDocumentController *vc = [[RDLegalDocumentController alloc] initWithTitle:@"隐私声明"
+                                                                               resourceName:@"PrivacyPolicy.zh-Hans"];
+            [self.navigationController pushViewController:vc animated:YES];
+        });
+    }
+    else if (row == RDSettingRowOpenSource) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RDLegalDocumentController *vc = [[RDLegalDocumentController alloc] initWithTitle:@"开源软件使用声明"
+                                                                               resourceName:@"OpenSourceLicenses"];
+            [self.navigationController pushViewController:vc animated:YES];
+        });
     }
 }
 

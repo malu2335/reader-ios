@@ -13,6 +13,7 @@
 #import "RDFontManager.h"
 #import "RDBookDetailModel.h"
 #import "RDDatabaseLifecycle.h"
+#import "RDBookshelfPrefetch.h"
 
 @interface AppDelegate ()
 @property (nonatomic, strong, readwrite) RDMainController *mainController;
@@ -55,6 +56,8 @@ configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
         return NO;
     }
     [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage, BOOL isDuplicate) {
+        // 与 SceneDelegate 一致:导入后刷新书架预取缓存,避免已入库但不显示
+        [RDBookshelfPrefetch refreshAsync:nil];
         NSString *text = nil;
         if (isDuplicate) {
             text = errorMessage.length ? errorMessage : [NSString stringWithFormat:@"《%@》已在书架", book.title ?: @""];

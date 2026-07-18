@@ -20,6 +20,12 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- 外部文件以复制到沙盒方式打开,不原地编辑来源文件 -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<!-- 出口合规:业务路径不使用需申报的非豁免加密;详见 docs/plans/2026-07-17-export-compliance-encryption-audit.md -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -101,6 +107,7 @@
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
+				<string>public.content</string>
 			</array>
 			<key>UTTypeDescription</key>
 			<string>MOBI 电子书</string>
@@ -113,6 +120,11 @@
 					<string>mobi</string>
 					<string>azw</string>
 				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-mobipocket-ebook</string>
+					<string>application/vnd.amazon.ebook</string>
+				</array>
 			</dict>
 		</dict>
 		<dict>
@@ -120,6 +132,7 @@
 			<array>
 				<string>public.zip-archive</string>
 				<string>public.data</string>
+				<string>public.content</string>
 			</array>
 			<key>UTTypeDescription</key>
 			<string>漫画 CBZ</string>
@@ -180,13 +193,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
