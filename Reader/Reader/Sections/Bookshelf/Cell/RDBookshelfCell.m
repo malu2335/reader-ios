@@ -308,7 +308,7 @@
 
 - (void)p_shareBook:(RDBookDetailModel *)book
 {
-    NSString *text = [NSString stringWithFormat:@"我正在读《%@》%@，推荐给你。#轻阅",
+    NSString *text = [NSString stringWithFormat:@"我正在读《%@》%@，推荐给你。#纸羽轻阅",
                       book.title ?: @"",
                       book.author.length ? [NSString stringWithFormat:@"（%@）", book.author] : @""];
     NSMutableArray *items = [NSMutableArray arrayWithObject:text];

@@ -1,10 +1,10 @@
-# 轻阅（reader-ios）
+# 纸羽轻阅（reader-ios）
 
 本地优先的 iOS 阅读器。在 [阅小说开源 iOS 客户端](https://github.com/yuenov/reader-ios) 基础上，强化本地书导入、阅读体验、AI 翻译与备份能力；主界面以 **书架 + 设置** 为主，不再依赖在线书城作为默认路径。
 
 | 项 | 说明 |
 |----|------|
-| 应用名 | **轻阅**（`CFBundleDisplayName`） |
+| 应用名 | **纸羽轻阅**（`CFBundleDisplayName`） |
 | Bundle ID | `xyz.malu2335.reader` |
 | 语言 | Objective-C |
 | 最低系统 | iOS 15.0 |
@@ -135,13 +135,13 @@ reader-ios/
 | 上游 API 文档 | https://github.com/yuenov/reader-api |
 | 上游 Android | https://github.com/yuenov/reader-android |
 
-原「阅小说」产品与商店分发信息请以上游及官方渠道为准；本仓库为**独立维护的本地优先衍生版本**，应用展示名为 **轻阅**。
+原「阅小说」产品与商店分发信息请以上游及官方渠道为准；本仓库为**独立维护的本地优先衍生版本**，应用展示名为 **纸羽轻阅**。
 
 ---
 
 ## 界面预览（历史截图）
 
-以下图片来自原项目资源目录，仅供参考，与当前「轻阅」UI 可能不完全一致。
+以下图片来自原项目资源目录，仅供参考，与当前「纸羽轻阅」UI 可能不完全一致。
 
 **iPhone**
 
