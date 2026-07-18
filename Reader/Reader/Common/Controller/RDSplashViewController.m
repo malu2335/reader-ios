@@ -8,8 +8,8 @@
 #import "RDSplashViewController.h"
 #import "RDBookshelfPrefetch.h"
 
-static NSString * const kAppDisplayName = @"纸羽轻阅";
-static NSString * const kAppTagline = @"轻装每一页";
+static NSString * const kAppDisplayName = @"轻阅";
+static NSString * const kAppTagline = @"要看的 在这里";
 
 @implementation RDSplashViewController
 
@@ -20,7 +20,7 @@ static NSString * const kAppTagline = @"轻装每一页";
     self.view.backgroundColor = [UIColor whiteColor];
     self.view.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
 
-    // —— 品牌区:宽 220 高 70,相对屏幕中心上移 100pt(与 storyboard 一致) ——
+    // —— 品牌区:宽 167 高 70,相对屏幕中心上移 100pt(与 storyboard 一致) ——
     UIView *brand = [[UIView alloc] init];
     brand.translatesAutoresizingMaskIntoConstraints = NO;
     brand.backgroundColor = [UIColor whiteColor];
@@ -62,10 +62,10 @@ static NSString * const kAppTagline = @"轻装每一页";
     [self.view addSubview:hint];
 
     [NSLayoutConstraint activateConstraints:@[
-        // brand 与 LaunchScreen: centerX / centerY-100 / 220×70
+        // brand 与 LaunchScreen: centerX / centerY-100 / 167×70
         [brand.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [brand.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-100],
-        [brand.widthAnchor constraintEqualToConstant:220],
+        [brand.widthAnchor constraintEqualToConstant:167],
         [brand.heightAnchor constraintEqualToConstant:70],
 
         // icon: 约 (4,3) 65×65 — storyboard fixedFrame

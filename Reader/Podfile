@@ -15,10 +15,13 @@ target 'Reader' do
   pod 'WCDB', '~> 1.0.7'
   pod 'YYText'
 #  pod 'OHHTTPStubs'
+  pod 'YTKNetwork'
   pod 'RDVTabBarController'
   pod 'FDFullscreenPopGesture', '1.1'
   pod 'MBProgressHUD'
   pod 'UITextView+Placeholder'
+  pod 'UICKeyChainStore', '2.1.2'
+  pod 'NJKWebViewProgress'
 
 end
 
@@ -28,6 +31,18 @@ post_install do |installer|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
       # Xcode 15+ 默认开启脚本沙箱会导致 CocoaPods 脚本阶段失败
       config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+    end
+  end
+
+  # 新 SDK 将 netinet6/in6.h 视为私有模块头，AFNetworking 3.x 的显式引入需移除(netinet/in.h 已包含)
+  ['AFHTTPSessionManager.m', 'AFNetworkReachabilityManager.m'].each do |file|
+    af_file = File.join(installer.sandbox.root.to_s, 'AFNetworking', 'AFNetworking', file)
+    next unless File.exist?(af_file)
+    content = File.read(af_file)
+    patched = content.gsub(/#import <netinet6\/in6\.h>\n/, '')
+    if patched != content
+      File.chmod(0644, af_file)
+      File.write(af_file, patched)
     end
   end
 

@@ -17,7 +17,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="X15-cN-oTg">
-                                <rect key="frame" x="86.5" y="326" width="220" height="70"/>
+                                <rect key="frame" x="113" y="326" width="167" height="70"/>
                                 <subviews>
                                     <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="app_icon_white70" translatesAutoresizingMaskIntoConstraints="NO" id="Eyg-Zo-Dqx">
                                         <rect key="frame" x="4" y="3" width="65" height="65"/>
@@ -26,14 +26,14 @@
                                             <constraint firstAttribute="height" constant="65" id="ic-h"/>
                                         </constraints>
                                     </imageView>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="纸羽轻阅" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="rkC-D4-ea5">
-                                        <rect key="frame" x="84" y="7" width="112" height="32"/>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="轻阅" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="rkC-D4-ea5">
+                                        <rect key="frame" x="84" y="7" width="70" height="32"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="26"/>
                                         <color key="textColor" red="0.2" green="0.2" blue="0.2" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                         <nil key="highlightedColor"/>
                                     </label>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="轻装每一页" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="G63-ES-ViZ">
-                                        <rect key="frame" x="85" y="42" width="72" height="15"/>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="要看的 在这里" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="G63-ES-ViZ">
+                                        <rect key="frame" x="85" y="42" width="80" height="15"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="12"/>
                                         <color key="textColor" red="0.4" green="0.4" blue="0.4" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                         <nil key="highlightedColor"/>
@@ -41,7 +41,7 @@
                                 </subviews>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="220" id="K1h-hL-NoN"/>
+                                    <constraint firstAttribute="width" constant="167" id="K1h-hL-NoN"/>
                                     <constraint firstAttribute="height" constant="70" id="QSQ-GY-AYI"/>
                                     <constraint firstItem="Eyg-Zo-Dqx" firstAttribute="leading" secondItem="X15-cN-oTg" secondAttribute="leading" constant="4" id="ic-l"/>
                                     <constraint firstItem="Eyg-Zo-Dqx" firstAttribute="top" secondItem="X15-cN-oTg" secondAttribute="top" constant="3" id="ic-t"/>

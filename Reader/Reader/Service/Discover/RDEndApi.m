@@ -19,7 +19,7 @@
     return self;
 }
 - (NSString *)requestUrl {
-    return @"";
+    return @"/app/open/api/category/getCategoryEnd";
 }
 - (id)requestArgument {
     return @{

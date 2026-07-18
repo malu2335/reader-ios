@@ -26,6 +26,12 @@
 - (NSString *)base64DecodedString;
 - (NSData *)base64DecodedData;
 
+// Encrypt
+- (NSString*)encryptedWithAESUsingKey:(NSString*)key andIV:(NSData*)iv;
+- (NSString*)decryptedWithAESUsingKey:(NSString*)key andIV:(NSData*)iv;
+- (NSString*)encryptedWith3DESUsingKey:(NSString*)key andIV:(NSData*)iv;
+- (NSString*)decryptedWith3DESUsingKey:(NSString*)key andIV:(NSData*)iv;
+
 // hash
 - (NSString *)md5String;
 - (NSString *)sha1String;

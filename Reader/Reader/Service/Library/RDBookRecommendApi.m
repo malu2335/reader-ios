@@ -27,7 +27,7 @@
     };
 }
 - (NSString *)requestUrl {
-    return @"";
+    return @"/app/open/api/book/getRecommend";
 }
 -(NSArray <RDLibraryDetailModel *>*)list
 {

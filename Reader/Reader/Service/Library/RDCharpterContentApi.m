@@ -10,7 +10,7 @@
 
 @implementation RDCharpterContentApi
 - (NSString *)requestUrl {
-    return @"";
+    return @"/app/open/api/chapter/get";
 }
 - (YTKRequestSerializerType)requestSerializerType {
     return YTKRequestSerializerTypeJSON;

@@ -8,6 +8,7 @@
 #import "RDBookDetailModel.h"
 #import "RDCacheModel.h"
 #import "RDFontManager.h"
+#import "RDAIConfig.h"
 #import "RDVoiceManager.h"
 #import "RDLocalBookManager.h"
 #import <QuartzCore/QuartzCore.h>
@@ -136,10 +137,11 @@ static NSUInteger s_generation = 0;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSTimeInterval t0 = CACurrentMediaTime();
         [self p_loadIntoCacheColumns:columns];
-        // 并行暖一下:缓存模型 / 字体 / 语音名,减少首次点设置卡顿
+        // 并行暖一下:缓存模型 / 字体 / AI 配置(Keychain) / 语音名,减少首次点设置卡顿
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
             (void)[RDCacheModel sharedInstance];
             [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
+            (void)[[RDAIConfigStore sharedInstance] activeProfile];
             (void)[[RDVoiceManager sharedInstance] preferredDisplayName];
         });
         // 启动页至少展示一小段,避免闪一下

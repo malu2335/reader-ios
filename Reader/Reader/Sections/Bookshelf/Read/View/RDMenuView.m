@@ -375,6 +375,14 @@
     }
 }
 
+-(void)translateAction
+{
+    // topBar.delegate = self,必须转发否则「翻译」会因 respondsToSelector 静默失败
+    if ([self.delegate respondsToSelector:@selector(translateAction)]) {
+        [self.delegate translateAction];
+    }
+}
+
 -(void)shareQuoteAction
 {
     if ([self.delegate respondsToSelector:@selector(shareQuoteAction)]) {

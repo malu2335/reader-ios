@@ -420,7 +420,7 @@ static uint32_t RDCardHash(NSString *text) {
             NSFontAttributeName: [UIFont systemFontOfSize:28 weight:UIFontWeightLight],
             NSForegroundColorAttributeName: footColor,
         };
-        [@"纸羽轻阅 · 轻装每一页" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
+        [@"轻阅 · 本地阅读" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
     }];
 }
 

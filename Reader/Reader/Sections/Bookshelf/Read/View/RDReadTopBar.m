@@ -2,7 +2,7 @@
 //  RDReadTopBar.m
 //  Reader
 //
-//  阅读页顶栏:返回 + 分享金句 + 词典 + 听书
+//  阅读页顶栏:返回 + 分享金句 + 词典 + AI 翻译 + 听书
 //
 
 #import "RDReadTopBar.h"
@@ -11,6 +11,7 @@
 @interface RDReadTopBar ()
 @property (nonatomic, strong) RDLayoutButton *backBtn;
 @property (nonatomic, strong) UIButton *speechBtn;
+@property (nonatomic, strong) UIButton *translateBtn;
 @property (nonatomic, strong) UIButton *shareBtn;
 @property (nonatomic, strong) UIButton *dictBtn;
 @end
@@ -24,6 +25,7 @@
         [self addSubview:self.backBtn];
         [self addSubview:self.dictBtn];
         [self addSubview:self.shareBtn];
+        [self addSubview:self.translateBtn];
         [self addSubview:self.speechBtn];
         [self setBackgroundColor:RDReadBg];
     }
@@ -53,6 +55,14 @@
     btn.titleLabel.font = RDFont13;
     [btn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
     return btn;
+}
+
+- (UIButton *)translateBtn
+{
+    if (!_translateBtn) {
+        _translateBtn = [self p_iconButtonWithSymbol:@"globe" title:@"译"];
+    }
+    return _translateBtn;
 }
 
 - (UIButton *)speechBtn
@@ -91,6 +101,11 @@
             [self.delegate speechAction];
         }
     }
+    else if (sender == self.translateBtn) {
+        if ([self.delegate respondsToSelector:@selector(translateAction)]) {
+            [self.delegate translateAction];
+        }
+    }
     else if (sender == self.shareBtn) {
         if ([self.delegate respondsToSelector:@selector(shareQuoteAction)]) {
             [self.delegate shareQuoteAction];
@@ -112,8 +127,10 @@
     CGFloat gap = 2;
     self.speechBtn.frame = CGRectMake(0, y, btnW, height);
     self.speechBtn.right = self.width - 4;
+    self.translateBtn.frame = CGRectMake(0, y, btnW, height);
+    self.translateBtn.right = self.speechBtn.left - gap;
     self.shareBtn.frame = CGRectMake(0, y, btnW, height);
-    self.shareBtn.right = self.speechBtn.left - gap;
+    self.shareBtn.right = self.translateBtn.left - gap;
     self.dictBtn.frame = CGRectMake(0, y, btnW, height);
     self.dictBtn.right = self.shareBtn.left - gap;
 }

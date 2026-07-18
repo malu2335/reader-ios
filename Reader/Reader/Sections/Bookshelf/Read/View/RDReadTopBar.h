@@ -2,7 +2,7 @@
 //  RDReadTopBar.h
 //  Reader
 //
-//  阅读页顶栏:返回 + 分享金句 + 词典 + 听书
+//  阅读页顶栏:返回 + AI 翻译 + 听书
 //
 
 #import <UIKit/UIKit.h>
@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol RDReadTopBarDelegate <NSObject>
 -(void)backAction;
 -(void)speechAction;
+-(void)translateAction;
 -(void)shareQuoteAction;
 -(void)dictionaryAction;
 @end

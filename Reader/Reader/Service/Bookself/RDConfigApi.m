@@ -11,7 +11,7 @@
 
 @implementation RDConfigApi
 - (NSString *)requestUrl {
-    return @"";
+    return @"/app/open/api/system/getAppConfig";
 }
 -(RDConfigModel *)configModel
 {

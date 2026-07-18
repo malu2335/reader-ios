@@ -7,6 +7,8 @@
 
 #import "RDBookshelfCell.h"
 #import "RDBookDetailModel.h"
+#import "UIImageView+WebCache.h"
+#import "UIView+WebCache.h"
 #import "RDReadRecordManager.h"
 #import "RDReadPageViewController.h"
 #import "RDCharpterManager.h"
@@ -51,8 +53,12 @@
     _book = book;
     UIImage *cover = [RDLocalBookManager coverForBook:book];
     if (cover) {
+        [self.cover sd_cancelCurrentImageLoad];
         self.cover.image = cover;
+    } else if (!book.isLocalBook && book.coverImg.length) {
+        [self.cover sd_setImageWithURL:[NSURL URLWithString:[RDUtilities buildPicUrlWithPath:book.coverImg]] placeholderImage:[UIImage imageNamed:@"app_placeholder"]];
     } else {
+        [self.cover sd_cancelCurrentImageLoad];
         self.cover.image = [UIImage imageNamed:@"app_placeholder"];
     }
 
@@ -62,7 +68,7 @@
         [self.typeTag sizeToFit];
         [self setNeedsLayout];
     }
-    self.updateTag.hidden = YES;
+    self.updateTag.hidden = !book.bookUpdate;
     self.bookLabel.text = book.title;
     // 阅读记忆:优先 readChapterName(轻量列表),其次 charpterModel
     NSString *chapter = book.readChapterName.length ? book.readChapterName : book.charpterModel.name;
@@ -302,7 +308,7 @@
 
 - (void)p_shareBook:(RDBookDetailModel *)book
 {
-    NSString *text = [NSString stringWithFormat:@"我正在读《%@》%@，推荐给你。#纸羽轻阅",
+    NSString *text = [NSString stringWithFormat:@"我正在读《%@》%@，推荐给你。#轻阅",
                       book.title ?: @"",
                       book.author.length ? [NSString stringWithFormat:@"（%@）", book.author] : @""];
     NSMutableArray *items = [NSMutableArray arrayWithObject:text];

@@ -10,7 +10,7 @@
 
 @implementation RDAllCategoryApi
 - (NSString *)requestUrl {
-    return @"";
+    return @"/app/open/api/category/getCategoryChannel";
 }
 
 -(NSArray <RDChannelModel *>*)channel
