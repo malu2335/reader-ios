@@ -23,6 +23,9 @@
 		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
 		A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV01FILEREF0001 /* RDVoiceManager.m */; };
 		A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV02FILEREF0001 /* RDVoicePickerController.m */; };
+		A11B001LG01BUILDFILE001 /* RDLegalDocumentController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */; };
+		A11B001LG02BUILDFILE001 /* PrivacyPolicy.zh-Hans.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */; };
+		A11B001LG03BUILDFILE001 /* OpenSourceLicenses.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */; };
 		A11B001SP01BUILDFILE001 /* RDSplashViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP01FILEREF0001 /* RDSplashViewController.m */; };
 		A11B001SP02BUILDFILE001 /* RDBookshelfPrefetch.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */; };
 		A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */; };
@@ -225,6 +228,10 @@
 		A11B001TV01FILEREF0002 /* RDVoiceManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoiceManager.h; sourceTree = "<group>"; };
 		A11B001TV02FILEREF0001 /* RDVoicePickerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoicePickerController.m; sourceTree = "<group>"; };
 		A11B001TV02FILEREF0002 /* RDVoicePickerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoicePickerController.h; sourceTree = "<group>"; };
+		A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLegalDocumentController.m; sourceTree = "<group>"; };
+		A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLegalDocumentController.h; sourceTree = "<group>"; };
+		A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "PrivacyPolicy.zh-Hans.txt"; sourceTree = "<group>"; };
+		A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OpenSourceLicenses.txt; sourceTree = "<group>"; };
 		A11B001SP01FILEREF0001 /* RDSplashViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSplashViewController.m; sourceTree = "<group>"; };
 		A11B001SP01FILEREF0002 /* RDSplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSplashViewController.h; sourceTree = "<group>"; };
 		A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfPrefetch.m; sourceTree = "<group>"; };
@@ -314,7 +321,7 @@
 		29406FF923B0FB0600E4495F /* RDRefreshFooter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDRefreshFooter.m; sourceTree = "<group>"; };
 		29406FFB23B105A700E4495F /* RDReadDetailApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadDetailApi.h; sourceTree = "<group>"; };
 		29406FFC23B105A700E4495F /* RDReadDetailApi.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadDetailApi.m; sourceTree = "<group>"; };
-		29407C7E23607D0E003C9643 /* 轻阅.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "轻阅.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		29407C7E23607D0E003C9643 /* 纸羽轻阅.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "纸羽轻阅.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29407C8123607D0E003C9643 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		29407C8223607D0E003C9643 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		29407C8D23607D0F003C9643 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -627,6 +634,8 @@
 				A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */,
 				A11B001TV02FILEREF0002 /* RDVoicePickerController.h */,
 				A11B001TV02FILEREF0001 /* RDVoicePickerController.m */,
+				A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */,
+				A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */,
 			);
 			path = Setting;
 			sourceTree = "<group>";
@@ -833,7 +842,7 @@
 		29407C7F23607D0E003C9643 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29407C7E23607D0E003C9643 /* 轻阅.app */,
+				29407C7E23607D0E003C9643 /* 纸羽轻阅.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -873,6 +882,8 @@
 				29407C8F23607D0F003C9643 /* LaunchScreen.storyboard */,
 				29407C9223607D0F003C9643 /* Info.plist */,
 				A1B226CD0001D00E003C9645 /* PrivacyInfo.xcprivacy */,
+				A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */,
+				A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */,
 				127B2FC5280B99FD8662E26E /* Reader.pch */,
 				29406FE523B0E44C00E4495F /* config.json */,
 			);
@@ -1537,7 +1548,7 @@
 			);
 			name = Reader;
 			productName = Reader;
-			productReference = 29407C7E23607D0E003C9643 /* 轻阅.app */;
+			productReference = 29407C7E23607D0E003C9643 /* 纸羽轻阅.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -1582,6 +1593,8 @@
 				29407C8E23607D0F003C9643 /* Assets.xcassets in Resources */,
 				29406FE623B0E44C00E4495F /* config.json in Resources */,
 				A1B226CD0002D00E003C9645 /* PrivacyInfo.xcprivacy in Resources */,
+				A11B001LG02BUILDFILE001 /* PrivacyPolicy.zh-Hans.txt in Resources */,
+				A11B001LG03BUILDFILE001 /* OpenSourceLicenses.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1653,6 +1666,7 @@
 				CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */,
 				A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */,
 				A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */,
+				A11B001LG01BUILDFILE001 /* RDLegalDocumentController.m in Sources */,
 				A11B001SP01BUILDFILE001 /* RDSplashViewController.m in Sources */,
 				A11B001SP02BUILDFILE001 /* RDBookshelfPrefetch.m in Sources */,
 				A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */,
@@ -1951,7 +1965,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.0.0.1;
+				CURRENT_PROJECT_VERSION = 10302;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1962,11 +1976,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				USER_HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PROJECT_DIR}/Pods\"/**",
@@ -1981,7 +1995,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.0.0.1;
+				CURRENT_PROJECT_VERSION = 10302;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1992,11 +2006,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				USER_HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PROJECT_DIR}/Pods\"/**",

@@ -420,7 +420,7 @@ static uint32_t RDCardHash(NSString *text) {
             NSFontAttributeName: [UIFont systemFontOfSize:28 weight:UIFontWeightLight],
             NSForegroundColorAttributeName: footColor,
         };
-        [@"轻阅 · 本地阅读" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
+        [@"纸羽轻阅 · 轻装每一页" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
     }];
 }
 
@@ -467,6 +467,11 @@ static uint32_t RDCardHash(NSString *text) {
 @property (nonatomic,strong) UITextView *textView;
 @property (nonatomic,strong) UIButton *shareButton;
 @property (nonatomic,strong) UIButton *closeButton;
+/// 每次发起重绘时递增;渲染在后台完成后仅当仍是最新一次才应用,避免拖拽选区时
+/// 旧的(慢)渲染结果晚到覆盖新选区的画面
+@property (nonatomic,assign) NSUInteger previewGeneration;
+/// 选区变化去抖用的独立计数,与 previewGeneration 分开,避免两处含义混在一起
+@property (nonatomic,assign) NSUInteger selectionDebounceToken;
 @end
 
 @implementation RDQuoteShareController
@@ -551,13 +556,38 @@ static uint32_t RDCardHash(NSString *text) {
         self.previewView.image = nil;
         return;
     }
-    self.previewView.image = [RDShareCardBuilder cardImageWithQuote:quote book:self.book];
+    // 整卡渲染(含渐变、程序化装饰、封面缩略图落盘读取)挪到后台;拖拽选区时
+    // textViewDidChangeSelection 会连续触发,放主线程同步画会顿住选区拖拽手势。
+    NSUInteger generation = ++self.previewGeneration;
+    RDBookDetailModel *book = self.book;
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote book:book];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || generation != self.previewGeneration) {
+                return; // 已有更新的选区变化,这份是过期渲染,丢弃
+            }
+            self.previewView.image = card;
+        });
+    });
 }
 
 - (void)textViewDidChangeSelection:(UITextView *)textView
 {
-    //选中变化即重绘预览(1080×1440@1x 直绘 <10ms)
-    [self p_refreshPreview];
+    // 拖拽选区手柄时会连续多次触发;去抖到停顿后再渲染,避免每次移动都排一次整卡绘制。
+    // 用 dispatch_after 而非 performSelector:afterDelay:——后者默认只在
+    // NSDefaultRunLoopMode 触发,拖拽选区手柄时主线程处于 tracking 模式,可能要
+    // 等松手才触发,体验上等于没做去抖。
+    NSUInteger token = ++self.selectionDebounceToken;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.selectionDebounceToken != token) {
+            return; // 停顿期间又发生了新的选区变化,交给那一次的定时器处理
+        }
+        [self p_refreshPreview];
+    });
 }
 
 - (void)viewDidLayoutSubviews
@@ -587,8 +617,15 @@ static uint32_t RDCardHash(NSString *text) {
 
 - (void)p_share
 {
-    [self p_refreshPreview];
+    // 正常情况下预览已随选区异步刷新完成,直接用;极端情况下(面板刚弹出、
+    // 异步渲染还没落地就点了分享)在这里同步兜底生成一次,不强求走后台。
     UIImage *card = self.previewView.image;
+    if (!card) {
+        NSString *quote = [self p_currentQuote];
+        if (quote.length > 0) {
+            card = [RDShareCardBuilder cardImageWithQuote:quote book:self.book];
+        }
+    }
     if (!card) {
         [RDToastView showText:@"本页没有可分享的文字" delay:1.2 inView:self.view];
         return;
