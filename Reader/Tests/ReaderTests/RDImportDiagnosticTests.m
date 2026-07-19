@@ -9,6 +9,7 @@
 #import "RDBookDetailModel.h"
 #import "RDLocalBookManager.h"
 #import "RDReadRecordManager.h"
+#import "RDCharpterDataManager.h"
 #import "RDTxtBookParser.h"
 #import "RDLocalBookParseResult.h"
 #import "RDCharpterModel.h"
@@ -85,6 +86,8 @@
     NSLog(@"[DIAG] commit done ok=%d error=%@", ok, error);
     XCTAssertTrue(ok, @"单事务提交不应卡住,错误:%@", error);
 
+    // 两张表都要清:早先只删 read 行,章节留在库里成了孤儿数据
+    [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
     [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
 }
 
