@@ -390,13 +390,6 @@
     }
 }
 
--(void)dictionaryAction
-{
-    if ([self.delegate respondsToSelector:@selector(dictionaryAction)]) {
-        [self.delegate dictionaryAction];
-    }
-}
-
 -(void)didChangePageType
 {
     if ([self.delegate respondsToSelector:@selector(didChangePageType)]) {

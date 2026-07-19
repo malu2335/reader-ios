@@ -138,11 +138,19 @@
     if (chapters.count == 0) {
         return YES;
     }
+    // 必须逐条插入,不能用 insertOrReplaceObjects: 批量版本。
+    // WCDB 1.0.7 的 WCTInsert 在 objects.count > 1 时会走 runEmbeddedTransaction,
+    // 而 WCDB::Transaction::runEmbeddedTransaction 持有 m_mutex 的同时执行 block,
+    // block 内的 prepare() 又要锁同一个非递归 mutex —— 在已开启的事务句柄上必然自死锁。
+    // (真机复现:导入 8 章的 txt 时整条 dbQueue 卡死,文件已落盘但两张表都没写入。)
     for (RDCharpterModel *chapter in chapters) {
         chapter.bookId = bookId;
         chapter.primaryId = [NSString stringWithFormat:@"%@_%@", @(chapter.bookId), @(chapter.charpterId)];
+        if (![db insertOrReplaceObject:chapter into:kCharpterTable]) {
+            return NO;
+        }
     }
-    return [db insertOrReplaceObjects:chapters into:kCharpterTable];
+    return YES;
 }
 
 +(BOOL)replaceChaptersForBookId:(NSInteger)bookId

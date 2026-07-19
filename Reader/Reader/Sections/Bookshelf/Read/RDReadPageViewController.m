@@ -1049,7 +1049,7 @@ static NSUInteger RDReadTranslateTextHash(NSString *text) {
     });
 }
 
-#pragma mark - 分享金句 / 词典
+#pragma mark - 分享金句
 
 -(void)shareQuoteAction
 {
@@ -1071,27 +1071,6 @@ static NSUInteger RDReadTranslateTextHash(NSString *text) {
     picker.pageText = source;
     picker.modalPresentationStyle = UIModalPresentationPageSheet;
     [self presentViewController:picker animated:YES completion:nil];
-}
-
--(void)dictionaryAction
-{
-    if (self.menuView.superview) {
-        [self invokeMenu:self.pageViewController.viewControllers.firstObject];
-    }
-    // 预填当前页首词便于快速查
-    NSString *initial = nil;
-    RDReadController *cur = (RDReadController *)self.pageViewController.viewControllers.firstObject;
-    NSString *page = cur.content.string;
-    if (page.length > 0) {
-        NSArray *tokens = [page componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        for (NSString *t in tokens) {
-            if (t.length >= 1 && t.length <= 8) {
-                initial = t;
-                break;
-            }
-        }
-    }
-    [RDUtilities presentDictionaryLookupFrom:self initialTerm:initial];
 }
 
 #pragma mark - 听书

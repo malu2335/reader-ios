@@ -15,13 +15,6 @@
 #import "RDLocalBookManager.h"
 
 
-/// 已知开放缺陷:`RDLocalBookManager importBookAtURL:` 在 XCTest 宿主进程内
-/// 不会回调(见 RDImportDiagnosticTests.testStep4_FullImport,可稳定复现)。
-/// 数据库层已验证正常(RDDatabaseLayerTests 全绿),阻塞点尚未定位,
-/// 也尚未确认是否影响真机 app。定位并修复后删掉这个宏即可让用例生效。
-#define XCTSkip若导入未修复() \
-    XCTSkip(@"依赖导入链路;导入在测试宿主内不回调,见 RDImportDiagnosticTests.testStep4_FullImport")
-
 @interface RDImportTransactionTests : XCTestCase
 @end
 
@@ -46,7 +39,6 @@
 /// 导入成功后:读记录行、章节、源文件三者必须同时存在
 - (void)testImportCommitsRecordChaptersAndFileTogether
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"导入事务" chapters:5];
     NSString *message = nil;
     RDBookDetailModel *book = [RDTestSupport importBookAtURL:url message:&message isDuplicate:NULL];
@@ -69,7 +61,6 @@
 /// 同一本书重复导入:不新增记录,且被明确标记为重复
 - (void)testReimportSameBookIsReportedAsDuplicate
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"重复导入" chapters:3];
     RDBookDetailModel *first = [RDTestSupport importBookAtURL:url message:NULL isDuplicate:NULL];
     XCTAssertNotNil(first);
@@ -85,7 +76,6 @@
 /// 故障注入:源文件无法落盘时,必须报失败,且不留下任何半成品
 - (void)testImportFailureLeavesNoPartialState
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"落盘失败" chapters:4];
     NSInteger before = [RDReadRecordManager countOnBookshelf];
 
@@ -104,7 +94,6 @@
 /// 删除的 completion 触发时,读记录、章节、书签必须都已清干净
 - (void)testRemoveCompletionMeansEverythingIsGone
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"删除完整性" chapters:6];
     RDBookDetailModel *book = [RDTestSupport importBookAtURL:url message:NULL isDuplicate:NULL];
     XCTAssertNotNil(book);
@@ -141,7 +130,6 @@
 /// 删除后立刻重导:章节不能被迟到的删除清空(曾经的竞态)
 - (void)testDeleteThenReimportKeepsNewChapters
 {
-    XCTSkip若导入未修复();
     for (NSInteger round = 0; round < 5; round++) {
         NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"删后重导" chapters:4];
         NSString *importError = nil;

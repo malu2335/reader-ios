@@ -16,13 +16,6 @@
 #import "RDBackupManager.h"
 
 
-/// 已知开放缺陷:`RDLocalBookManager importBookAtURL:` 在 XCTest 宿主进程内
-/// 不会回调(见 RDImportDiagnosticTests.testStep4_FullImport,可稳定复现)。
-/// 数据库层已验证正常(RDDatabaseLayerTests 全绿),阻塞点尚未定位,
-/// 也尚未确认是否影响真机 app。定位并修复后删掉这个宏即可让用例生效。
-#define XCTSkip若导入未修复() \
-    XCTSkip(@"依赖导入链路;导入在测试宿主内不回调,见 RDImportDiagnosticTests.testStep4_FullImport")
-
 @interface RDRestoreTests : XCTestCase
 @property (nonatomic, copy) NSString *backupPath;
 @end
@@ -90,7 +83,6 @@
 /// 备份 → 清库 → 恢复:书、章节、源文件与阅读进度都应回来
 - (void)testBackupRestoreRoundTripRestoresBooksAndChapters
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"恢复往返" chapters:5];
     RDBookDetailModel *book = [RDTestSupport importBookAtURL:url message:NULL isDuplicate:NULL];
     XCTAssertNotNil(book);
@@ -123,7 +115,6 @@
 /// 覆盖式恢复:同一本书已在库中时,恢复后仍是完整可读状态(不是新文件配旧章节)
 - (void)testRestoreOverExistingBookKeepsBookConsistent
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"覆盖恢复" chapters:4];
     RDBookDetailModel *book = [RDTestSupport importBookAtURL:url message:NULL isDuplicate:NULL];
     XCTAssertNotNil(book);
@@ -147,7 +138,6 @@
 /// 故障注入:备份包损坏时,原有书籍必须原样保留(完整旧状态)
 - (void)testRestoreFromCorruptedBackupKeepsOldStateIntact
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"损坏包恢复" chapters:5];
     RDBookDetailModel *book = [RDTestSupport importBookAtURL:url message:NULL isDuplicate:NULL];
     XCTAssertNotNil(book);
@@ -181,7 +171,6 @@
 /// 恢复不得在中途留下 staging 残留
 - (void)testRestoreCleansUpStagingDirectory
 {
-    XCTSkip若导入未修复();
     NSURL *url = [RDTestSupport makeTxtBookWithTitle:@"staging 清理" chapters:3];
     XCTAssertNotNil([RDTestSupport importBookAtURL:url message:NULL isDuplicate:NULL]);
     NSString *zip = [self p_makeBackup];

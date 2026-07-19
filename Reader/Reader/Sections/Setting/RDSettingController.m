@@ -31,7 +31,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowClear,
     RDSettingRowAIConfig,
     RDSettingRowPurify,
-    RDSettingRowDictionary,
     RDSettingRowTTSVoice,
     RDSettingRowBackup,
     RDSettingRowRestore,
@@ -58,7 +57,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     [super viewDidLoad];
     // 书籍 / 阅读增强 / 备份 / 关于（隐私声明 · 开源声明 · 版本）
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
-                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowDictionary), @(RDSettingRowTTSVoice)],
+                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowPrivacy), @(RDSettingRowOpenSource), @(RDSettingRowVersion)]];
     self.storageText = @"…";
@@ -313,11 +312,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.detailTextLabel.text = @"替换规则 · legado";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
-        case RDSettingRowDictionary:
-            cell.textLabel.text = @"系统词典";
-            cell.detailTextLabel.text = @"阅读中查词";
-            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-            break;
         case RDSettingRowTTSVoice:
             cell.textLabel.text = @"朗读语音";
             cell.detailTextLabel.text = self.voiceDetailText;
@@ -381,9 +375,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             RDReplaceRulesController *vc = [[RDReplaceRulesController alloc] init];
             [self.navigationController pushViewController:vc animated:YES];
         });
-    }
-    else if (row == RDSettingRowDictionary) {
-        [RDUtilities presentDictionaryLookupFrom:self initialTerm:nil];
     }
     else if (row == RDSettingRowTTSVoice) {
         dispatch_async(dispatch_get_main_queue(), ^{

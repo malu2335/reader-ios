@@ -47,20 +47,27 @@
     book.fileType = @"txt";
     book.onBookshelf = YES;
 
-    RDCharpterModel *chapter = [[RDCharpterModel alloc] init];
-    chapter.bookId = book.bookId;
-    chapter.charpterId = 1;
-    chapter.name = @"第一章";
-    chapter.content = @"正文";
+    // 必须用**多章**。WCDB 的批量插入只在 count > 1 时才走 runEmbeddedTransaction,
+    // 单章会绕开那条路径 —— 早先这条用例只塞 1 章,于是漏掉了真机上的事务自死锁。
+    NSMutableArray<RDCharpterModel *> *chapters = [NSMutableArray array];
+    for (NSInteger i = 1; i <= 8; i++) {
+        RDCharpterModel *chapter = [[RDCharpterModel alloc] init];
+        chapter.bookId = book.bookId;
+        chapter.charpterId = i;
+        chapter.name = [NSString stringWithFormat:@"第%ld章", (long)i];
+        chapter.content = [NSString stringWithFormat:@"第%ld章正文", (long)i];
+        [chapters addObject:chapter];
+    }
 
     NSLog(@"[DBDIAG] transaction begin");
     NSError *error = nil;
-    BOOL ok = [RDLibraryTransaction commitBook:book chapters:@[chapter] touchReadTime:YES error:&error];
+    BOOL ok = [RDLibraryTransaction commitBook:book chapters:chapters touchReadTime:YES error:&error];
     NSLog(@"[DBDIAG] transaction done ok=%d error=%@", ok, error);
     XCTAssertTrue(ok, @"跨表事务提交不应卡住或失败,错误:%@", error);
 
     XCTAssertNotNil([RDReadRecordManager getReadRecordWithBookId:book.bookId]);
-    XCTAssertTrue([RDCharpterDataManager isExsitWithBookId:book.bookId]);
+    XCTAssertEqual([RDCharpterDataManager getBriefCharptersWithBookId:book.bookId].count, 8,
+                   @"8 章必须全部写入同一个事务");
 
     [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
     [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];

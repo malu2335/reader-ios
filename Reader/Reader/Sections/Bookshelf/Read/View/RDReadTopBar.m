@@ -2,7 +2,7 @@
 //  RDReadTopBar.m
 //  Reader
 //
-//  阅读页顶栏:返回 + 分享金句 + 词典 + AI 翻译 + 听书
+//  阅读页顶栏:返回 + 分享金句 + AI 翻译 + 听书
 //
 
 #import "RDReadTopBar.h"
@@ -13,7 +13,6 @@
 @property (nonatomic, strong) UIButton *speechBtn;
 @property (nonatomic, strong) UIButton *translateBtn;
 @property (nonatomic, strong) UIButton *shareBtn;
-@property (nonatomic, strong) UIButton *dictBtn;
 @end
 
 @implementation RDReadTopBar
@@ -23,7 +22,6 @@
     self = [super initWithFrame:frame];
     if (self) {
         [self addSubview:self.backBtn];
-        [self addSubview:self.dictBtn];
         [self addSubview:self.shareBtn];
         [self addSubview:self.translateBtn];
         [self addSubview:self.speechBtn];
@@ -81,14 +79,6 @@
     return _shareBtn;
 }
 
-- (UIButton *)dictBtn
-{
-    if (!_dictBtn) {
-        _dictBtn = [self p_iconButtonWithSymbol:@"character.book.closed" title:@"词"];
-    }
-    return _dictBtn;
-}
-
 -(void)click:(UIButton *)sender
 {
     if (sender == self.backBtn) {
@@ -111,11 +101,6 @@
             [self.delegate shareQuoteAction];
         }
     }
-    else if (sender == self.dictBtn) {
-        if ([self.delegate respondsToSelector:@selector(dictionaryAction)]) {
-            [self.delegate dictionaryAction];
-        }
-    }
 }
 
 -(void)layoutSubviews
@@ -131,8 +116,6 @@
     self.translateBtn.right = self.speechBtn.left - gap;
     self.shareBtn.frame = CGRectMake(0, y, btnW, height);
     self.shareBtn.right = self.translateBtn.left - gap;
-    self.dictBtn.frame = CGRectMake(0, y, btnW, height);
-    self.dictBtn.right = self.shareBtn.left - gap;
 }
 
 @end
