@@ -14,6 +14,8 @@
 #import "RDBookmarkModel.h"
 #import <sqlite3.h>
 
+NSString * const RDDatabaseErrorDomain = @"RDDatabaseErrorDomain";
+
 static NSString * const kPrimaryIdMigratedKey = @"RDChapterPrimaryIdMigrated_v1";
 static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
 
@@ -86,6 +88,43 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
     dispatch_async(self.dbQueue, ^{
         block(self.database);
     });
+}
+
+- (BOOL)performTransactionSync:(BOOL (^)(WCTInterface *db))block error:(NSError **)error
+{
+    if (!block) {
+        return NO;
+    }
+    __block BOOL committed = NO;
+    __block WCTError *dbError = nil;
+    void (^work)(void) = ^{
+        WCTTransaction *transaction = [self.database getTransaction];
+        if (!transaction) {
+            return;
+        }
+        committed = [transaction runTransaction:^BOOL{
+            return block(transaction);
+        }];
+        if (!committed) {
+            dbError = [transaction error];
+        }
+    };
+    if (dispatch_get_specific(kRDBQueueSpecificKey) == kRDBQueueSpecificKey) {
+        work();
+    }
+    else {
+        dispatch_sync(self.dbQueue, work);
+    }
+    if (!committed && error) {
+        NSString *message = [dbError isKindOfClass:WCTError.class] ? [dbError infoForKey:WCTErrorKeyMessage] : nil;
+        if (![message isKindOfClass:NSString.class] || message.length == 0) {
+            message = @"数据库写入失败";
+        }
+        *error = [NSError errorWithDomain:RDDatabaseErrorDomain
+                                     code:dbError ? dbError.code : -1
+                                 userInfo:@{NSLocalizedDescriptionKey: message}];
+    }
+    return committed;
 }
 
 - (void)checkpointWALAsync
@@ -179,9 +218,10 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
     }
     // 分批小事务,中途被杀也可幂等续跑(按主键更新,不搬 content)
     const NSUInteger batchSize = 500;
+    BOOL allBatchesCommitted = YES;
     for (NSUInteger start = 0; start < pending.count; start += batchSize) {
         NSUInteger end = MIN(start + batchSize, pending.count);
-        [self.database runTransaction:^BOOL{
+        BOOL committed = [self.database runTransaction:^BOOL{
             for (NSUInteger i = start; i < end; i++) {
                 NSString *old = pending[i][0];
                 NSString *desired = pending[i][1];
@@ -198,16 +238,46 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
                 else {
                     RDCharpterModel *patch = [[RDCharpterModel alloc] init];
                     patch.primaryId = desired;
-                    [self.database updateRowsInTable:kCharpterTable
-                                          onProperty:RDCharpterModel.primaryId
-                                          withObject:patch
-                                               where:RDCharpterModel.primaryId.is(old)];
+                    if (![self.database updateRowsInTable:kCharpterTable
+                                               onProperty:RDCharpterModel.primaryId
+                                               withObject:patch
+                                                    where:RDCharpterModel.primaryId.is(old)]) {
+                        return NO;
+                    }
                 }
             }
             return YES;
         }];
+        if (!committed) {
+            allBatchesCommitted = NO;
+            break;
+        }
+    }
+    // 只有全部批次提交、且复查确实没有残留异常主键时才落完成标志;
+    // 否则下次启动继续跑(迁移幂等),不能永久跳过(P1-03)。
+    if (!allBatchesCommitted || ![self p_primaryIdMigrationIsComplete]) {
+        return;
     }
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
+}
+
+/// 复查:全表已不存在 primaryId 与 bookId_charpterId 不一致的行
+- (BOOL)p_primaryIdMigrationIsComplete
+{
+    NSArray <RDCharpterModel *>*rows = [self.database getAllObjectsOnResults:{RDCharpterModel.primaryId,
+                                                                              RDCharpterModel.bookId,
+                                                                              RDCharpterModel.charpterId}
+                                                                   fromTable:kCharpterTable];
+    if (!rows) {
+        return NO;   // 查询失败与"表为空"必须区分开,失败时不落完成标志
+    }
+    for (RDCharpterModel *chapter in rows) {
+        NSString *desired = [NSString stringWithFormat:@"%@_%@", @(chapter.bookId), @(chapter.charpterId)];
+        if (![chapter.primaryId isEqualToString:desired]) {
+            return NO;
+        }
+    }
+    return YES;
 }
 
 /// 旧库缺列时 ALTER TABLE 补齐(幂等)

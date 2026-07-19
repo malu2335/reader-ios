@@ -7,6 +7,7 @@
 #import "RDZipArchive.h"
 #import "RDBookTextUtil.h"
 #import "RDCharpterModel.h"
+#import "RDImportPolicy.h"
 
 #pragma mark - OPF 解析代理
 
@@ -165,6 +166,19 @@
 
 + (RDLocalBookParseResult *)parseFileAtPath:(NSString *)path error:(NSString **)errorMessage
 {
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+    unsigned long long fileSize = attrs.fileSize;
+    if (attrs == nil) {
+        if (errorMessage) *errorMessage = @"无法读取 EPUB 文件";
+        return nil;
+    }
+    if (fileSize > kRDImportMaxEpubFileBytes) {
+        if (errorMessage) {
+            *errorMessage = [NSString stringWithFormat:@"EPUB 文件过大(上限 %llu MB),无法导入",
+                             kRDImportMaxEpubFileBytes / (1024ull * 1024ull)];
+        }
+        return nil;
+    }
     RDZipArchive *zip = [[RDZipArchive alloc] initWithPath:path];
     if (!zip) {
         if (errorMessage) *errorMessage = @"不是有效的 EPUB 文件";
@@ -217,8 +231,9 @@
     //3. NCX / nav 目录,用于章节命名
     NSDictionary <NSString *,NSString *>*titleByHref = [self chapterTitlesWithZip:zip opf:opf opfDir:opfDir];
 
-    //4. 逐个 spine 项抽取文本
+    //4. 逐个 spine 项抽取文本;单章与累计正文均有硬上限,超限明确失败(不静默截断)
     NSMutableArray <RDCharpterModel *>*chapters = [NSMutableArray array];
+    unsigned long long totalTextBytes = 0;
     for (NSString *idref in opf.spine) {
         RDEpubManifestItem *item = opf.manifest[idref];
         if (!item) {
@@ -230,11 +245,28 @@
         if (!chapterData) {
             continue;
         }
+        if (chapterData.length > kRDImportMaxEpubChapterBytes) {
+            if (errorMessage) {
+                *errorMessage = [NSString stringWithFormat:@"EPUB 单章过大(上限 %llu MB),无法导入",
+                                 kRDImportMaxEpubChapterBytes / (1024ull * 1024ull)];
+            }
+            return nil;
+        }
         NSString *html = [RDBookTextUtil stringFromData:chapterData];
         NSString *content = [RDBookTextUtil plainTextFromHTML:html];
         if (content.length == 0) {
             continue;
         }
+        // NSString 为 UTF-16 单元;用 length*2 粗估解码后内存占用
+        unsigned long long contentBytes = (unsigned long long)content.length * 2ull;
+        if (totalTextBytes + contentBytes > kRDImportMaxEpubTotalTextBytes) {
+            if (errorMessage) {
+                *errorMessage = [NSString stringWithFormat:@"EPUB 正文总量过大(上限 %llu MB),无法导入",
+                                 kRDImportMaxEpubTotalTextBytes / (1024ull * 1024ull)];
+            }
+            return nil;
+        }
+        totalTextBytes += contentBytes;
         NSString *name = titleByHref[item.href] ?: titleByHref[href];
         if (name.length == 0) {
             name = [RDBookTextUtil headingFromHTML:html];

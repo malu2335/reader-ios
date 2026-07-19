@@ -52,7 +52,8 @@
         _tableView.backgroundColor = RDBackgroudColor;
         _tableView.delegate = self;
         _tableView.dataSource = self;
-        _tableView.rowHeight = 60;
+        _tableView.rowHeight = UITableViewAutomaticDimension;
+        _tableView.estimatedRowHeight = 72;
     }
     return _tableView;
 }
@@ -89,7 +90,7 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-    return @"在阅读页点击「翻译」将使用当前选中的配置。兼容格式需填写自定义 Base URL。";
+    return @"在阅读页点击「翻译」将使用当前选中的配置。备份恢复的配置需手动「设为当前」确认后才可出站。兼容格式需填写自定义 Base URL(默认 HTTPS;本机/局域网 HTTP 仅用于 Ollama 等本地服务)。";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -103,7 +104,8 @@
         cell.textLabel.textColor = RDBlackColor;
         cell.detailTextLabel.font = RDFont13;
         cell.detailTextLabel.textColor = RDLightGrayColor;
-        cell.detailTextLabel.numberOfLines = 2;
+        cell.detailTextLabel.numberOfLines = 0;
+        cell.textLabel.numberOfLines = 2;
     }
     if (self.profiles.count == 0) {
         cell.textLabel.text = @"尚未配置,点击添加";
@@ -114,18 +116,30 @@
     }
     RDAIConfigProfile *p = self.profiles[indexPath.row];
     NSString *title = p.name.length > 0 ? p.name : p.type;
+    // 待确认状态进标题,避免仅依赖多行 subtitle 被裁切
+    if (p.pendingConfirm) {
+        title = [NSString stringWithFormat:@"%@ · 待确认", title];
+    }
     cell.textLabel.text = title;
     NSString *detail = [NSString stringWithFormat:@"%@ · %@", p.type, p.model.length > 0 ? p.model : @"未填模型"];
     if (p.baseURL.length > 0) {
         detail = [detail stringByAppendingFormat:@"\n%@", p.baseURL];
     }
+    if (p.pendingConfirm) {
+        detail = [detail stringByAppendingString:@"\n备份导入 · 设为当前后可用"];
+    }
     cell.detailTextLabel.text = detail;
-    BOOL active = [[RDAIConfigStore sharedInstance].activeProfileId isEqualToString:p.profileId]
-        || ([RDAIConfigStore sharedInstance].activeProfileId.length == 0 && indexPath.row == 0);
+    BOOL active = p.profileId.length > 0
+        && [[RDAIConfigStore sharedInstance].activeProfileId isEqualToString:p.profileId];
     if (active) {
         UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
         UIImage *check = [UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:cfg];
         UIImageView *iv = [[UIImageView alloc] initWithImage:[check imageWithTintColor:[UIColor systemGreenColor] renderingMode:UIImageRenderingModeAlwaysOriginal]];
+        cell.accessoryView = iv;
+    } else if (p.pendingConfirm) {
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightRegular];
+        UIImage *warn = [UIImage systemImageNamed:@"exclamationmark.circle" withConfiguration:cfg];
+        UIImageView *iv = [[UIImageView alloc] initWithImage:[warn imageWithTintColor:[UIColor systemOrangeColor] renderingMode:UIImageRenderingModeAlwaysOriginal]];
         cell.accessoryView = iv;
     } else {
         cell.accessoryView = nil;
@@ -147,7 +161,9 @@
     .LeeAddAction(^(LEEAction *action) {
         action.title = @"设为当前";
         action.clickBlock = ^{
-            [[RDAIConfigStore sharedInstance] setActiveProfileId:p.profileId];
+            if (![[RDAIConfigStore sharedInstance] activateProfileId:p.profileId]) {
+                [weakSelf showText:@"设置失败,请重试"];
+            }
             [weakSelf p_reload];
         };
     })

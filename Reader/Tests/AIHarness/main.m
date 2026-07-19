@@ -99,7 +99,7 @@ static void test_config_persistence(NSString *dir) {
     p.apiKey = @"sk-persist-1";
     p.model = @"gpt-4o-mini";
     [store upsertProfile:p];
-    [store setActiveProfileId:p.profileId];
+    [store activateProfileId:p.profileId];
 
     // reload from disk
     [store reloadFromDisk];
@@ -219,7 +219,7 @@ static void test_backup_ai_roundtrip(NSString *dir, NSString *scratch) {
     p2.model = @"gemini-2.0-flash";
     [store upsertProfile:p1];
     [store upsertProfile:p2];
-    [store setActiveProfileId:p2.profileId];
+    [store activateProfileId:p2.profileId];
 
     NSData *preBackup = [store exportBackupData];
     assert_true(preBackup.length > 0, @"exportBackupData non-empty");
@@ -283,8 +283,12 @@ static void test_backup_ai_roundtrip(NSString *dir, NSString *scratch) {
     assert_true(![r1.profileId isEqualToString:p1.profileId] && ![r2.profileId isEqualToString:p2.profileId],
                 @"profileId regenerated on import, not reused from untrusted backup manifest");
     // 本次恢复前 Keychain/沙盒 sidecar 已被 clearAll 清空,两份 profile 都找不到同源旧密钥,
-    // 因此都不可用;activeProfileId 不会盲目沿用备份声明值,交给默认规则(无可用项时留空/退回首项)。
+    // 因此都不可用;activeProfileId 不会盲目沿用备份声明值;导入一律 pendingConfirm。
     assert_true(store.activeProfileId.length == 0, @"activeProfileId not blindly carried over from untrusted backup");
+    for (RDAIConfigProfile *p in store.profiles) {
+        assert_true(p.pendingConfirm, @"imported profile pendingConfirm=YES");
+        assert_true(![p isUsable], @"imported profile not usable until user confirm");
+    }
 
     // Equality with pre-backup export (profile count only; ids/active intentionally do not round-trip verbatim)
     NSData *post = [store exportBackupData];
@@ -299,6 +303,7 @@ static void test_backup_ai_roundtrip(NSString *dir, NSString *scratch) {
     [store reloadFromDisk];
     RDAIConfigProfile *kLoaded = [store profileWithId:kCheck.profileId];
     assert_true([kLoaded.apiKey isEqualToString:@"keychain-only-secret"], @"apiKey survives reload via secure store");
+    assert_true(!kLoaded.pendingConfirm && [kLoaded isUsable], @"upsert clears pending and is usable");
 
     logline(@"backup entry name constant: %@", RDAIConfigBackupEntryName);
     logline(@"zip entries: %@", [names componentsJoinedByString:@", "]);
@@ -318,7 +323,7 @@ static void test_backup_ai_hijack_rejected(NSString *dir) {
     real.apiKey = @"real-secret-key";
     real.model = @"gpt-4o-mini";
     [store upsertProfile:real];
-    [store setActiveProfileId:real.profileId];
+    [store activateProfileId:real.profileId];
     NSString *realId = real.profileId;
 
     NSDictionary *maliciousProfile = @{
@@ -344,6 +349,7 @@ static void test_backup_ai_hijack_rejected(NSString *dir) {
     assert_true(restored != nil, @"restored profile exists");
     assert_true(![restored.profileId isEqualToString:realId], @"profileId regenerated, not reused from untrusted backup");
     assert_true(restored.apiKey.length == 0, @"attacker-origin profile does NOT inherit the real key");
+    assert_true(restored.pendingConfirm, @"malicious import is pendingConfirm");
     assert_true(![restored isUsable], @"unmatched imported profile is not usable (no auto key attach)");
     assert_true(store.activeProfileId.length == 0, @"activeProfileId not blindly carried over from untrusted backup");
     logline(@"hijack attempt correctly rejected: key not attached, profileId not reused, not auto-active");
@@ -373,7 +379,35 @@ static void test_backup_ai_hijack_rejected(NSString *dir) {
     RDAIConfigProfile *legRestored = store.profiles.firstObject;
     assert_true(legRestored != nil && [legRestored.apiKey isEqualToString:@"real-secret-key"],
                 @"same provider+origin reattaches existing local key by content match");
-    logline(@"same-origin legitimate restore correctly reattached key by content match");
+    assert_true(legRestored.pendingConfirm, @"same-origin rebind still pendingConfirm until user confirms");
+    assert_true(![legRestored isUsable], @"reattached key alone does not make imported profile usable");
+    assert_true(store.activeProfileId.length == 0, @"import leaves activeProfileId empty");
+    BOOL setOk = [store activateProfileId:legRestored.profileId];
+    assert_true(setOk, @"activateProfileId succeeds");
+    RDAIConfigProfile *afterConfirm = [store profileWithId:legRestored.profileId];
+    assert_true(afterConfirm != nil && !afterConfirm.pendingConfirm && [afterConfirm isUsable],
+                @"activateProfileId clears pendingConfirm and becomes usable");
+    logline(@"same-origin legitimate restore reattached key; usable only after activateProfileId confirm");
+}
+
+static void test_base_url_policy(void) {
+    logline(@"\n== Base URL security policy ==");
+    NSError *err = nil;
+    assert_true([RDAIClient validateBaseURLString:@"https://api.openai.com" error:&err], @"https public ok");
+    err = nil;
+    assert_true([RDAIClient validateBaseURLString:@"http://127.0.0.1:11434" error:&err], @"http loopback ok");
+    err = nil;
+    assert_true([RDAIClient validateBaseURLString:@"http://localhost:11434/v1" error:&err], @"http localhost ok");
+    err = nil;
+    assert_true([RDAIClient validateBaseURLString:@"http://192.168.1.10:11434" error:&err], @"http LAN ok");
+    err = nil;
+    assert_true([RDAIClient validateBaseURLString:@"http://ollama.local:11434" error:&err], @"http mDNS .local ok");
+    err = nil;
+    assert_true(![RDAIClient validateBaseURLString:@"http://example.com" error:&err], @"http public rejected");
+    err = nil;
+    assert_true(![RDAIClient validateBaseURLString:@"ftp://127.0.0.1" error:&err], @"ftp rejected");
+    err = nil;
+    assert_true(![RDAIClient validateBaseURLString:@"api.openai.com" error:&err], @"missing scheme rejected");
 }
 
 int main(int argc, const char * argv[]) {
@@ -391,6 +425,7 @@ int main(int argc, const char * argv[]) {
         test_six_providers();
         test_backup_ai_roundtrip(storeDir, scratch);
         test_backup_ai_hijack_rejected(storeDir);
+        test_base_url_policy();
 
         logline(@"\n== Summary ==");
         if (g_failures == 0) {

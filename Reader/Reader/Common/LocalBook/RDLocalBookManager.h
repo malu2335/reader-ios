@@ -55,8 +55,16 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 /// 删除本地书:阅读记录、章节与文件
 + (void)removeLocalBook:(RDBookDetailModel *)book;
 
-/// 重新解析书籍文件并重建章节库(恢复备份用),同步执行,在后台队列调用
-+ (BOOL)rebuildChaptersForBook:(RDBookDetailModel *)book errorMessage:(NSString * _Nullable * _Nullable)errorMessage;
+/// 重新解析书籍文件得到章节(恢复备份用),同步执行,在后台队列调用。
+/// 只解析不写库:章节与读记录由 RDLibraryTransaction 一次性原子提交;
+/// 同时把 book.charpterModel 归位到解析结果里的对应章节。
+/// 返回 nil 表示失败(errorMessage 有值);PDF/漫画返回空数组。
++ (nullable NSArray *)parseChaptersForBook:(RDBookDetailModel *)book errorMessage:(NSString * _Nullable * _Nullable)errorMessage;
+
+/// 同上,但从指定路径解析(恢复备份时源文件还在 staging 目录里,尚未进正式路径)
++ (nullable NSArray *)parseChaptersForBook:(RDBookDetailModel *)book
+                                    atPath:(nullable NSString *)path
+                              errorMessage:(NSString * _Nullable * _Nullable)errorMessage;
 
 + (NSString *)booksDirectory;
 

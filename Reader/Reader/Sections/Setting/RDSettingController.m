@@ -5,6 +5,7 @@
 
 #import "RDSettingController.h"
 #import "RDLocalBookManager.h"
+#import "RDLibraryMutationCoordinator.h"
 #import "RDBookDetailModel.h"
 #import "RDReadRecordManager.h"
 #import "RDCharpterDataManager.h"
@@ -517,7 +518,8 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 {
     // 文件与多表删除放后台,几十本书时不冻结 UI
     [self showLoading:@"正在清理..." cancel:nil];
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+    // 清空与导入/删除/恢复同队列串行,避免与并发导入交叉
+    [RDLibraryMutationCoordinator performAsync:^{
         NSArray *books = [RDReadRecordManager getAllOnBookshelf];
         for (RDBookDetailModel *book in books) {
             if (book.isLocalBook) {
@@ -533,13 +535,17 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             }
         }
         [RDHistoryRecordManager deleteAllHistory];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self hideLoading];
-            [self showText:@"书架已清空"];
-            [self p_refreshStorage];
-            [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:nil];
-        });
-    });
+        // removeLocalBook 把章节删除排在本队列后面,完成提示必须再排一轮才不会
+        // 早于最后一本书的章节删除(P2-17)。
+        [RDLibraryMutationCoordinator performAsync:^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self hideLoading];
+                [self showText:@"书架已清空"];
+                [self p_refreshStorage];
+                [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:nil];
+            });
+        }];
+    }];
 }
 
 @end

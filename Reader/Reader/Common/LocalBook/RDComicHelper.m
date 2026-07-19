@@ -5,8 +5,11 @@
 
 #import "RDComicHelper.h"
 #import "RDZipArchive.h"
+#import "RDImportPolicy.h"
 #import <UIKit/UIKit.h>
+#import <ImageIO/ImageIO.h>
 #import <SDWebImage/SDImageCodersManager.h>
+#import <SDWebImage/SDImageCoder.h>
 
 @implementation RDComicHelper
 
@@ -186,11 +189,79 @@
     if (data.length == 0) {
         return nil;
     }
-    UIImage *image = [[SDImageCodersManager sharedManager] decodedImageWithData:data options:nil];
+    // 压缩后字节硬上限,避免超大条目进解码器
+    if ((unsigned long long)data.length > kRDImportMaxComicImageBytes) {
+        return nil;
+    }
+
+    NSUInteger maxEdge = kRDImportMaxComicMaxPixelSize;
+
+    // 优先 ImageIO thumbnail:按最长边/像素总数下采样,避免主线程全分辨率解码与像素炸弹
+    CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
+    if (source) {
+        CFDictionaryRef props = CGImageSourceCopyPropertiesAtIndex(source, 0, NULL);
+        NSUInteger pixelW = 0, pixelH = 0;
+        if (props) {
+            NSNumber *w = (__bridge NSNumber *)CFDictionaryGetValue(props, kCGImagePropertyPixelWidth);
+            NSNumber *h = (__bridge NSNumber *)CFDictionaryGetValue(props, kCGImagePropertyPixelHeight);
+            pixelW = w.unsignedIntegerValue;
+            pixelH = h.unsignedIntegerValue;
+            CFRelease(props);
+        }
+        if (pixelW > 0 && pixelH > 0) {
+            unsigned long long pixels = (unsigned long long)pixelW * (unsigned long long)pixelH;
+            if (pixels > kRDImportMaxComicPixelCount * 64ull) {
+                // 声明尺寸极端离谱(如 100000×100000)直接拒绝,连 thumbnail 也不尝试
+                CFRelease(source);
+                return nil;
+            }
+            if (pixels > kRDImportMaxComicPixelCount) {
+                // 等比缩到像素总数上限内
+                double scale = sqrt((double)kRDImportMaxComicPixelCount / (double)pixels);
+                NSUInteger scaledEdge = (NSUInteger)(MAX(pixelW, pixelH) * scale);
+                if (scaledEdge > 0 && scaledEdge < maxEdge) {
+                    maxEdge = scaledEdge;
+                }
+            }
+        }
+        NSDictionary *options = @{
+            (id)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+            (id)kCGImageSourceCreateThumbnailWithTransform: @YES,
+            (id)kCGImageSourceThumbnailMaxPixelSize: @(maxEdge),
+            (id)kCGImageSourceShouldCacheImmediately: @YES,
+        };
+        CGImageRef thumb = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+        CFRelease(source);
+        if (thumb) {
+            UIImage *image = [UIImage imageWithCGImage:thumb scale:1.0 orientation:UIImageOrientationUp];
+            CGImageRelease(thumb);
+            if (image) {
+                return image;
+            }
+        }
+    }
+
+    // WebP 等 ImageIO 可能不支持:用 SDWebImage thumbnail 选项下采样,禁止全分辨率解码后再拒绝
+    CGFloat thumbEdge = (CGFloat)maxEdge;
+    NSDictionary *sdOptions = @{
+        SDImageCoderDecodeThumbnailPixelSize: [NSValue valueWithCGSize:CGSizeMake(thumbEdge, thumbEdge)],
+        SDImageCoderDecodePreserveAspectRatio: @YES,
+        SDImageCoderDecodeFirstFrameOnly: @YES,
+    };
+    UIImage *image = [[SDImageCodersManager sharedManager] decodedImageWithData:data options:sdOptions];
     if (image) {
+        // 用整数像素乘积再比上限,避免 CGFloat 先乘后截断/非有限值
+        NSUInteger pxW = (NSUInteger)llround(image.size.width * image.scale);
+        NSUInteger pxH = (NSUInteger)llround(image.size.height * image.scale);
+        if (pxW > 0 && pxH > 0) {
+            unsigned long long pixels = (unsigned long long)pxW * (unsigned long long)pxH;
+            if (pixels > kRDImportMaxComicPixelCount) {
+                return nil;
+            }
+        }
         return image;
     }
-    return [UIImage imageWithData:data];
+    return nil;
 }
 
 @end

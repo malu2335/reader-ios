@@ -11,6 +11,8 @@
 #import "RDCharpterModel.h"
 #import "RDCharpterDataManager.h"
 #import "RDReadRecordManager.h"
+#import "RDLibraryTransaction.h"
+#import "RDLibraryMutationCoordinator.h"
 #import "RDBookmarkManager.h"
 #import "RDHistoryRecordManager.h"
 #import "RDLocalBookParseResult.h"
@@ -27,7 +29,6 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
 static NSString * const kPDFAutoCoverVersion = @"v1";
 static NSString * const kCustomCoverVersion = @"v1";
 static const CGSize kBookCoverPixelSize = {600.0, 840.0};
-static void *kRDLocalBookImportQueueKey = &kRDLocalBookImportQueueKey;
 static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 @interface RDLocalBookManager ()
@@ -86,32 +87,16 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 #pragma mark - 导入
 
-/// 导入专用串行队列:同内容文件并发导入时,去重检查与落盘天然互斥
+/// 书库变更串行队列:导入/删除/清空/恢复共用同一条,
+/// 同内容文件并发导入时去重检查与落盘天然互斥(见 RDLibraryMutationCoordinator)
 + (dispatch_queue_t)importQueue
 {
-    static dispatch_queue_t queue;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        queue = dispatch_queue_create("com.reader.localbook.import", DISPATCH_QUEUE_SERIAL);
-        dispatch_queue_set_specific(queue,
-                                    kRDLocalBookImportQueueKey,
-                                    kRDLocalBookImportQueueKey,
-                                    NULL);
-    });
-    return queue;
+    return [RDLibraryMutationCoordinator queue];
 }
 
 + (void)p_performSyncOnImportQueue:(dispatch_block_t)block
 {
-    if (!block) {
-        return;
-    }
-    if (dispatch_get_specific(kRDLocalBookImportQueueKey)) {
-        block();
-    }
-    else {
-        dispatch_sync([self importQueue], block);
-    }
+    [RDLibraryMutationCoordinator performSync:block];
 }
 
 + (dispatch_queue_t)p_customCoverQueue
@@ -497,7 +482,6 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
                 chapter.bookName = book.title;
                 chapter.author = book.author;
             }
-            [RDCharpterDataManager insertObjectsWithCharpters:result.chapters];
             book.charpterModel = result.chapters.firstObject;
         }
 
@@ -537,7 +521,21 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
             }
         }
 
-        [RDReadRecordManager insertOrReplaceModel:book];
+        // 章节与读记录合并进单次事务:写失败即整体回滚,不能出现"报成功但书架无此书"
+        // 或"有孤儿章节"的混合状态(P1-02/P1-03)。
+        NSError *commitError = nil;
+        if (![RDLibraryTransaction commitBook:book
+                                     chapters:result.chapters
+                                touchReadTime:YES
+                                        error:&commitError]) {
+            [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+            if (book.coverImg.length > 0) {
+                NSString *coverPath = [[self booksDirectory] stringByAppendingPathComponent:book.coverImg];
+                [[NSFileManager defaultManager] removeItemAtPath:coverPath error:nil];
+            }
+            finish(nil, commitError.localizedDescription ?: @"保存书籍失败", NO);
+            return;
+        }
         finish(book, nil, NO);
     });
 }
@@ -853,15 +851,21 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 #pragma mark - 恢复备份
 
-+ (BOOL)rebuildChaptersForBook:(RDBookDetailModel *)book errorMessage:(NSString **)errorMessage
++ (NSArray *)parseChaptersForBook:(RDBookDetailModel *)book errorMessage:(NSString **)errorMessage
+{
+    return [self parseChaptersForBook:book atPath:[self absolutePathForBook:book] errorMessage:errorMessage];
+}
+
++ (NSArray *)parseChaptersForBook:(RDBookDetailModel *)book
+                           atPath:(NSString *)path
+                     errorMessage:(NSString **)errorMessage
 {
     if (!book.isLocalBook || [book.fileType isEqualToString:@"pdf"] || [RDComicHelper isComicFileType:book.fileType]) {
-        return YES;   // PDF / 漫画图集无文字章节
+        return @[];   // PDF / 漫画图集无文字章节
     }
-    NSString *path = [self absolutePathForBook:book];
     if (!path || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
         if (errorMessage) *errorMessage = @"书籍文件缺失";
-        return NO;
+        return nil;
     }
     NSString *parseError = nil;
     RDLocalBookParseResult *result = nil;
@@ -876,24 +880,27 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
     }
     if (!result || result.chapters.count == 0) {
         if (errorMessage) *errorMessage = parseError ?: @"解析失败";
-        return NO;
+        return nil;
     }
     for (RDCharpterModel *chapter in result.chapters) {
         chapter.bookId = book.bookId;
         chapter.bookName = book.title;
         chapter.author = book.author;
     }
-    [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
-    [RDCharpterDataManager insertObjectsWithCharpters:result.chapters];
-
-    //恢复当前阅读章节引用(找不到时退回第一章)
+    //恢复当前阅读章节引用(找不到时退回第一章)。此时章节尚未落库,
+    //只能在解析结果里查,写库统一交给 RDLibraryTransaction 一次提交。
     NSInteger charpterId = book.charpterModel.charpterId;
     RDCharpterModel *current = nil;
     if (charpterId > 0) {
-        current = [RDCharpterDataManager getCharpterWithBookId:book.bookId charpterId:charpterId];
+        for (RDCharpterModel *chapter in result.chapters) {
+            if (chapter.charpterId == charpterId) {
+                current = chapter;
+                break;
+            }
+        }
     }
     book.charpterModel = current ?: result.chapters.firstObject;
-    return YES;
+    return result.chapters;
 }
 
 #pragma mark - 删除

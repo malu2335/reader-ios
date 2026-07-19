@@ -115,10 +115,20 @@ typedef NS_ENUM(NSInteger, RDAIEditRow) {
         [self showText:@"兼容格式需要填写 Base URL"];
         return;
     }
+    if (self.editing.baseURL.length > 0) {
+        NSError *urlErr = nil;
+        if (![RDAIClient validateBaseURLString:self.editing.baseURL error:&urlErr]) {
+            [self showText:urlErr.localizedDescription ?: @"Base URL 不符合安全策略"];
+            return;
+        }
+    }
     if (self.editing.name.length == 0) {
         self.editing.name = self.editing.type;
     }
-    [[RDAIConfigStore sharedInstance] upsertProfile:self.editing];
+    if (![[RDAIConfigStore sharedInstance] upsertProfile:self.editing]) {
+        [self showText:@"保存失败,密钥未能写入安全存储"];
+        return;
+    }
     [self showText:@"已保存"];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self.navigationController popViewControllerAnimated:YES];

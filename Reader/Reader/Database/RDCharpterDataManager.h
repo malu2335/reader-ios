@@ -30,6 +30,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 +(void)insertObjectsWithCharpters:(NSArray *)charpters;
 
+/// 原子替换整本书的章节:同一事务内先删旧再插新。
+/// 任一写失败即整体回滚,旧章节保持不变(P1-02)。
++(BOOL)replaceChaptersForBookId:(NSInteger)bookId
+                       chapters:(NSArray *)chapters
+                          error:(NSError **)error;
+
 
 /// 获取书籍的最后一章
 /// @param bookId <#bookId description#>

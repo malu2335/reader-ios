@@ -4,6 +4,7 @@
 //
 
 #import "RDReadRecordManager.h"
+#import "RDReadRecordManager+DBInternal.h"
 #import "RDBookDetailModel.h"
 #import "RDBookDetailModel+WCTTableCoding.h"
 #import "RDDatabaseManager.h"
@@ -19,6 +20,15 @@
 
 +(void)insertOrReplaceModel:(RDBookDetailModel *)model touchReadTime:(BOOL)touchReadTime
 {
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        [self db_insertOrReplaceModel:model touchReadTime:touchReadTime inDatabase:db];
+    }];
+}
+
++(BOOL)db_insertOrReplaceModel:(RDBookDetailModel *)model
+                 touchReadTime:(BOOL)touchReadTime
+                    inDatabase:(WCTInterface *)db
+{
     if (touchReadTime || model.readTime <= 0) {
         model.readTime = [NSDate date].timeIntervalSince1970;
     }
@@ -32,12 +42,11 @@
     if (light) {
         model.charpterModel = light;
     }
-    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db insertOrReplaceObject:model into:kReadRecordTable];
-    }];
+    BOOL success = [db insertOrReplaceObject:model into:kReadRecordTable];
     if (light) {
         model.charpterModel = original;
     }
+    return success;
 }
 
 /// 去掉 content 的章节引用副本;无需剥离时返回 nil

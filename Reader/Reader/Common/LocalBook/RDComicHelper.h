@@ -35,7 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
                  toZipPath:(NSString *)zipPath
                      error:(NSString * _Nullable * _Nullable)errorMessage;
 
-/// 解码图片数据(含 WebP,依赖已注册的 SDWebImage coder)
+/// 解码图片数据(含 WebP);优先 ImageIO 下采样 thumbnail,限制字节/像素预算,避免全分辨率主线程解码
 + (nullable UIImage *)imageFromData:(NSData *)data;
 
 /// 自然序比较(数字友好,忽略大小写)

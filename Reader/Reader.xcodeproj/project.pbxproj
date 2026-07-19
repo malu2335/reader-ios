@@ -14,6 +14,7 @@
 		A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI02FILEREF0001 /* RDAIClient.m */; };
 		A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI03FILEREF0001 /* RDAIConfigController.m */; };
 		A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */; };
+		A11B002MC01BUILDFILE01 /* RDLibraryMutationCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */; };
 		A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BK01FILEREF0001 /* RDBackupManager.m */; };
 		A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP01FILEREF0001 /* RDReplaceRule.m */; };
 		A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */; };
@@ -186,6 +187,7 @@
 		ABB7B8F32419378900225828 /* RDBookRecommendApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABB7B8F22419378900225828 /* RDBookRecommendApi.m */; };
 		ABC3450A2439DE1200061974 /* RDCommParamManager.m in Sources */ = {isa = PBXBuildFile; fileRef = ABC345092439DE1200061974 /* RDCommParamManager.m */; };
 		ABC3450D243A1B3000061974 /* RDForceUpdateApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABC3450C243A1B3000061974 /* RDForceUpdateApi.m */; };
+		A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */; };
 		ABD329A023B842870015EAFA /* RDCharpterDataManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */; };
 		ABD329A723B853DD0015EAFA /* RDCharpterContentApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABD329A623B853DD0015EAFA /* RDCharpterContentApi.m */; };
 		ABF5D50B23B8383E008E3163 /* RDCharpterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = ABF5D50A23B8383E008E3163 /* RDCharpterManager.m */; };
@@ -210,6 +212,8 @@
 		A11B001AI03FILEREF0002 /* RDAIConfigController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfigController.h; sourceTree = "<group>"; };
 		A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIProfileEditController.m; sourceTree = "<group>"; };
 		A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIProfileEditController.h; sourceTree = "<group>"; };
+		A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLibraryMutationCoordinator.m; sourceTree = "<group>"; };
+		A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryMutationCoordinator.h; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0001 /* RDBackupManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBackupManager.m; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0002 /* RDBackupManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBackupManager.h; sourceTree = "<group>"; };
 		A11B001RP01FILEREF0001 /* RDReplaceRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRule.m; sourceTree = "<group>"; };
@@ -251,6 +255,7 @@
 		986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookParseResult.m; sourceTree = "<group>"; };
 		DED15520775A9726D3E87911 /* RDTxtBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDTxtBookParser.h; sourceTree = "<group>"; };
 		80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDTxtBookParser.m; sourceTree = "<group>"; };
+		A11B001IP01FILEREF0001 /* RDImportPolicy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDImportPolicy.h; sourceTree = "<group>"; };
 		474F58F25C7A77B498A50E0D /* RDZipArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDZipArchive.h; sourceTree = "<group>"; };
 		6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDZipArchive.m; sourceTree = "<group>"; };
 		825F434656301730FD128D18 /* RDEpubBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDEpubBookParser.h; sourceTree = "<group>"; };
@@ -560,6 +565,10 @@
 		ABC345092439DE1200061974 /* RDCommParamManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDCommParamManager.m; sourceTree = "<group>"; };
 		ABC3450B243A1B3000061974 /* RDForceUpdateApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDForceUpdateApi.h; sourceTree = "<group>"; };
 		ABC3450C243A1B3000061974 /* RDForceUpdateApi.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDForceUpdateApi.m; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDLibraryTransaction.mm; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0002 /* RDLibraryTransaction.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryTransaction.h; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0003 /* RDCharpterDataManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDCharpterDataManager+DBInternal.h"; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0004 /* RDReadRecordManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDReadRecordManager+DBInternal.h"; sourceTree = "<group>"; };
 		ABD3299E23B842870015EAFA /* RDCharpterDataManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDCharpterDataManager.h; sourceTree = "<group>"; };
 		ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDCharpterDataManager.mm; sourceTree = "<group>"; };
 		ABD329A523B853DD0015EAFA /* RDCharpterContentApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDCharpterContentApi.h; sourceTree = "<group>"; };
@@ -645,12 +654,15 @@
 			children = (
 				A11B001BK01FILEREF0002 /* RDBackupManager.h */,
 				A11B001BK01FILEREF0001 /* RDBackupManager.m */,
+				A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */,
+				A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */,
 				0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */,
 				B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */,
 				653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */,
 				986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */,
 				DED15520775A9726D3E87911 /* RDTxtBookParser.h */,
 				80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */,
+				A11B001IP01FILEREF0001 /* RDImportPolicy.h */,
 				474F58F25C7A77B498A50E0D /* RDZipArchive.h */,
 				6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */,
 				825F434656301730FD128D18 /* RDEpubBookParser.h */,
@@ -1196,6 +1208,10 @@
 				AB5B036223E3FFC300070840 /* RDReadRecordManager.mm */,
 				ABD3299E23B842870015EAFA /* RDCharpterDataManager.h */,
 				ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */,
+				A11B002TX01FILEREF0003 /* RDCharpterDataManager+DBInternal.h */,
+				A11B002TX01FILEREF0004 /* RDReadRecordManager+DBInternal.h */,
+				A11B002TX01FILEREF0002 /* RDLibraryTransaction.h */,
+				A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */,
 				29F97D3A240CEB8000909240 /* RDHistoryRecordManager.h */,
 				29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */,
 				A11B001BM01FILEREF0002 /* RDBookmarkModel.h */,
@@ -1653,6 +1669,7 @@
 				A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */,
 				A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */,
 				A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */,
+				A11B002MC01BUILDFILE01 /* RDLibraryMutationCoordinator.m in Sources */,
 				A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */,
 				A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */,
 				A11B001RP03BUILDFILE001 /* RDReplaceRulesController.m in Sources */,
@@ -1750,6 +1767,7 @@
 				29BA848C2361C897000FE927 /* KafkaReplicatorLayer.m in Sources */,
 				295A668923FCDA6600E2631A /* LEEAlert.m in Sources */,
 				ABD329A023B842870015EAFA /* RDCharpterDataManager.mm in Sources */,
+				A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */,
 				29406FEB23B0E61500E4495F /* RDBaseApi.m in Sources */,
 				29BA84972361D263000FE927 /* RDBookshelfNoneCell.m in Sources */,
 				29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */,
@@ -1976,7 +1994,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.3.4;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -2006,7 +2024,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.3.4;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";

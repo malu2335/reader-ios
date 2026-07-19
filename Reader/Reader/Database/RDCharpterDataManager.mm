@@ -4,6 +4,7 @@
 //
 
 #import "RDCharpterDataManager.h"
+#import "RDCharpterDataManager+DBInternal.h"
 #import "RDDatabaseManager.h"
 #import "RDCharpterModel.h"
 #import "RDCharpterModel+WCTTableCoding.h"
@@ -102,6 +103,32 @@
             return YES;
         }];
     }];
+}
+
++(BOOL)db_replaceChaptersForBookId:(NSInteger)bookId
+                          chapters:(NSArray *)chapters
+                        inDatabase:(WCTInterface *)db
+{
+    if (![db deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)]) {
+        return NO;
+    }
+    if (chapters.count == 0) {
+        return YES;
+    }
+    for (RDCharpterModel *chapter in chapters) {
+        chapter.bookId = bookId;
+        chapter.primaryId = [NSString stringWithFormat:@"%@_%@", @(chapter.bookId), @(chapter.charpterId)];
+    }
+    return [db insertOrReplaceObjects:chapters into:kCharpterTable];
+}
+
++(BOOL)replaceChaptersForBookId:(NSInteger)bookId
+                       chapters:(NSArray *)chapters
+                          error:(NSError **)error
+{
+    return [[RDDatabaseManager sharedInstance] performTransactionSync:^BOOL(WCTInterface *db) {
+        return [self db_replaceChaptersForBookId:bookId chapters:chapters inDatabase:db];
+    } error:error];
 }
 
 +(NSArray *)getAllNoContentCharpterWithBookId:(NSInteger)bookid

@@ -137,6 +137,148 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     return url;
 }
 
+/// 判断 host 是否为 loopback / RFC1918 / 链路本地 / IPv6 ULA / mDNS `.local`
++ (BOOL)p_isLoopbackOrLANHost:(NSString *)host
+{
+    if (host.length == 0 || host.length > 253) {
+        return NO;
+    }
+    NSString *h = host.lowercaseString;
+    if ([h isEqualToString:@"localhost"] || [h isEqualToString:@"127.0.0.1"] || [h isEqualToString:@"::1"]
+        || [h isEqualToString:@"0:0:0:0:0:0:0:1"]) {
+        return YES;
+    }
+    // 去掉 IPv6 方括号
+    if ([h hasPrefix:@"["] && [h hasSuffix:@"]"] && h.length > 2) {
+        h = [h substringWithRange:NSMakeRange(1, h.length - 2)];
+    }
+    if ([h isEqualToString:@"::1"]) {
+        return YES;
+    }
+    // IPv6 link-local fe80::/10 与 ULA fc00::/7 (含 fd00::/8)
+    if ([h containsString:@":"]) {
+        if ([h hasPrefix:@"fe80:"] || [h hasPrefix:@"fe8"] || [h hasPrefix:@"fe9"]
+            || [h hasPrefix:@"fea"] || [h hasPrefix:@"feb"]) {
+            return YES;
+        }
+        if ([h hasPrefix:@"fc"] || [h hasPrefix:@"fd"]) {
+            // ULA: 前 7 bit 为 1111110 → fc00::/7,即以 fc 或 fd 开头的十六进制地址
+            if (h.length >= 2) {
+                unichar c0 = [h characterAtIndex:0];
+                unichar c1 = [h characterAtIndex:1];
+                if (c0 == 'f' && (c1 == 'c' || c1 == 'd')) {
+                    return YES;
+                }
+            }
+        }
+        return NO;
+    }
+    // mDNS / Bonjour 主机名,如 ollama.local(仅限单层 .local 后缀,限制长度与字符)
+    if ([h hasSuffix:@".local"] && h.length > 6) {
+        NSString *label = [h substringToIndex:h.length - 6]; // strip ".local"
+        if (label.length == 0 || label.length > 63 || [label containsString:@"."]) {
+            return NO;
+        }
+        for (NSUInteger i = 0; i < label.length; i++) {
+            unichar ch = [label characterAtIndex:i];
+            BOOL ok = (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_';
+            if (!ok) {
+                return NO;
+            }
+        }
+        return YES;
+    }
+    NSArray <NSString *>*parts = [h componentsSeparatedByString:@"."];
+    if (parts.count != 4) {
+        return NO;
+    }
+    int a = parts[0].intValue, b = parts[1].intValue, c = parts[2].intValue, d = parts[3].intValue;
+    // 粗校验每段是否像数字
+    for (NSString *p in parts) {
+        if (p.length == 0 || p.length > 3) {
+            return NO;
+        }
+        for (NSUInteger i = 0; i < p.length; i++) {
+            unichar ch = [p characterAtIndex:i];
+            if (ch < '0' || ch > '9') {
+                return NO;
+            }
+        }
+    }
+    if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
+        return NO;
+    }
+    // 127.0.0.0/8
+    if (a == 127) {
+        return YES;
+    }
+    // 10.0.0.0/8
+    if (a == 10) {
+        return YES;
+    }
+    // 172.16.0.0/12
+    if (a == 172 && b >= 16 && b <= 31) {
+        return YES;
+    }
+    // 192.168.0.0/16
+    if (a == 192 && b == 168) {
+        return YES;
+    }
+    // 169.254.0.0/16 link-local
+    if (a == 169 && b == 254) {
+        return YES;
+    }
+    return NO;
+}
+
++ (BOOL)validateBaseURLString:(NSString *)baseURL error:(NSError **)error
+{
+    NSString *raw = [self normalizedBaseURL:baseURL];
+    if (raw.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Base URL 为空"}];
+        }
+        return NO;
+    }
+    // scheme 必填(https 或 http);不自动补全
+    NSURLComponents *components = [NSURLComponents componentsWithString:raw];
+    if (!components || components.scheme.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Base URL 须包含 https:// 或 http:// 前缀"}];
+        }
+        return NO;
+    }
+    NSString *scheme = components.scheme.lowercaseString;
+    NSString *host = components.host;
+    if (host.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Base URL 缺少主机名"}];
+        }
+        return NO;
+    }
+    if ([scheme isEqualToString:@"https"]) {
+        return YES;
+    }
+    if ([scheme isEqualToString:@"http"]) {
+        if ([self p_isLoopbackOrLANHost:host]) {
+            return YES;
+        }
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:16
+                                     userInfo:@{NSLocalizedDescriptionKey: @"公网地址仅允许 HTTPS;HTTP 仅限本机(127.0.0.1/localhost)或局域网(用于 Ollama 等本地服务)"}];
+        }
+        return NO;
+    }
+    if (error) {
+        *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                 userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"不支持的 URL 协议: %@", scheme]}];
+    }
+    return NO;
+}
+
 /// 避免 Base 已含 /v1 时再拼出 /v1/v1/...
 + (NSString *)p_joinBase:(NSString *)base absolutePath:(NSString *)path
 {
@@ -194,10 +336,13 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         return nil;
     }
     base = [self normalizedBaseURL:base];
+    if (![self validateBaseURLString:base error:error]) {
+        return nil;
+    }
     NSString *prompt = [self translatePromptForText:text];
 
     if ([self isOpenAIFamily:type]) {
-        // 支持 base=https://api.openai.com 或 http://host:port/v1
+        // 支持 base=https://api.openai.com 或 http://127.0.0.1:11434/v1 (本地 Ollama)
         NSString *urlString = [self p_joinBase:base absolutePath:@"/v1/chat/completions"];
         NSURL *url = [NSURL URLWithString:urlString];
         if (!url) {
