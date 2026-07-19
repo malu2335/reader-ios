@@ -107,6 +107,11 @@ static NSUInteger s_generation = 0;
     NSUInteger generation = [self beginRefreshGeneration];
     // 轻量列表:getBookshelfDisplayList 内部会打开 DB,不反序列化章节正文
     NSArray *books = [RDReadRecordManager getBookshelfDisplayList];
+    if (!books) {
+        // 查询失败:不提交空快照,否则启动预取会把数据库错误固化成空书架,
+        // 后续 p_reload 也会直接吃到这份错误缓存(P1-07)。
+        return;
+    }
     // 旧版本导入的 PDF 只有文字占位封面；在后台预取阶段串行回填第一页。
     [RDLocalBookManager preparePDFCoversForBooks:books];
     [self commitBooks:books columns:columns generation:generation];

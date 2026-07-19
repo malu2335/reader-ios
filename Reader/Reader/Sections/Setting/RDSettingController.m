@@ -536,6 +536,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         // 枚举全部记录行,而不是只枚举书架上的负 id:否则历史遗留的正 bookId
         // read/chapter/bookmark 会残留,与"清空"文案不符(P2-18)。
         NSArray *books = [RDReadRecordManager getAllRecordsForDestructiveClear];
+        if (!books) {
+            // 枚举都失败就不可能删干净,必须报错而不是提示"已清空"
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self hideLoading];
+                [self showText:@"读取书架失败,未执行清空"];
+            });
+            return;
+        }
         for (RDBookDetailModel *book in books) {
             if (book.isLocalBook) {
                 // 本地书由 manager 在同一串行队列内删除记录、源文件与两类封面。

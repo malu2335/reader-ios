@@ -32,7 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param bookId 书籍Id
 +(NSInteger)getFirstCharpterIdWirhBookId:(NSInteger)bookId;
 
-+(void)insertObjectsWithCharpters:(NSArray *)charpters;
++(BOOL)insertObjectsWithCharpters:(NSArray *)charpters;
 
 /// 原子替换整本书的章节:同一事务内先删旧再插新。
 /// 任一写失败即整体回滚,旧章节保持不变(P1-02)。
@@ -53,7 +53,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 删除本地记录书籍
 /// @param bookid
-+(void)deleteAllCharpterWithBookId:(NSInteger)bookid;
++(BOOL)deleteAllCharpterWithBookId:(NSInteger)bookid;
 @end
 
 NS_ASSUME_NONNULL_END

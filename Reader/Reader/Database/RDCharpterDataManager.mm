@@ -73,52 +73,59 @@
     return cid;
 }
 
-+(void)updateCharpterContentWithModel:(RDCharpterModel *)model
++(BOOL)updateCharpterContentWithModel:(RDCharpterModel *)model
 {
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:model where:RDCharpterModel.bookId.is(model.bookId)&&RDCharpterModel.charpterId.is(model.charpterId)];
+        success = [db updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:model where:RDCharpterModel.bookId.is(model.bookId)&&RDCharpterModel.charpterId.is(model.charpterId)];
     }];
+    return success;
 }
 
-+(void)insertObjectWithCharpters:(RDCharpterModel *)charpter
++(BOOL)insertObjectWithCharpters:(RDCharpterModel *)charpter
 {
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
         charpter.primaryId = [NSString stringWithFormat:@"%@_%@", @(charpter.bookId), @(charpter.charpterId)];
-        [db insertOrReplaceObject:charpter into:kCharpterTable];
+        success = [db insertOrReplaceObject:charpter into:kCharpterTable];
     }];
+    return success;
 }
 
-+(void)insertObjectsWithCharpters:(NSArray *)charpters
++(BOOL)insertObjectsWithCharpters:(NSArray *)charpters
 {
     if (charpters.count == 0) {
-        return;
+        return YES;
     }
     NSInteger bookId = [charpters.firstObject bookId];
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
         NSArray *existing = [db getObjectsOnResults:{RDCharpterModel.charpterId, RDCharpterModel.primaryId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)];
         NSMutableSet *existingIds = [NSMutableSet set];
         for (RDCharpterModel *m in existing) {
             [existingIds addObject:@(m.charpterId)];
         }
-        [db runTransaction:^BOOL{
+        success = [db runTransaction:^BOOL{
             NSMutableArray *toInsert = [NSMutableArray array];
             for (RDCharpterModel *charpterModel in charpters) {
                 charpterModel.primaryId = [NSString stringWithFormat:@"%@_%@", @(charpterModel.bookId), @(charpterModel.charpterId)];
                 if ([existingIds containsObject:@(charpterModel.charpterId)]) {
-                    if (charpterModel.content.length > 0) {
-                        [db updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:charpterModel where:RDCharpterModel.bookId.is(charpterModel.bookId)&&RDCharpterModel.charpterId.is(charpterModel.charpterId)];
+                    if (charpterModel.content.length > 0 &&
+                        ![db updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:charpterModel where:RDCharpterModel.bookId.is(charpterModel.bookId)&&RDCharpterModel.charpterId.is(charpterModel.charpterId)]) {
+                        return NO;
                     }
                 } else {
                     [toInsert addObject:charpterModel];
                     [existingIds addObject:@(charpterModel.charpterId)];
                 }
             }
-            if (toInsert.count > 0) {
-                [db insertOrReplaceObjects:toInsert into:kCharpterTable];
+            if (toInsert.count > 0 && ![db insertOrReplaceObjects:toInsert into:kCharpterTable]) {
+                return NO;
             }
             return YES;
         }];
     }];
+    return success;
 }
 
 +(BOOL)db_replaceChaptersForBookId:(NSInteger)bookId
@@ -165,10 +172,12 @@
     return result;
 }
 
-+(void)deleteAllCharpterWithBookId:(NSInteger)bookid
++(BOOL)deleteAllCharpterWithBookId:(NSInteger)bookid
 {
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)];
+        success = [db deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookid)];
     }];
+    return success;
 }
 @end
