@@ -138,6 +138,7 @@
 		AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */; };
 		B437CA3D7535733BABFE48EB /* libPods-Reader.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B782DBADEC21A5296387B29 /* libPods-Reader.a */; };
 		B5C8C00B30738253136F7673 /* RDLocalBookManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */; };
+		BD1F48326CEBE97710F2912A /* RDControlWiringTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 54B97D62649234542E258935 /* RDControlWiringTests.m */; };
 		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
 		D00D25E54EBD464DD7AD355A /* RDHarnessSelfTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */; };
 		E1C8FD090799D51DC7A68BB4 /* RDPdfReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 230E80FE544127BFB49E5639 /* RDPdfReadController.m */; };
@@ -343,6 +344,7 @@
 		3F7D405CCC40B5C2433F455F /* RDRestoreTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDRestoreTests.m; sourceTree = "<group>"; };
 		474F58F25C7A77B498A50E0D /* RDZipArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDZipArchive.h; sourceTree = "<group>"; };
 		4C5E8A70982106BEB8323759 /* RDSettingController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSettingController.h; sourceTree = "<group>"; };
+		54B97D62649234542E258935 /* RDControlWiringTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDControlWiringTests.m; sourceTree = "<group>"; };
 		5C0F3FC1EB92C59245CF6514 /* Pods-ReaderTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderTests.release.xcconfig"; path = "Target Support Files/Pods-ReaderTests/Pods-ReaderTests.release.xcconfig"; sourceTree = "<group>"; };
 		653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLocalBookParseResult.h; sourceTree = "<group>"; };
 		68F31C352B682E98E9009858 /* RDMobiBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDMobiBookParser.m; sourceTree = "<group>"; };
@@ -1247,6 +1249,7 @@
 				9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */,
 				0E8DA6789784B4B9BFD3E9C3 /* RDImportDiagnosticTests.m */,
 				07F90865936A1F0B2E3D3BBA /* RDDatabaseLayerTests.m */,
+				54B97D62649234542E258935 /* RDControlWiringTests.m */,
 			);
 			name = ReaderTests;
 			path = ReaderTests;
@@ -1673,6 +1676,7 @@
 				D00D25E54EBD464DD7AD355A /* RDHarnessSelfTests.m in Sources */,
 				0C829B4A531C176EFEAB483B /* RDImportDiagnosticTests.m in Sources */,
 				48A3A9D8AD90A22290217C61 /* RDDatabaseLayerTests.m in Sources */,
+				BD1F48326CEBE97710F2912A /* RDControlWiringTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

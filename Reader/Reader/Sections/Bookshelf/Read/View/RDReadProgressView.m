@@ -9,9 +9,15 @@
 #import "RDReadProgressView.h"
 #import "RDBookDetailModel.h"
 #import "RDCharpterModel.h"
+#import "RDLayoutButton.h"
+/// 图标视觉尺寸,与阅读工具栏的图标保持一致(RDReadToolBar 也是 24)
+static const CGFloat kRDProgressArrowIconSize = 24;
+/// 点击区域,满足 HIG 的 44pt 最小可点目标
+static const CGFloat kRDProgressArrowHitSize = 44;
+
 @interface RDReadProgressView  ()
-@property (nonatomic,strong) UIImageView *left;
-@property (nonatomic,strong) UIImageView *right;
+@property (nonatomic,strong) RDLayoutButton *left;
+@property (nonatomic,strong) RDLayoutButton *right;
 @property (nonatomic,strong) UISlider *slider;
 @property (nonatomic,strong) UILabel *chapterLabel;
 @end
@@ -41,8 +47,12 @@
     self.chapterLabel.text = book.charpterModel.name;
     NSInteger index = [self.charpters indexOfObject:book.charpterModel];
     if (index != NSNotFound) {
-        self.slider.value = index/(CGFloat)self.charpters.count;
+        // 分母用 count-1:否则最后一章也到不了滑块最右端,与 jump:/cancel: 的换算不一致
+        self.slider.value = self.charpters.count > 1
+            ? index / (CGFloat)(self.charpters.count - 1)
+            : 0;
     }
+    [self p_updateArrowStatesForIndex:(index == NSNotFound ? 0 : index)];
 }
 
 -(UILabel *)chapterLabel
@@ -56,22 +66,89 @@
     return _chapterLabel;
 }
 
--(UIImageView *)left
+/// 原先左右箭头是 UIImageView,没有任何 target-action,点了不响应 —— 纯装饰的假按钮。
+/// 改用项目自带的 RDLayoutButton:它的 imageSize 能把图标固定在设计尺寸,
+/// 与按钮本身的点击区域解耦(素材原图 35pt,直接塞进 UIButton 会按原尺寸铺开)。
+-(RDLayoutButton *)p_arrowButtonWithImage:(NSString *)imageName action:(SEL)action
+{
+    RDLayoutButton *button = [[RDLayoutButton alloc] init];
+    [button setImage:[UIImage imageNamed:imageName] forState:UIControlStateNormal];
+    button.imageSize = CGSizeMake(kRDProgressArrowIconSize, kRDProgressArrowIconSize);
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
+-(RDLayoutButton *)left
 {
     if (!_left) {
-        _left = [[UIImageView alloc] init];
-        _left.image = [UIImage imageNamed:@"read_progress_left"];
+        _left = [self p_arrowButtonWithImage:@"read_progress_left" action:@selector(p_previousChapter)];
     }
     return _left;
 }
 
--(UIImageView *)right
+-(RDLayoutButton *)right
 {
     if (!_right) {
-        _right = [[UIImageView alloc] init];
-        _right.image = [UIImage imageNamed:@"read_progress_right"];
+        _right = [self p_arrowButtonWithImage:@"read_progress_right" action:@selector(p_nextChapter)];
     }
     return _right;
+}
+
+/// 当前章节在目录中的下标;找不到时回退到滑块位置
+-(NSInteger)p_currentIndex
+{
+    if (self.charpters.count == 0) {
+        return NSNotFound;
+    }
+    NSInteger index = [self.charpters indexOfObject:self.book.charpterModel];
+    if (index == NSNotFound) {
+        index = (NSInteger)roundf(self.slider.value * (self.charpters.count - 1));
+    }
+    return MAX(0, MIN(index, (NSInteger)self.charpters.count - 1));
+}
+
+-(void)p_stepBy:(NSInteger)delta
+{
+    NSInteger current = [self p_currentIndex];
+    if (current == NSNotFound) {
+        return;
+    }
+    NSInteger target = current + delta;
+    if (target < 0 || target >= (NSInteger)self.charpters.count) {
+        return;   // 已在首/末章,不做环绕
+    }
+    RDCharpterModel *charpter = self.charpters[target];
+    // 先把本视图的显示同步过去,再通知外部真正跳章
+    self.chapterLabel.text = charpter.name;
+    if (self.charpters.count > 1) {
+        self.slider.value = target / (CGFloat)(self.charpters.count - 1);
+    }
+    [self p_updateArrowStatesForIndex:target];
+    if ([self.delegate respondsToSelector:@selector(sliderToCharpter:)]) {
+        [self.delegate sliderToCharpter:charpter];
+    }
+}
+
+-(void)p_previousChapter
+{
+    [self p_stepBy:-1];
+}
+
+-(void)p_nextChapter
+{
+    [self p_stepBy:1];
+}
+
+/// 首/末章时把对应箭头置灰,避免点了没反应又没有任何反馈
+-(void)p_updateArrowStatesForIndex:(NSInteger)index
+{
+    NSInteger count = (NSInteger)self.charpters.count;
+    BOOL hasPrev = (count > 0 && index > 0);
+    BOOL hasNext = (count > 0 && index < count - 1);
+    self.left.enabled = hasPrev;
+    self.right.enabled = hasNext;
+    self.left.alpha = hasPrev ? 1.0 : 0.35;
+    self.right.alpha = hasNext ? 1.0 : 0.35;
 }
 
 -(UISlider *)slider
@@ -94,12 +171,21 @@
 {
     [super layoutSubviews];
     self.chapterLabel.frame = CGRectMake(20, 20, self.width-40, RDFont14.lineHeight);
-    self.left.frame = CGRectMake(20, self.chapterLabel.bottom+15, 18, 18);
-    self.slider.frame = CGRectMake(self.left.right+15, 0, self.width-40-30-36, 20);
-    self.slider.centerY = self.left.centerY;
-    self.right.frame = CGRectMake(self.slider.right+15, 0, 18, 18);
-    self.right.centerY = self.left.centerY;
-    
+
+    // 图标按设计尺寸(24)绘制,按钮本体放大到 44×44 命中区,两者解耦。
+    const CGFloat iconSize = kRDProgressArrowIconSize;
+    const CGFloat hitSize = kRDProgressArrowHitSize;
+    CGFloat iconCenterY = self.chapterLabel.bottom + 15 + iconSize / 2;
+    CGFloat leftCenterX = 20 + iconSize / 2;
+    CGFloat rightCenterX = self.width - 20 - iconSize / 2;
+
+    self.left.frame = CGRectMake(leftCenterX - hitSize / 2, iconCenterY - hitSize / 2, hitSize, hitSize);
+    self.right.frame = CGRectMake(rightCenterX - hitSize / 2, iconCenterY - hitSize / 2, hitSize, hitSize);
+
+    CGFloat sliderLeft = 20 + iconSize + 15;
+    CGFloat sliderRight = self.width - 20 - iconSize - 15;
+    self.slider.frame = CGRectMake(sliderLeft, 0, sliderRight - sliderLeft, 20);
+    self.slider.centerY = iconCenterY;
 }
 
 -(void)jump:(UISlider *)sender
