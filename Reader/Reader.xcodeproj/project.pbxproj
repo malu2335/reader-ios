@@ -1878,7 +1878,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1908,7 +1908,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
