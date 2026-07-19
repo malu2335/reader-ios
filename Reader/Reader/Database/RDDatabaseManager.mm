@@ -23,6 +23,10 @@ static NSString * const kLegacyPrimaryIdMigratedKey = @"RDChapterPrimaryIdMigrat
 
 /// schema 版本:1 = chapter.primaryId 已统一为 bookId_charpterId
 static const int kRDSchemaVersionPrimaryId = 1;
+
+/// 独立 sqlite 连接的等锁超时(毫秒)。WCDB 同时持有这个文件,
+/// 不设超时会在写锁竞争时无限期挂起整条数据库队列。
+static const int kRDSQLiteBusyTimeoutMs = 5000;
 static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
 
 @interface RDDatabaseManager ()
@@ -170,6 +174,8 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         }
         return;
     }
+    // WCDB 正持有同一个文件;不设超时的话这条独立连接可能无限期等写锁
+    sqlite3_busy_timeout(db, kRDSQLiteBusyTimeoutMs);
     // 更积极的自动 checkpoint 阈值
     sqlite3_exec(db, "PRAGMA wal_autocheckpoint=100;", NULL, NULL, NULL);
     // TRUNCATE:合并并尽量清空 -wal,下次启动 recovered frames 接近 0
@@ -212,6 +218,7 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         }
         return -1;   // 打不开:当作未知,不要据此跳过迁移
     }
+    sqlite3_busy_timeout(db, kRDSQLiteBusyTimeoutMs);
     int version = 0;
     sqlite3_stmt *stmt = NULL;
     if (sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, NULL) == SQLITE_OK) {
@@ -237,6 +244,9 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         }
         return NO;
     }
+    // user_version 是一次真实写入,必须能超时失败而不是死等 WCDB 的写锁;
+    // 写不进去也没关系——迁移是幂等的,下次启动会重跑。
+    sqlite3_busy_timeout(db, kRDSQLiteBusyTimeoutMs);
     NSString *sql = [NSString stringWithFormat:@"PRAGMA user_version = %d;", version];
     BOOL ok = sqlite3_exec(db, sql.UTF8String, NULL, NULL, NULL) == SQLITE_OK;
     sqlite3_close(db);
@@ -355,6 +365,7 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         }
         return;
     }
+    sqlite3_busy_timeout(db, kRDSQLiteBusyTimeoutMs);
     BOOL exists = NO;
     NSString *pragma = [NSString stringWithFormat:@"PRAGMA table_info(%@);", table];
     sqlite3_stmt *stmt = NULL;

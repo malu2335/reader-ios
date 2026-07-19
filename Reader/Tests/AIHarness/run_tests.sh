@@ -32,8 +32,8 @@ checks = [
      "未配置 AI" in (src/"Common/AI/RDReadTranslateHelper.m").read_text() and "RDAIConfigController" in (src/"Common/AI/RDReadTranslateHelper.m").read_text()),
     ("Settings exposes AI 配置 entry",
      "RDSettingRowAIConfig" in setting and "AI 配置" in setting),
-    ("Online search entry disabled on bookshelf",
-     "本地阅读模式" in (src/"Sections/Bookshelf/Cell/RDBookshelfSearchCell.m").read_text()),
+    ("Online search cell removed from the tree entirely (Phase E)",
+     not (src/"Sections/Bookshelf/Cell/RDBookshelfSearchCell.m").exists()),
 ]
 lines = ["=== UI wiring real-path (translate chain) ==="]
 failed = 0
