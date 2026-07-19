@@ -29,7 +29,9 @@ FOUNDATION_EXPORT NSString * const RDAIConfigBackupEntryName;
 @property (nonatomic, copy) NSString *model;
 /// 自定义 Base URL;三种「格式」类型必填,原生类型可空(走默认域名)
 @property (nonatomic, copy, nullable) NSString *baseURL;
-/// 是否可用(至少有 key + model;格式类型还需 baseURL)
+/// 备份恢复后的待确认状态:为 YES 时 isUsable 为 NO,须用户在设置中「设为当前」或重新保存后才可用于出站翻译
+@property (nonatomic, assign) BOOL pendingConfirm;
+/// 是否可用(至少有 key + model;格式类型还需 baseURL;且非 pendingConfirm)
 - (BOOL)isUsable;
 - (NSDictionary *)toDictionary;
 + (nullable instancetype)profileFromDictionary:(NSDictionary *)dict;
@@ -50,8 +52,10 @@ FOUNDATION_EXPORT NSString * const RDAIConfigBackupEntryName;
 
 - (nullable RDAIConfigProfile *)activeProfile;
 - (nullable RDAIConfigProfile *)profileWithId:(NSString *)profileId;
-- (void)upsertProfile:(RDAIConfigProfile *)profile;
+/// 写入 profile 与 Keychain;Keychain 失败返回 NO,不更新内存/磁盘
+- (BOOL)upsertProfile:(RDAIConfigProfile *)profile;
 - (void)removeProfileId:(NSString *)profileId;
+/// 设为当前并清除该 profile 的 pendingConfirm(用户确认)
 - (void)setActiveProfileId:(nullable NSString *)activeProfileId;
 - (void)reloadFromDisk;
 - (BOOL)saveToDisk;
@@ -59,7 +63,7 @@ FOUNDATION_EXPORT NSString * const RDAIConfigBackupEntryName;
 - (void)clearAll;
 /// 导出为备份 JSON data
 - (nullable NSData *)exportBackupData;
-/// 从备份 JSON 恢复(覆盖当前)
+/// 从备份 JSON 恢复(覆盖当前)。导入 profile 一律 pendingConfirm=YES,activeProfileId 置空;不自动出站
 - (BOOL)importBackupData:(NSData *)data error:(NSError * _Nullable * _Nullable)error;
 
 @end

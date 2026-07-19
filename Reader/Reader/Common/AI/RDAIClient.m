@@ -137,6 +137,115 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     return url;
 }
 
+/// 判断 host 是否为 loopback 或 RFC1918/链路本地 IPv4,或常见本地主机名
++ (BOOL)p_isLoopbackOrLANHost:(NSString *)host
+{
+    if (host.length == 0) {
+        return NO;
+    }
+    NSString *h = host.lowercaseString;
+    if ([h isEqualToString:@"localhost"] || [h isEqualToString:@"127.0.0.1"] || [h isEqualToString:@"::1"]
+        || [h isEqualToString:@"0:0:0:0:0:0:0:1"]) {
+        return YES;
+    }
+    // 去掉 IPv6 方括号
+    if ([h hasPrefix:@"["] && [h hasSuffix:@"]"] && h.length > 2) {
+        h = [h substringWithRange:NSMakeRange(1, h.length - 2)];
+        if ([h isEqualToString:@"::1"] || [h hasPrefix:@"fe80:"]) {
+            return YES;
+        }
+    }
+    NSArray <NSString *>*parts = [h componentsSeparatedByString:@"."];
+    if (parts.count != 4) {
+        return NO;
+    }
+    int a = parts[0].intValue, b = parts[1].intValue, c = parts[2].intValue, d = parts[3].intValue;
+    // 粗校验每段是否像数字
+    for (NSString *p in parts) {
+        if (p.length == 0 || p.length > 3) {
+            return NO;
+        }
+        for (NSUInteger i = 0; i < p.length; i++) {
+            unichar ch = [p characterAtIndex:i];
+            if (ch < '0' || ch > '9') {
+                return NO;
+            }
+        }
+    }
+    if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
+        return NO;
+    }
+    // 127.0.0.0/8
+    if (a == 127) {
+        return YES;
+    }
+    // 10.0.0.0/8
+    if (a == 10) {
+        return YES;
+    }
+    // 172.16.0.0/12
+    if (a == 172 && b >= 16 && b <= 31) {
+        return YES;
+    }
+    // 192.168.0.0/16
+    if (a == 192 && b == 168) {
+        return YES;
+    }
+    // 169.254.0.0/16 link-local
+    if (a == 169 && b == 254) {
+        return YES;
+    }
+    return NO;
+}
+
++ (BOOL)validateBaseURLString:(NSString *)baseURL error:(NSError **)error
+{
+    NSString *raw = [self normalizedBaseURL:baseURL];
+    if (raw.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Base URL 为空"}];
+        }
+        return NO;
+    }
+    // 无 scheme 时按 https 解析以便取 host,但最终仍要求显式合法 scheme
+    NSURLComponents *components = [NSURLComponents componentsWithString:raw];
+    if (!components || components.scheme.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Base URL 须包含 https:// 或 http:// 前缀"}];
+        }
+        return NO;
+    }
+    NSString *scheme = components.scheme.lowercaseString;
+    NSString *host = components.host;
+    if (host.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Base URL 缺少主机名"}];
+        }
+        return NO;
+    }
+    if ([scheme isEqualToString:@"https"]) {
+        return YES;
+    }
+    if ([scheme isEqualToString:@"http"]) {
+        if ([self p_isLoopbackOrLANHost:host]) {
+            return YES;
+        }
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:16
+                                     userInfo:@{NSLocalizedDescriptionKey: @"公网地址仅允许 HTTPS;HTTP 仅限本机(127.0.0.1/localhost)或局域网(用于 Ollama 等本地服务)"}];
+        }
+        return NO;
+    }
+    if (error) {
+        *error = [NSError errorWithDomain:kRDAIErrorDomain code:15
+                                 userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"不支持的 URL 协议: %@", scheme]}];
+    }
+    return NO;
+}
+
 /// 避免 Base 已含 /v1 时再拼出 /v1/v1/...
 + (NSString *)p_joinBase:(NSString *)base absolutePath:(NSString *)path
 {
@@ -194,10 +303,13 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         return nil;
     }
     base = [self normalizedBaseURL:base];
+    if (![self validateBaseURLString:base error:error]) {
+        return nil;
+    }
     NSString *prompt = [self translatePromptForText:text];
 
     if ([self isOpenAIFamily:type]) {
-        // 支持 base=https://api.openai.com 或 http://host:port/v1
+        // 支持 base=https://api.openai.com 或 http://127.0.0.1:11434/v1 (本地 Ollama)
         NSString *urlString = [self p_joinBase:base absolutePath:@"/v1/chat/completions"];
         NSURL *url = [NSURL URLWithString:urlString];
         if (!url) {

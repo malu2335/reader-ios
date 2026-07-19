@@ -35,7 +35,10 @@ static const unsigned long long kRDZipMaxExtractedFileBytes = 3ull * 1024 * 1024
 @property (nonatomic,strong) NSData *data;
 @property (nonatomic,strong) NSDictionary <NSString *,RDZipEntry *>*entries;
 @property (nonatomic,copy) NSArray <NSString *>*entryNames;
+/// 累计解压量只按「不同条目」计一次,避免漫画重读/预取同一页耗尽预算导致空白
 @property (nonatomic,assign) unsigned long long totalDecompressedBytes;
+@property (nonatomic,strong) NSMutableSet <NSString *>*chargedEntryNames;
+@property (nonatomic,strong) NSObject *budgetLock;
 @end
 
 @implementation RDZipArchive
@@ -47,6 +50,8 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
 {
     self = [super init];
     if (self) {
+        _budgetLock = [[NSObject alloc] init];
+        _chargedEntryNames = [NSMutableSet set];
         _data = [NSData dataWithContentsOfFile:path options:NSDataReadingMappedIfSafe error:nil];
         if (_data.length < 22 || ![self parseCentralDirectory]) {
             return nil;
@@ -128,12 +133,17 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     if (entry.uncompressedSize > kRDZipMaxEntryUncompressedBytes) {
         return nil;
     }
-    if (self.totalDecompressedBytes + entry.uncompressedSize > kRDZipMaxArchiveUncompressedBytes) {
-        return nil;
-    }
     if (entry.method == 8) {
         double ratio = (double)entry.uncompressedSize / (double)MAX(entry.compressedSize, (uint32_t)1);
         if (ratio > kRDZipMaxCompressionRatio) {
+            return nil;
+        }
+    }
+    // 同一条目重复读取(漫画往返翻页/预取)不再重复计入累计预算
+    @synchronized (self.budgetLock) {
+        BOOL alreadyCharged = [self.chargedEntryNames containsObject:name];
+        if (!alreadyCharged &&
+            self.totalDecompressedBytes + entry.uncompressedSize > kRDZipMaxArchiveUncompressedBytes) {
             return nil;
         }
     }
@@ -165,7 +175,16 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     if ((uint32_t)crc32(0, result.bytes, (uInt)result.length) != entry.crc) {
         return nil;
     }
-    self.totalDecompressedBytes += result.length;
+    @synchronized (self.budgetLock) {
+        if (![self.chargedEntryNames containsObject:name]) {
+            // 再次检查:实际解压长度可能大于声明 uncompressedSize
+            if (self.totalDecompressedBytes + result.length > kRDZipMaxArchiveUncompressedBytes) {
+                return nil;
+            }
+            self.totalDecompressedBytes += result.length;
+            [self.chargedEntryNames addObject:name];
+        }
+    }
     return result;
 }
 

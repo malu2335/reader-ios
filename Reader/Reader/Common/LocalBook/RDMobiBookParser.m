@@ -6,6 +6,7 @@
 #import "RDMobiBookParser.h"
 #import "RDBookTextUtil.h"
 #import "RDCharpterModel.h"
+#import "RDImportPolicy.h"
 
 //PalmDOC 压缩方式
 static const uint16_t kMobiCompressionNone = 1;
@@ -150,9 +151,10 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
     }
 
     //---- 解压正文 ----
-    // textLength 是文件自身声明值,仅作为容量提示;实际内容仍受各 record 真实字节数约束,
-    // 这里封顶避免声明离谱大小时一次性预分配过大内存。
-    NSUInteger textCapacityHint = MIN((NSUInteger)textLength, (NSUInteger)(64 * 1024 * 1024));
+    // textLength 是文件自身声明值,仅作为容量提示,不可信;真正硬上限见 kRDImportMaxMobiTextBytes,
+    // 每次 append 前检查剩余预算,PalmDoc 解压过程中也强制不越过上限。
+    NSUInteger textHardCap = (NSUInteger)kRDImportMaxMobiTextBytes;
+    NSUInteger textCapacityHint = MIN((NSUInteger)textLength, textHardCap);
     NSMutableData *rawText = [NSMutableData dataWithCapacity:textCapacityHint];
     for (uint16_t i = 1; i <= textRecordCount && i < numRecords; i++) {
         NSData *record = recordData(i);
@@ -160,18 +162,45 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
             break;
         }
         NSUInteger usableLength = record.length - [self trailingEntriesSize:record extraDataFlags:extraDataFlags];
+        if (usableLength > record.length) {
+            usableLength = record.length;
+        }
         NSData *payload = [record subdataWithRange:NSMakeRange(0, usableLength)];
+        NSData *chunk = nil;
         if (compression == kMobiCompressionPalmDoc) {
-            [rawText appendData:[self decompressPalmDoc:payload]];
+            NSUInteger remaining = textHardCap > rawText.length ? (textHardCap - rawText.length) : 0;
+            if (remaining == 0) {
+                if (errorMessage) {
+                    *errorMessage = [NSString stringWithFormat:@"MOBI 正文过大(上限 %llu MB),无法导入",
+                                     kRDImportMaxMobiTextBytes / (1024ull * 1024ull)];
+                }
+                return nil;
+            }
+            chunk = [self decompressPalmDoc:payload maxOutputBytes:remaining];
+            if (!chunk) {
+                if (errorMessage) {
+                    *errorMessage = [NSString stringWithFormat:@"MOBI 正文过大或损坏(上限 %llu MB),无法导入",
+                                     kRDImportMaxMobiTextBytes / (1024ull * 1024ull)];
+                }
+                return nil;
+            }
         }
         else {
-            [rawText appendData:payload];
+            chunk = payload;
         }
-        if (rawText.length >= textLength) {
+        if (rawText.length + chunk.length > textHardCap) {
+            if (errorMessage) {
+                *errorMessage = [NSString stringWithFormat:@"MOBI 正文过大(上限 %llu MB),无法导入",
+                                 kRDImportMaxMobiTextBytes / (1024ull * 1024ull)];
+            }
+            return nil;
+        }
+        [rawText appendData:chunk];
+        if (rawText.length >= textLength && textLength > 0) {
             break;
         }
     }
-    if (rawText.length > textLength) {
+    if (textLength > 0 && rawText.length > textLength && textLength <= textHardCap) {
         rawText.length = textLength;
     }
     if (rawText.length == 0) {
@@ -196,24 +225,38 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
 
 #pragma mark - PalmDOC LZ77
 
-+ (NSData *)decompressPalmDoc:(NSData *)input
+/// PalmDoc LZ77 解压;maxOutputBytes 为输出硬上限,超出返回 nil(防止扩张炸弹)
++ (NSData *)decompressPalmDoc:(NSData *)input maxOutputBytes:(NSUInteger)maxOutputBytes
 {
     const uint8_t *inBytes = input.bytes;
     NSUInteger inLength = input.length;
-    NSMutableData *output = [NSMutableData dataWithCapacity:inLength * 4];
+    NSUInteger capacity = MIN(inLength * 4, maxOutputBytes > 0 ? maxOutputBytes : inLength * 4);
+    NSMutableData *output = [NSMutableData dataWithCapacity:MAX(capacity, (NSUInteger)64)];
     NSUInteger i = 0;
     while (i < inLength) {
+        if (output.length >= maxOutputBytes) {
+            return nil;
+        }
         uint8_t c = inBytes[i++];
         if (c == 0x00) {
+            if (output.length + 1 > maxOutputBytes) {
+                return nil;
+            }
             [output appendBytes:&c length:1];
         }
         else if (c <= 0x08) {
             //c 个原样字节
             NSUInteger count = MIN((NSUInteger)c, inLength - i);
+            if (output.length + count > maxOutputBytes) {
+                return nil;
+            }
             [output appendBytes:inBytes + i length:count];
             i += count;
         }
         else if (c <= 0x7F) {
+            if (output.length + 1 > maxOutputBytes) {
+                return nil;
+            }
             [output appendBytes:&c length:1];
         }
         else if (c <= 0xBF) {
@@ -227,6 +270,9 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
             if (distance == 0 || distance > output.length) {
                 continue;
             }
+            if (output.length + length > maxOutputBytes) {
+                return nil;
+            }
             //逐字节复制,允许目标区与来源区重叠
             NSUInteger start = output.length - distance;
             for (NSUInteger j = 0; j < length; j++) {
@@ -236,6 +282,9 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
         }
         else {
             //0xC0-0xFF:空格 + (c ^ 0x80)
+            if (output.length + 2 > maxOutputBytes) {
+                return nil;
+            }
             uint8_t space = ' ';
             uint8_t ch = c ^ 0x80;
             [output appendBytes:&space length:1];

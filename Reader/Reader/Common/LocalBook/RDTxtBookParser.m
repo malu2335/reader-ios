@@ -6,6 +6,7 @@
 #import "RDTxtBookParser.h"
 #import "RDBookTextUtil.h"
 #import "RDCharpterModel.h"
+#import "RDImportPolicy.h"
 
 //没有识别到章节时按该长度分段
 static const NSUInteger kTxtFallbackChunkLength = 8000;
@@ -16,9 +17,29 @@ static const NSUInteger kTxtMaxChapterCount = 50000;
 
 + (RDLocalBookParseResult *)parseFileAtPath:(NSString *)path error:(NSString **)errorMessage
 {
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+    unsigned long long fileSize = attrs.fileSize;
+    if (fileSize == 0 && attrs == nil) {
+        if (errorMessage) *errorMessage = @"文件为空或无法读取";
+        return nil;
+    }
+    if (fileSize > kRDImportMaxTxtFileBytes) {
+        if (errorMessage) {
+            *errorMessage = [NSString stringWithFormat:@"TXT 文件过大(上限 %llu MB),无法导入",
+                             kRDImportMaxTxtFileBytes / (1024ull * 1024ull)];
+        }
+        return nil;
+    }
     NSData *data = [NSData dataWithContentsOfFile:path];
     if (data.length == 0) {
         if (errorMessage) *errorMessage = @"文件为空或无法读取";
+        return nil;
+    }
+    if (data.length > kRDImportMaxTxtFileBytes) {
+        if (errorMessage) {
+            *errorMessage = [NSString stringWithFormat:@"TXT 文件过大(上限 %llu MB),无法导入",
+                             kRDImportMaxTxtFileBytes / (1024ull * 1024ull)];
+        }
         return nil;
     }
     NSString *raw = [RDBookTextUtil stringFromData:data];

@@ -251,6 +251,7 @@
 		986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookParseResult.m; sourceTree = "<group>"; };
 		DED15520775A9726D3E87911 /* RDTxtBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDTxtBookParser.h; sourceTree = "<group>"; };
 		80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDTxtBookParser.m; sourceTree = "<group>"; };
+		A11B001IP01FILEREF0001 /* RDImportPolicy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDImportPolicy.h; sourceTree = "<group>"; };
 		474F58F25C7A77B498A50E0D /* RDZipArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDZipArchive.h; sourceTree = "<group>"; };
 		6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDZipArchive.m; sourceTree = "<group>"; };
 		825F434656301730FD128D18 /* RDEpubBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDEpubBookParser.h; sourceTree = "<group>"; };
@@ -651,6 +652,7 @@
 				986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */,
 				DED15520775A9726D3E87911 /* RDTxtBookParser.h */,
 				80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */,
+				A11B001IP01FILEREF0001 /* RDImportPolicy.h */,
 				474F58F25C7A77B498A50E0D /* RDZipArchive.h */,
 				6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */,
 				825F434656301730FD128D18 /* RDEpubBookParser.h */,

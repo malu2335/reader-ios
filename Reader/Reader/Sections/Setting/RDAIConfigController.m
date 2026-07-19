@@ -89,7 +89,7 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-    return @"在阅读页点击「翻译」将使用当前选中的配置。兼容格式需填写自定义 Base URL。";
+    return @"在阅读页点击「翻译」将使用当前选中的配置。备份恢复的配置需手动「设为当前」确认后才可出站。兼容格式需填写自定义 Base URL(默认 HTTPS;本机/局域网 HTTP 仅用于 Ollama 等本地服务)。";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -119,9 +119,12 @@
     if (p.baseURL.length > 0) {
         detail = [detail stringByAppendingFormat:@"\n%@", p.baseURL];
     }
+    if (p.pendingConfirm) {
+        detail = [detail stringByAppendingString:@"\n备份导入 · 待确认(设为当前后可用)"];
+    }
     cell.detailTextLabel.text = detail;
-    BOOL active = [[RDAIConfigStore sharedInstance].activeProfileId isEqualToString:p.profileId]
-        || ([RDAIConfigStore sharedInstance].activeProfileId.length == 0 && indexPath.row == 0);
+    BOOL active = p.profileId.length > 0
+        && [[RDAIConfigStore sharedInstance].activeProfileId isEqualToString:p.profileId];
     if (active) {
         UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
         UIImage *check = [UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:cfg];

@@ -68,6 +68,9 @@ typedef void (^RDAITransportCompletion)(NSData * _Nullable data, NSHTTPURLRespon
 + (BOOL)isAnthropicFamily:(NSString *)type;
 + (BOOL)isGeminiFamily:(NSString *)type;
 
+/// Base URL 安全策略:默认仅 HTTPS;HTTP 仅允许 loopback / 局域网(本地 Ollama 等)。拒绝其它 scheme。
++ (BOOL)validateBaseURLString:(NSString *)baseURL error:(NSError * _Nullable * _Nullable)error;
+
 @end
 
 NS_ASSUME_NONNULL_END
