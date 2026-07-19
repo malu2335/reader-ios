@@ -32,8 +32,6 @@
 #import "RDReadConfigManager.h"
 #import "RDBaseViewController.h"
 #import "RDToastView.h"
-#import "RDRefreshHeader.h"
-#import "RDRefreshFooter.h"
 #import "RDUtilities.h"
 #import "KVOController.h"
 #import "RDReadHelper.h"

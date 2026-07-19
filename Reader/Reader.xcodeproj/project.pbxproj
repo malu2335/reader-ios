@@ -30,7 +30,6 @@
 		29406FEE23B0E6B200E4495F /* RDGlobalModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FED23B0E6B200E4495F /* RDGlobalModel.m */; };
 		29406FF123B0E88A00E4495F /* RDHttpModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FF023B0E88A00E4495F /* RDHttpModel.m */; };
 		29406FF723B0F6C400E4495F /* RDToastView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FF623B0F6C400E4495F /* RDToastView.m */; };
-		29406FFA23B0FB0600E4495F /* RDRefreshFooter.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FF923B0FB0600E4495F /* RDRefreshFooter.m */; };
 		29407C8323607D0E003C9643 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 29407C8223607D0E003C9643 /* AppDelegate.m */; };
 		29407C8E23607D0F003C9643 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29407C8D23607D0F003C9643 /* Assets.xcassets */; };
 		29407C9123607D0F003C9643 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29407C8F23607D0F003C9643 /* LaunchScreen.storyboard */; };
@@ -41,7 +40,6 @@
 		294B0EAD2361A39C00AB99DA /* RDTopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 294B0EAC2361A39C00AB99DA /* RDTopView.m */; };
 		294B0EB22361BBC600AB99DA /* RDSearchView.m in Sources */ = {isa = PBXBuildFile; fileRef = 294B0EB12361BBC600AB99DA /* RDSearchView.m */; };
 		294C75DD2405254E0013FB30 /* RDChannelModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 294C75DC2405254E0013FB30 /* RDChannelModel.m */; };
-		294C75E624052E5B0013FB30 /* RDPageController.m in Sources */ = {isa = PBXBuildFile; fileRef = 294C75E524052E5B0013FB30 /* RDPageController.m */; };
 		29554D4E237D05AD00B4428D /* RDReadSetView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29554D4D237D05AD00B4428D /* RDReadSetView.m */; };
 		29554D51237D05BD00B4428D /* RDReadLightView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29554D50237D05BD00B4428D /* RDReadLightView.m */; };
 		29554D54237D05D500B4428D /* RDReadSliderView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29554D53237D05D500B4428D /* RDReadSliderView.m */; };
@@ -65,7 +63,6 @@
 		2992BB6B23B213AC00C599B1 /* RDLoadIngView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB6A23B213AC00C599B1 /* RDLoadIngView.m */; };
 		2992BB6F23B21B8800C599B1 /* RDDateUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB6E23B21B8800C599B1 /* RDDateUtil.m */; };
 		2992BB7923B2375500C599B1 /* RDUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB7823B2375500C599B1 /* RDUtilities.m */; };
-		2998A7F72428DD7A00C4E07B /* RDWebController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7F62428DD7A00C4E07B /* RDWebController.m */; };
 		2998A7FA2428DE1B00C4E07B /* RDWebView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7F92428DE1B00C4E07B /* RDWebView.m */; };
 		2998A7FD2428E0A200C4E07B /* RDWebTopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7FC2428E0A200C4E07B /* RDWebTopView.m */; };
 		2998A8002428E86500C4E07B /* RDButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7FF2428E86500C4E07B /* RDButton.m */; };
@@ -79,7 +76,6 @@
 		29B00C02237C451200E1B892 /* RDReadTopBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00C01237C451200E1B892 /* RDReadTopBar.m */; };
 		29B00C05237C459700E1B892 /* RDMenuView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00C04237C459700E1B892 /* RDMenuView.m */; };
 		29BA848C2361C897000FE927 /* KafkaReplicatorLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = 29BA848B2361C897000FE927 /* KafkaReplicatorLayer.m */; };
-		29BA84902361CEB8000FE927 /* RDRefreshHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = 29BA848F2361CEB8000FE927 /* RDRefreshHeader.m */; };
 		29BA84972361D263000FE927 /* RDBookshelfNoneCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 29BA84962361D263000FE927 /* RDBookshelfNoneCell.m */; };
 		29BA849D2361D584000FE927 /* UIImage+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 29BA849C2361D584000FE927 /* UIImage+rd_wid.m */; };
 		29BA84A02361E249000FE927 /* RDBookshelfBaseCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 29BA849F2361E249000FE927 /* RDBookshelfBaseCell.m */; };
@@ -216,8 +212,6 @@
 		29406FF023B0E88A00E4495F /* RDHttpModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDHttpModel.m; sourceTree = "<group>"; };
 		29406FF523B0F6C400E4495F /* RDToastView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDToastView.h; sourceTree = "<group>"; };
 		29406FF623B0F6C400E4495F /* RDToastView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDToastView.m; sourceTree = "<group>"; };
-		29406FF823B0FB0600E4495F /* RDRefreshFooter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDRefreshFooter.h; sourceTree = "<group>"; };
-		29406FF923B0FB0600E4495F /* RDRefreshFooter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDRefreshFooter.m; sourceTree = "<group>"; };
 		29407C7E23607D0E003C9643 /* 纸羽轻阅.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "纸羽轻阅.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29407C8123607D0E003C9643 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		29407C8223607D0E003C9643 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -237,8 +231,6 @@
 		294B0EB12361BBC600AB99DA /* RDSearchView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSearchView.m; sourceTree = "<group>"; };
 		294C75DB2405254E0013FB30 /* RDChannelModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDChannelModel.h; sourceTree = "<group>"; };
 		294C75DC2405254E0013FB30 /* RDChannelModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDChannelModel.m; sourceTree = "<group>"; };
-		294C75E424052E5B0013FB30 /* RDPageController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDPageController.h; sourceTree = "<group>"; };
-		294C75E524052E5B0013FB30 /* RDPageController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDPageController.m; sourceTree = "<group>"; };
 		29554D4C237D05AD00B4428D /* RDReadSetView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadSetView.h; sourceTree = "<group>"; };
 		29554D4D237D05AD00B4428D /* RDReadSetView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadSetView.m; sourceTree = "<group>"; };
 		29554D4F237D05BD00B4428D /* RDReadLightView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadLightView.h; sourceTree = "<group>"; };
@@ -289,8 +281,6 @@
 		2992BB7723B2375500C599B1 /* RDUtilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDUtilities.h; sourceTree = "<group>"; };
 		2992BB7823B2375500C599B1 /* RDUtilities.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDUtilities.m; sourceTree = "<group>"; };
 		2998A7F42428DCD600C4E07B /* RDUrl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDUrl.h; sourceTree = "<group>"; };
-		2998A7F52428DD7A00C4E07B /* RDWebController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebController.h; sourceTree = "<group>"; };
-		2998A7F62428DD7A00C4E07B /* RDWebController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDWebController.m; sourceTree = "<group>"; };
 		2998A7F82428DE1B00C4E07B /* RDWebView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebView.h; sourceTree = "<group>"; };
 		2998A7F92428DE1B00C4E07B /* RDWebView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDWebView.m; sourceTree = "<group>"; };
 		2998A7FB2428E0A200C4E07B /* RDWebTopView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebTopView.h; sourceTree = "<group>"; };
@@ -318,8 +308,6 @@
 		29BA848A2361C897000FE927 /* KafkaReplicatorLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaReplicatorLayer.h; sourceTree = "<group>"; };
 		29BA848B2361C897000FE927 /* KafkaReplicatorLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaReplicatorLayer.m; sourceTree = "<group>"; };
 		29BA848D2361C89E000FE927 /* KafkaAnimatableProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KafkaAnimatableProtocol.h; sourceTree = "<group>"; };
-		29BA848E2361CEB8000FE927 /* RDRefreshHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDRefreshHeader.h; sourceTree = "<group>"; };
-		29BA848F2361CEB8000FE927 /* RDRefreshHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDRefreshHeader.m; sourceTree = "<group>"; };
 		29BA84952361D263000FE927 /* RDBookshelfNoneCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookshelfNoneCell.h; sourceTree = "<group>"; };
 		29BA84962361D263000FE927 /* RDBookshelfNoneCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfNoneCell.m; sourceTree = "<group>"; };
 		29BA849B2361D584000FE927 /* UIImage+rd_wid.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIImage+rd_wid.h"; sourceTree = "<group>"; };
@@ -764,10 +752,6 @@
 				29407CA62360877F003C9643 /* RDBaseViewController.m */,
 				29407CA9236087FA003C9643 /* RDMainController.h */,
 				29407CAA236087FA003C9643 /* RDMainController.m */,
-				294C75E424052E5B0013FB30 /* RDPageController.h */,
-				294C75E524052E5B0013FB30 /* RDPageController.m */,
-				2998A7F52428DD7A00C4E07B /* RDWebController.h */,
-				2998A7F62428DD7A00C4E07B /* RDWebController.m */,
 				2979A5822445664100AE053B /* RDNetErrorView.h */,
 				2979A5832445664100AE053B /* RDNetErrorView.m */,
 				A11B001SP01FILEREF0002 /* RDSplashViewController.h */,
@@ -1060,10 +1044,6 @@
 				29BA848D2361C89E000FE927 /* KafkaAnimatableProtocol.h */,
 				29BA848A2361C897000FE927 /* KafkaReplicatorLayer.h */,
 				29BA848B2361C897000FE927 /* KafkaReplicatorLayer.m */,
-				29BA848E2361CEB8000FE927 /* RDRefreshHeader.h */,
-				29BA848F2361CEB8000FE927 /* RDRefreshHeader.m */,
-				29406FF823B0FB0600E4495F /* RDRefreshFooter.h */,
-				29406FF923B0FB0600E4495F /* RDRefreshFooter.m */,
 			);
 			path = RefreshAnimate;
 			sourceTree = "<group>";
@@ -1375,7 +1355,6 @@
 				29407C7A23607D0D003C9643 /* Sources */,
 				29407C7B23607D0D003C9643 /* Frameworks */,
 				29407C7C23607D0D003C9643 /* Resources */,
-				181B654DB1A05E588D7AB8EA /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -1490,23 +1469,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		181B654DB1A05E588D7AB8EA /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Reader/Pods-Reader-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Reader/Pods-Reader-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Reader/Pods-Reader-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		5A90DB23A56E464DFF325924 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -1639,7 +1601,6 @@
 				29313C3B236C298A00408AF8 /* RDShareModel.m in Sources */,
 				297F507124124B8E002837A2 /* RDCacheModel.m in Sources */,
 				29696CD42385398800212879 /* RDReadCatalogView.m in Sources */,
-				29BA84902361CEB8000FE927 /* RDRefreshHeader.m in Sources */,
 				29696CDA238683D700212879 /* RDReadParser.m in Sources */,
 				294B0EB22361BBC600AB99DA /* RDSearchView.m in Sources */,
 				29CE2BB523FFBA4D001B0D03 /* RDUpdateControl.m in Sources */,
@@ -1648,7 +1609,6 @@
 				127B27996D0F20EF3C42B109 /* UIView+rd_dispalyInfo.m in Sources */,
 				29EFAF4C236472800020E5AE /* RDModel.m in Sources */,
 				127B2A2232E732142AB5635F /* RDBookshelfController.m in Sources */,
-				294C75E624052E5B0013FB30 /* RDPageController.m in Sources */,
 				29BA848C2361C897000FE927 /* KafkaReplicatorLayer.m in Sources */,
 				295A668923FCDA6600E2631A /* LEEAlert.m in Sources */,
 				ABD329A023B842870015EAFA /* RDCharpterDataManager.mm in Sources */,
@@ -1668,7 +1628,6 @@
 				294B0EAD2361A39C00AB99DA /* RDTopView.m in Sources */,
 				29696CE92386C38E00212879 /* RDCharpterModel.mm in Sources */,
 				299F6456243C628000D4C085 /* UIScrollView+rd_ges.m in Sources */,
-				2998A7F72428DD7A00C4E07B /* RDWebController.m in Sources */,
 				29696CF02386D48300212879 /* RDReadPageViewController.m in Sources */,
 				29EFAF4F236473350020E5AE /* RDModelAgent.m in Sources */,
 				29554D54237D05D500B4428D /* RDReadSliderView.m in Sources */,
@@ -1676,7 +1635,6 @@
 				295C3AC124341F1E0057C0DC /* RDSpecialModel.m in Sources */,
 				29696CE12386B27500212879 /* RDChapterListModel.m in Sources */,
 				292242ED23AC7ED700FE93C3 /* RDBatteryView.m in Sources */,
-				29406FFA23B0FB0600E4495F /* RDRefreshFooter.m in Sources */,
 				127B2C7F2CADF6A0AA93080B /* RDLayoutButton.m in Sources */,
 				29D18597236730F200D7A7B0 /* RDDiscoverItemModel.m in Sources */,
 				2992BB6F23B21B8800C599B1 /* RDDateUtil.m in Sources */,
