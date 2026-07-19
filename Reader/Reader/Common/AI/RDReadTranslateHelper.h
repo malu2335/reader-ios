@@ -17,6 +17,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RDReadTranslateHelper : NSObject
 
+/// 当前是否有可用的 AI 配置(active 且 isUsable)
++ (BOOL)hasUsableAIConfig;
+
+/// 无可用配置时弹出场景化引导(无配置 / 待确认 / 不完整 / 未选中)。
+/// 返回 YES 表示已可用;NO 表示已展示引导(或 quiet 时静默失败)。
++ (BOOL)ensureUsableAIConfigFromHost:(nullable UIViewController *)host quiet:(BOOL)quiet;
+
 /// 发起翻译;成功后 completion 回主线程 pairs(可能为空时用 fullTranslation 兜底)
 /// quiet=YES: 无 loading、并发后台请求(翻页/预取),不打断阅读
 + (void)translateFromHost:(UIViewController *)host

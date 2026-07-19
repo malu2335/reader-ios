@@ -1026,7 +1026,11 @@ static NSUInteger RDReadTranslateTextHash(NSString *text) {
         return;
     }
 
-    // ③ 全关 → 开启显示+后台
+    // ③ 全关 → 开启显示+后台。先校验配置,避免弹窗后仍误开翻译会话
+    if (![RDReadTranslateHelper ensureUsableAIConfigFromHost:self quiet:NO]) {
+        return;
+    }
+
     self.translateBackgroundEnabled = YES;
     self.translateDisplayEnabled = YES;
     NSString *key = [self p_translateKeyForController:currentController];
