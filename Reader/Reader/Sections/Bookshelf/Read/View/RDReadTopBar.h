@@ -14,7 +14,6 @@ NS_ASSUME_NONNULL_BEGIN
 -(void)speechAction;
 -(void)translateAction;
 -(void)shareQuoteAction;
--(void)dictionaryAction;
 @end
 
 @interface RDReadTopBar : UIView

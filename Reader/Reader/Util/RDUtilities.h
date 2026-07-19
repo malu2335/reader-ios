@@ -27,8 +27,6 @@ NS_ASSUME_NONNULL_BEGIN
 /// 判断是否是iPAD
 + (BOOL)iPad;
 
-/// 系统词典查词弹窗(输入词语 → UIReferenceLibraryViewController);initialTerm 预填可传 nil
-+ (void)presentDictionaryLookupFrom:(UIViewController *)host initialTerm:(NSString * _Nullable)initialTerm;
 @end
 
 NS_ASSUME_NONNULL_END
