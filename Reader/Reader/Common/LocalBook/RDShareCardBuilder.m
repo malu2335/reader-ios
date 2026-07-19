@@ -7,6 +7,9 @@
 #import "RDBookDetailModel.h"
 #import "RDLocalBookManager.h"
 
+const CGSize RDShareCardExportPixelSize = {1080, 1440};
+const CGSize RDShareCardPreviewPixelSize = {540, 720};
+
 #pragma mark - 意境主题
 
 typedef NS_ENUM(NSInteger, RDCardMood) {
@@ -22,6 +25,8 @@ typedef NS_ENUM(NSInteger, RDCardMood) {
     RDCardMoodDusk,        //暮色
 };
 static const NSInteger kRDCardMoodCount = 10;
+/// 布局设计基准宽(与导出尺寸一致);所有坐标/字号 × scale
+static const CGFloat kRDCardDesignWidth = 1080.0;
 
 //可复现的轻量伪随机:同一句话每次生成完全相同的画面
 static uint32_t RDCardRandNext(uint32_t *state) {
@@ -40,25 +45,51 @@ static uint32_t RDCardHash(NSString *text) {
     return hash;
 }
 
+/// 将大图缩到目标框内再画,避免把原封全分辨率塞进 160×220 槽
+static UIImage *RDCardDownsampledCover(UIImage *cover, CGSize targetPoints) {
+    if (!cover || cover.size.width <= 0 || cover.size.height <= 0) {
+        return cover;
+    }
+    CGFloat maxSide = MAX(targetPoints.width, targetPoints.height) * 2.0; // 略超目标,圆角裁切仍清晰
+    CGFloat srcMax = MAX(cover.size.width, cover.size.height);
+    if (srcMax <= maxSide) {
+        return cover;
+    }
+    CGFloat scale = maxSide / srcMax;
+    CGSize out = CGSizeMake(ceil(cover.size.width * scale), ceil(cover.size.height * scale));
+    UIGraphicsImageRendererFormat *fmt = [UIGraphicsImageRendererFormat preferredFormat];
+    fmt.scale = 1;
+    fmt.opaque = NO;
+    UIGraphicsImageRenderer *r = [[UIGraphicsImageRenderer alloc] initWithSize:out format:fmt];
+    return [r imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+        [cover drawInRect:CGRectMake(0, 0, out.width, out.height)];
+    }];
+}
+
 @implementation RDShareCardBuilder
 
-///内容意境分析:各主题关键词计分,最高者胜;零命中按哈希稳定散列
+/// 内容意境分析:各主题关键词计分,最高者胜;零命中按哈希稳定散列
 + (RDCardMood)p_moodForQuote:(NSString *)quote
 {
     if (quote.length == 0) {
         return RDCardMoodPaper;
     }
-    NSDictionary <NSNumber *, NSArray <NSString *>*>*keywords = @{
-        @(RDCardMoodNight):    @[@"夜", @"月", @"星", @"灯火", @"黑暗", @"梦乡"],
-        @(RDCardMoodRain):     @[@"雨", @"泪", @"哭", @"伤", @"离别", @"愁", @"湿"],
-        @(RDCardMoodBlade):    @[@"剑", @"刀", @"血", @"战", @"杀", @"敌", @"锋", @"枪"],
-        @(RDCardMoodBloom):    @[@"花", @"春", @"暖", @"笑", @"爱", @"甜", @"吻", @"喜欢"],
-        @(RDCardMoodMountain): @[@"山", @"云", @"风", @"江", @"湖", @"林", @"远方", @"路"],
-        @(RDCardMoodSnow):     @[@"雪", @"冬", @"寒", @"冰", @"霜", @"冷"],
-        @(RDCardMoodSea):      @[@"海", @"浪", @"波", @"舟", @"帆", @"潮"],
-        @(RDCardMoodEmber):    @[@"火", @"焰", @"燃", @"烈", @"怒", @"灼", @"光芒"],
-        @(RDCardMoodDusk):     @[@"梦", @"忆", @"时光", @"黄昏", @"岁月", @"从前", @"往事"],
-    };
+    // 静态表,避免每次选区刷新都重建字典
+    static NSDictionary <NSNumber *, NSArray <NSString *>*>*keywords;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        keywords = @{
+            @(RDCardMoodNight):    @[@"夜", @"月", @"星", @"灯火", @"黑暗", @"梦乡"],
+            @(RDCardMoodRain):     @[@"雨", @"泪", @"哭", @"伤", @"离别", @"愁", @"湿"],
+            @(RDCardMoodBlade):    @[@"剑", @"刀", @"血", @"战", @"杀", @"敌", @"锋", @"枪"],
+            @(RDCardMoodBloom):    @[@"花", @"春", @"暖", @"笑", @"爱", @"甜", @"吻", @"喜欢"],
+            @(RDCardMoodMountain): @[@"山", @"云", @"风", @"江", @"湖", @"林", @"远方", @"路"],
+            @(RDCardMoodSnow):     @[@"雪", @"冬", @"寒", @"冰", @"霜", @"冷"],
+            @(RDCardMoodSea):      @[@"海", @"浪", @"波", @"舟", @"帆", @"潮"],
+            @(RDCardMoodEmber):    @[@"火", @"焰", @"燃", @"烈", @"怒", @"灼", @"光芒"],
+            @(RDCardMoodDusk):     @[@"梦", @"忆", @"时光", @"黄昏", @"岁月", @"从前", @"往事"],
+        };
+    });
     RDCardMood best = RDCardMoodPaper;
     NSInteger bestScore = 0;
     for (NSNumber *mood in keywords) {
@@ -160,38 +191,41 @@ static uint32_t RDCardHash(NSString *text) {
     }
 }
 
-//主题装饰:纯 CoreGraphics 程序化绘制,seed 保证同句同画
-+ (void)p_drawMotif:(RDCardMood)mood context:(CGContextRef)c size:(CGSize)size accent:(UIColor *)accent seed:(uint32_t)seed
+//主题装饰:纯 CoreGraphics 程序化绘制,seed 保证同句同画;scale 同步缩粒子数与线宽
++ (void)p_drawMotif:(RDCardMood)mood context:(CGContextRef)c size:(CGSize)size accent:(UIColor *)accent seed:(uint32_t)seed scale:(CGFloat)s
 {
     uint32_t state = seed ?: 1;
+    // 预览尺寸下减少粒子,保持视觉密度近似、降低 CPU
+    CGFloat density = MAX(0.45, MIN(1.0, s));
     switch (mood) {
         case RDCardMoodNight: {
-            //星子 + 弯月
-            for (int i = 0; i < 46; i++) {
+            int n = (int)lround(46 * density);
+            for (int i = 0; i < n; i++) {
                 CGFloat x = RDCardRand01(&state) * size.width;
                 CGFloat y = RDCardRand01(&state) * size.height * 0.7;
-                CGFloat r = 1.5 + RDCardRand01(&state) * 3.5;
+                CGFloat r = (1.5 + RDCardRand01(&state) * 3.5) * s;
                 CGFloat a = 0.25 + RDCardRand01(&state) * 0.6;
                 CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
                 CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
             }
-            CGFloat mx = size.width - 240 - RDCardRand01(&state) * 120;
+            CGFloat mx = size.width - (240 + RDCardRand01(&state) * 120) * s;
+            CGFloat moon = 120 * s;
             CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:0.85].CGColor);
-            CGContextFillEllipseInRect(c, CGRectMake(mx, 120, 120, 120));
+            CGContextFillEllipseInRect(c, CGRectMake(mx, 120 * s, moon, moon));
             CGContextSetFillColorWithColor(c, [[UIColor colorWithRed:0.05 green:0.06 blue:0.16 alpha:1] colorWithAlphaComponent:0.92].CGColor);
-            CGContextFillEllipseInRect(c, CGRectMake(mx - 34, 108, 120, 120));
+            CGContextFillEllipseInRect(c, CGRectMake(mx - 34 * s, 108 * s, moon, moon));
             break;
         }
         case RDCardMoodRain: {
-            //斜落雨丝
             CGContextSetLineCap(c, kCGLineCapRound);
-            for (int i = 0; i < 36; i++) {
+            int n = (int)lround(36 * density);
+            for (int i = 0; i < n; i++) {
                 CGFloat x = RDCardRand01(&state) * size.width;
                 CGFloat y = RDCardRand01(&state) * size.height;
-                CGFloat len = 40 + RDCardRand01(&state) * 90;
+                CGFloat len = (40 + RDCardRand01(&state) * 90) * s;
                 CGFloat a = 0.10 + RDCardRand01(&state) * 0.22;
                 CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
-                CGContextSetLineWidth(c, 2 + RDCardRand01(&state) * 2);
+                CGContextSetLineWidth(c, (2 + RDCardRand01(&state) * 2) * s);
                 CGContextMoveToPoint(c, x, y);
                 CGContextAddLineToPoint(c, x - len * 0.35, y + len);
                 CGContextStrokePath(c);
@@ -199,30 +233,30 @@ static uint32_t RDCardHash(NSString *text) {
             break;
         }
         case RDCardMoodBlade: {
-            //两道交错锋光 + 溅火
             for (int i = 0; i < 2; i++) {
-                CGFloat y0 = size.height * (0.18 + 0.5 * i) + RDCardRand01(&state) * 60;
+                CGFloat y0 = size.height * (0.18 + 0.5 * i) + RDCardRand01(&state) * 60 * s;
                 CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:0.30].CGColor);
-                CGContextSetLineWidth(c, 5);
-                CGContextMoveToPoint(c, -50, y0 + 180);
-                CGContextAddLineToPoint(c, size.width + 50, y0 - 180);
+                CGContextSetLineWidth(c, 5 * s);
+                CGContextMoveToPoint(c, -50 * s, y0 + 180 * s);
+                CGContextAddLineToPoint(c, size.width + 50 * s, y0 - 180 * s);
                 CGContextStrokePath(c);
             }
-            for (int i = 0; i < 18; i++) {
+            int n = (int)lround(18 * density);
+            for (int i = 0; i < n; i++) {
                 CGFloat x = RDCardRand01(&state) * size.width;
                 CGFloat y = RDCardRand01(&state) * size.height;
-                CGFloat r = 1.5 + RDCardRand01(&state) * 3;
+                CGFloat r = (1.5 + RDCardRand01(&state) * 3) * s;
                 CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:0.20 + RDCardRand01(&state) * 0.35].CGColor);
                 CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
             }
             break;
         }
         case RDCardMoodBloom: {
-            //飘散花瓣(柔圆)
-            for (int i = 0; i < 22; i++) {
+            int n = (int)lround(22 * density);
+            for (int i = 0; i < n; i++) {
                 CGFloat x = RDCardRand01(&state) * size.width;
                 CGFloat y = RDCardRand01(&state) * size.height;
-                CGFloat r = 8 + RDCardRand01(&state) * 26;
+                CGFloat r = (8 + RDCardRand01(&state) * 26) * s;
                 CGFloat a = 0.08 + RDCardRand01(&state) * 0.18;
                 CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
                 CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r * (0.55 + RDCardRand01(&state) * 0.45)));
@@ -230,7 +264,6 @@ static uint32_t RDCardHash(NSString *text) {
             break;
         }
         case RDCardMoodMountain: {
-            //层叠远山剪影
             for (int layer = 0; layer < 3; layer++) {
                 CGFloat base = size.height * (0.72 + 0.09 * layer);
                 CGFloat alpha = 0.10 + 0.08 * layer;
@@ -239,8 +272,8 @@ static uint32_t RDCardHash(NSString *text) {
                 CGPathAddLineToPoint(path, NULL, 0, base);
                 CGFloat x = 0;
                 while (x < size.width) {
-                    CGFloat peakW = 180 + RDCardRand01(&state) * 240;
-                    CGFloat peakH = 60 + RDCardRand01(&state) * 140;
+                    CGFloat peakW = (180 + RDCardRand01(&state) * 240) * s;
+                    CGFloat peakH = (60 + RDCardRand01(&state) * 140) * s;
                     CGPathAddQuadCurveToPoint(path, NULL, x + peakW / 2, base - peakH, x + peakW, base);
                     x += peakW;
                 }
@@ -254,11 +287,11 @@ static uint32_t RDCardHash(NSString *text) {
             break;
         }
         case RDCardMoodSnow: {
-            //落雪
-            for (int i = 0; i < 42; i++) {
+            int n = (int)lround(42 * density);
+            for (int i = 0; i < n; i++) {
                 CGFloat x = RDCardRand01(&state) * size.width;
                 CGFloat y = RDCardRand01(&state) * size.height;
-                CGFloat r = 2 + RDCardRand01(&state) * 6;
+                CGFloat r = (2 + RDCardRand01(&state) * 6) * s;
                 CGFloat a = 0.20 + RDCardRand01(&state) * 0.45;
                 CGContextSetFillColorWithColor(c, [[UIColor whiteColor] colorWithAlphaComponent:a].CGColor);
                 CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
@@ -266,17 +299,16 @@ static uint32_t RDCardHash(NSString *text) {
             break;
         }
         case RDCardMoodSea: {
-            //叠浪弧线
-            CGContextSetLineWidth(c, 4);
+            CGContextSetLineWidth(c, 4 * s);
             for (int row = 0; row < 5; row++) {
                 CGFloat y = size.height * (0.62 + row * 0.08);
                 CGFloat a = 0.12 + row * 0.06;
                 CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
-                CGFloat x = -40 + RDCardRand01(&state) * 60;
-                while (x < size.width + 40) {
-                    CGFloat w = 140 + RDCardRand01(&state) * 60;
+                CGFloat x = -40 * s + RDCardRand01(&state) * 60 * s;
+                while (x < size.width + 40 * s) {
+                    CGFloat w = (140 + RDCardRand01(&state) * 60) * s;
                     CGContextMoveToPoint(c, x, y);
-                    CGContextAddQuadCurveToPoint(c, x + w / 2, y - 34, x + w, y);
+                    CGContextAddQuadCurveToPoint(c, x + w / 2, y - 34 * s, x + w, y);
                     CGContextStrokePath(c);
                     x += w;
                 }
@@ -284,11 +316,11 @@ static uint32_t RDCardHash(NSString *text) {
             break;
         }
         case RDCardMoodEmber: {
-            //升腾火星
-            for (int i = 0; i < 34; i++) {
+            int n = (int)lround(34 * density);
+            for (int i = 0; i < n; i++) {
                 CGFloat x = RDCardRand01(&state) * size.width;
                 CGFloat y = size.height * 0.3 + RDCardRand01(&state) * size.height * 0.7;
-                CGFloat r = 2 + RDCardRand01(&state) * 5;
+                CGFloat r = (2 + RDCardRand01(&state) * 5) * s;
                 CGFloat a = 0.20 + RDCardRand01(&state) * 0.55;
                 CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:a].CGColor);
                 CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
@@ -296,30 +328,28 @@ static uint32_t RDCardHash(NSString *text) {
             break;
         }
         case RDCardMoodDusk: {
-            //暮云圆晕 + 地平线
             for (int i = 0; i < 4; i++) {
-                CGFloat r = 160 + RDCardRand01(&state) * 260;
+                CGFloat r = (160 + RDCardRand01(&state) * 260) * s;
                 CGFloat x = RDCardRand01(&state) * size.width - r / 2;
                 CGFloat y = RDCardRand01(&state) * size.height * 0.5 - r / 2;
                 CGContextSetFillColorWithColor(c, [accent colorWithAlphaComponent:0.06 + RDCardRand01(&state) * 0.08].CGColor);
                 CGContextFillEllipseInRect(c, CGRectMake(x, y, r, r));
             }
             CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:0.35].CGColor);
-            CGContextSetLineWidth(c, 3);
+            CGContextSetLineWidth(c, 3 * s);
             CGContextMoveToPoint(c, 0, size.height * 0.78);
             CGContextAddLineToPoint(c, size.width, size.height * 0.78);
             CGContextStrokePath(c);
             break;
         }
         default: {
-            //纸墨:细双边框 + 一枚朱印
             CGContextSetStrokeColorWithColor(c, [accent colorWithAlphaComponent:0.45].CGColor);
-            CGContextSetLineWidth(c, 3);
-            CGContextStrokeRect(c, CGRectMake(46, 46, size.width - 92, size.height - 92));
-            CGContextSetLineWidth(c, 1.5);
-            CGContextStrokeRect(c, CGRectMake(62, 62, size.width - 124, size.height - 124));
+            CGContextSetLineWidth(c, 3 * s);
+            CGContextStrokeRect(c, CGRectMake(46 * s, 46 * s, size.width - 92 * s, size.height - 92 * s));
+            CGContextSetLineWidth(c, 1.5 * s);
+            CGContextStrokeRect(c, CGRectMake(62 * s, 62 * s, size.width - 124 * s, size.height - 124 * s));
             CGContextSetFillColorWithColor(c, [[UIColor colorWithRed:0.72 green:0.25 blue:0.20 alpha:1] colorWithAlphaComponent:0.85].CGColor);
-            UIBezierPath *seal = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(size.width - 170, 108, 64, 64) cornerRadius:8];
+            UIBezierPath *seal = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(size.width - 170 * s, 108 * s, 64 * s, 64 * s) cornerRadius:8 * s];
             CGContextAddPath(c, seal.CGPath);
             CGContextFillPath(c);
             break;
@@ -329,7 +359,24 @@ static uint32_t RDCardHash(NSString *text) {
 
 + (UIImage *)cardImageWithQuote:(NSString *)quote book:(RDBookDetailModel *)book
 {
-    CGSize size = CGSizeMake(1080, 1440);
+    return [self cardImageWithQuote:quote book:book pixelSize:RDShareCardExportPixelSize cover:nil];
+}
+
++ (UIImage *)cardImageWithQuote:(NSString *)quote
+                           book:(RDBookDetailModel *)book
+                      pixelSize:(CGSize)pixelSize
+                          cover:(UIImage *)cover
+{
+    CGSize size = pixelSize;
+    if (size.width < 32 || size.height < 32 || !isfinite(size.width) || !isfinite(size.height)) {
+        size = RDShareCardExportPixelSize;
+    }
+    CGFloat s = size.width / kRDCardDesignWidth;
+    if (s <= 0 || !isfinite(s)) {
+        s = 1;
+        size = RDShareCardExportPixelSize;
+    }
+
     NSString *body = [quote stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (body.length > 180) {
         body = [[body substringToIndex:180] stringByAppendingString:@"…"];
@@ -347,14 +394,23 @@ static uint32_t RDCardHash(NSString *text) {
     UIColor *metaColor = isLight ? [bodyColor colorWithAlphaComponent:0.75] : [UIColor colorWithWhite:1 alpha:0.85];
     UIColor *footColor = isLight ? [bodyColor colorWithAlphaComponent:0.45] : [UIColor colorWithWhite:1 alpha:0.55];
 
-    // 固定 1x:1080×1440 已是输出像素;默认跟随屏幕倍率会在 3x 机型渲出 3240×4320 的巨图
+    // 封面:优先用调用方缓存;否则仅导出路径同步读盘
+    UIImage *coverImage = cover;
+    if (!coverImage && book.isLocalBook) {
+        coverImage = [RDLocalBookManager coverForBook:book];
+    }
+    CGSize coverSlot = CGSizeMake(160 * s, 220 * s);
+    if (coverImage) {
+        coverImage = RDCardDownsampledCover(coverImage, coverSlot);
+    }
+
+    // 固定 scale=1:pixelSize 即输出像素;避免 3x 机型渲出 9 倍像素
     UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
     format.scale = 1;
     format.opaque = YES;
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
     return [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
         CGContextRef c = ctx.CGContext;
-        // 渐变背景
         CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
         NSArray *colors = @[(__bridge id)top.CGColor, (__bridge id)bottom.CGColor];
         CGFloat locs[] = {0, 1};
@@ -363,64 +419,60 @@ static uint32_t RDCardHash(NSString *text) {
         CGGradientRelease(grad);
         CGColorSpaceRelease(space);
 
-        // 内容驱动的意境装饰
-        [self p_drawMotif:mood context:c size:size accent:accent seed:seed];
+        [self p_drawMotif:mood context:c size:size accent:accent seed:seed scale:s];
 
-        // 意境标签
         NSString *tag = [self p_moodTitle:mood];
         NSDictionary *tagAttr = @{
-            NSFontAttributeName: [UIFont systemFontOfSize:36 weight:UIFontWeightSemibold],
+            NSFontAttributeName: [UIFont systemFontOfSize:36 * s weight:UIFontWeightSemibold],
             NSForegroundColorAttributeName: accent,
         };
-        [tag drawAtPoint:CGPointMake(80, 100) withAttributes:tagAttr];
+        [tag drawAtPoint:CGPointMake(80 * s, 100 * s) withAttributes:tagAttr];
 
-        // 引号
         NSDictionary *qAttr = @{
-            NSFontAttributeName: [UIFont systemFontOfSize:160 weight:UIFontWeightUltraLight],
+            NSFontAttributeName: [UIFont systemFontOfSize:160 * s weight:UIFontWeightUltraLight],
             NSForegroundColorAttributeName: [accent colorWithAlphaComponent:0.35],
         };
-        [@"“" drawAtPoint:CGPointMake(60, 220) withAttributes:qAttr];
+        [@"“" drawAtPoint:CGPointMake(60 * s, 220 * s) withAttributes:qAttr];
 
-        // 正文
         NSMutableParagraphStyle *ps = [[NSMutableParagraphStyle alloc] init];
-        ps.lineSpacing = 18;
+        ps.lineSpacing = 18 * s;
         ps.alignment = NSTextAlignmentLeft;
         NSDictionary *bodyAttr = @{
-            NSFontAttributeName: [UIFont systemFontOfSize:52 weight:UIFontWeightMedium],
+            NSFontAttributeName: [UIFont systemFontOfSize:52 * s weight:UIFontWeightMedium],
             NSForegroundColorAttributeName: bodyColor,
             NSParagraphStyleAttributeName: ps,
         };
-        CGRect bodyRect = CGRectMake(100, 380, size.width - 200, 620);
+        CGRect bodyRect = CGRectMake(100 * s, 380 * s, size.width - 200 * s, 620 * s);
         [body drawInRect:bodyRect withAttributes:bodyAttr];
 
-        // 底部书名作者
         NSString *meta = [NSString stringWithFormat:@"—— 《%@》%@", book.title ?: @"未知", book.author.length ? [NSString stringWithFormat:@" · %@", book.author] : @""];
         NSDictionary *metaAttr = @{
-            NSFontAttributeName: [UIFont systemFontOfSize:34 weight:UIFontWeightRegular],
+            NSFontAttributeName: [UIFont systemFontOfSize:34 * s weight:UIFontWeightRegular],
             NSForegroundColorAttributeName: metaColor,
         };
-        [meta drawInRect:CGRectMake(100, size.height - 220, size.width - 200, 80) withAttributes:metaAttr];
+        [meta drawInRect:CGRectMake(100 * s, size.height - 220 * s, size.width - 200 * s, 80 * s) withAttributes:metaAttr];
 
-        // 小封面
-        UIImage *cover = nil;
-        if (book.isLocalBook) {
-            cover = [RDLocalBookManager coverForBook:book];
-        }
-        if (cover) {
+        if (coverImage) {
             CGContextSaveGState(c);
-            CGRect coverRect = CGRectMake(size.width - 260, size.height - 340, 160, 220);
-            UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:coverRect cornerRadius:12];
+            CGRect coverRect = CGRectMake(size.width - 260 * s, size.height - 340 * s, coverSlot.width, coverSlot.height);
+            UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:coverRect cornerRadius:12 * s];
             [path addClip];
-            [cover drawInRect:coverRect];
+            // aspect fill into slot
+            CGFloat fill = MAX(coverRect.size.width / coverImage.size.width,
+                               coverRect.size.height / coverImage.size.height);
+            CGSize draw = CGSizeMake(coverImage.size.width * fill, coverImage.size.height * fill);
+            CGRect drawRect = CGRectMake(CGRectGetMidX(coverRect) - draw.width / 2,
+                                         CGRectGetMidY(coverRect) - draw.height / 2,
+                                         draw.width, draw.height);
+            [coverImage drawInRect:drawRect];
             CGContextRestoreGState(c);
         }
 
-        // 品牌脚注
         NSDictionary *footAttr = @{
-            NSFontAttributeName: [UIFont systemFontOfSize:28 weight:UIFontWeightLight],
+            NSFontAttributeName: [UIFont systemFontOfSize:28 * s weight:UIFontWeightLight],
             NSForegroundColorAttributeName: footColor,
         };
-        [@"纸羽轻阅 · 轻装每一页" drawAtPoint:CGPointMake(100, size.height - 100) withAttributes:footAttr];
+        [@"纸羽轻阅 · 轻装每一页" drawAtPoint:CGPointMake(100 * s, size.height - 100 * s) withAttributes:footAttr];
     }];
 }
 
@@ -467,11 +519,21 @@ static uint32_t RDCardHash(NSString *text) {
 @property (nonatomic,strong) UITextView *textView;
 @property (nonatomic,strong) UIButton *shareButton;
 @property (nonatomic,strong) UIButton *closeButton;
-/// 每次发起重绘时递增;渲染在后台完成后仅当仍是最新一次才应用,避免拖拽选区时
-/// 旧的(慢)渲染结果晚到覆盖新选区的画面
+/// 每次发起重绘时递增;渲染在后台完成后仅当仍是最新一次才应用
 @property (nonatomic,assign) NSUInteger previewGeneration;
-/// 选区变化去抖用的独立计数,与 previewGeneration 分开,避免两处含义混在一起
+/// 选区变化去抖用的独立计数
 @property (nonatomic,assign) NSUInteger selectionDebounceToken;
+/// 会话内缓存封面,避免每次预览读盘解码
+@property (nonatomic,strong,nullable) UIImage *cachedCover;
+@property (nonatomic,assign) BOOL coverLoadStarted;
+/// 预览缓存:同句不再半分辨率重渲
+@property (nonatomic,copy,nullable) NSString *cachedPreviewQuote;
+@property (nonatomic,strong,nullable) UIImage *cachedPreviewImage;
+/// 导出缓存:分享时若与当前句相同则直接用全分辨率结果
+@property (nonatomic,copy,nullable) NSString *cachedExportQuote;
+@property (nonatomic,strong,nullable) UIImage *cachedExportImage;
+/// 串行渲染队列:选区连发时排队,配合 generation 丢弃过期结果
+@property (nonatomic,strong) dispatch_queue_t renderQueue;
 @end
 
 @implementation RDQuoteShareController
@@ -480,6 +542,7 @@ static uint32_t RDCardHash(NSString *text) {
 {
     [super viewDidLoad];
     self.view.backgroundColor = RDSurfaceColor;
+    self.renderQueue = dispatch_queue_create("xyz.malu2335.reader.quote-card-render", DISPATCH_QUEUE_SERIAL);
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.text = @"分享金句";
@@ -533,8 +596,36 @@ static uint32_t RDCardHash(NSString *text) {
     [self.shareButton addTarget:self action:@selector(p_share) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:self.shareButton];
 
-    //初始预览:自动摘句卡片
+    [self p_preloadCoverIfNeeded];
     [self p_refreshPreview];
+}
+
+- (void)p_preloadCoverIfNeeded
+{
+    if (self.coverLoadStarted || !self.book.isLocalBook) {
+        return;
+    }
+    self.coverLoadStarted = YES;
+    RDBookDetailModel *book = self.book;
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        UIImage *cover = [RDLocalBookManager coverForBook:book];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            self.cachedCover = cover;
+            // 封面到位后若预览已出且无封面,用同句再渲一次预览(轻量尺寸)
+            if (cover && self.cachedPreviewQuote.length > 0) {
+                self.cachedPreviewQuote = nil;
+                self.cachedPreviewImage = nil;
+                self.cachedExportQuote = nil;
+                self.cachedExportImage = nil;
+                [self p_refreshPreview];
+            }
+        });
+    });
 }
 
 - (NSString *)p_currentQuote
@@ -554,20 +645,33 @@ static uint32_t RDCardHash(NSString *text) {
     NSString *quote = [self p_currentQuote];
     if (quote.length == 0) {
         self.previewView.image = nil;
+        self.cachedPreviewQuote = nil;
+        self.cachedPreviewImage = nil;
         return;
     }
-    // 整卡渲染(含渐变、程序化装饰、封面缩略图落盘读取)挪到后台;拖拽选区时
-    // textViewDidChangeSelection 会连续触发,放主线程同步画会顿住选区拖拽手势。
+    // 同句命中预览缓存:选区抖动回同一句时零渲染
+    if ([quote isEqualToString:self.cachedPreviewQuote] && self.cachedPreviewImage) {
+        self.previewView.image = self.cachedPreviewImage;
+        return;
+    }
+
     NSUInteger generation = ++self.previewGeneration;
     RDBookDetailModel *book = self.book;
+    UIImage *cover = self.cachedCover;
     __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote book:book];
+    dispatch_async(self.renderQueue, ^{
+        // 预览用半分辨率 + 比例缩放布局,选区拖拽时明显更轻
+        UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote
+                                                          book:book
+                                                     pixelSize:RDShareCardPreviewPixelSize
+                                                         cover:cover];
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self || generation != self.previewGeneration) {
-                return; // 已有更新的选区变化,这份是过期渲染,丢弃
+                return;
             }
+            self.cachedPreviewQuote = quote;
+            self.cachedPreviewImage = card;
             self.previewView.image = card;
         });
     });
@@ -575,16 +679,15 @@ static uint32_t RDCardHash(NSString *text) {
 
 - (void)textViewDidChangeSelection:(UITextView *)textView
 {
-    // 拖拽选区手柄时会连续多次触发;去抖到停顿后再渲染,避免每次移动都排一次整卡绘制。
-    // 用 dispatch_after 而非 performSelector:afterDelay:——后者默认只在
-    // NSDefaultRunLoopMode 触发,拖拽选区手柄时主线程处于 tracking 模式,可能要
-    // 等松手才触发,体验上等于没做去抖。
+    // 拖拽选区手柄时连续触发;去抖到停顿后再渲染。
+    // dispatch_after 在 common modes 下也会排队,tracking 时不像
+    // performSelector:afterDelay: 那样被饿死。
     NSUInteger token = ++self.selectionDebounceToken;
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || self.selectionDebounceToken != token) {
-            return; // 停顿期间又发生了新的选区变化,交给那一次的定时器处理
+            return;
         }
         [self p_refreshPreview];
     });
@@ -601,7 +704,6 @@ static uint32_t RDCardHash(NSString *text) {
     CGFloat bottomSafe = self.view.safeAreaInsets.bottom;
     CGFloat buttonHeight = 48;
     self.shareButton.frame = CGRectMake(20, self.view.bounds.size.height - bottomSafe - buttonHeight - 14, width - 40, buttonHeight);
-    //上半卡片预览(3:4),下半文字选择
     CGFloat previewTop = CGRectGetMaxY(self.hintLabel.frame) + 10;
     CGFloat available = CGRectGetMinY(self.shareButton.frame) - previewTop - 24;
     CGFloat previewHeight = MIN(available * 0.45, (width - 40) * 4.0 / 3.0);
@@ -615,24 +717,71 @@ static uint32_t RDCardHash(NSString *text) {
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
+- (UIImage *)p_exportCardForQuote:(NSString *)quote
+{
+    if (quote.length == 0) {
+        return nil;
+    }
+    if ([quote isEqualToString:self.cachedExportQuote] && self.cachedExportImage) {
+        return self.cachedExportImage;
+    }
+    // 分享必须全分辨率;不复用预览半尺寸图
+    UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote
+                                                      book:self.book
+                                                 pixelSize:RDShareCardExportPixelSize
+                                                     cover:self.cachedCover];
+    self.cachedExportQuote = quote;
+    self.cachedExportImage = card;
+    return card;
+}
+
 - (void)p_share
 {
-    // 正常情况下预览已随选区异步刷新完成,直接用;极端情况下(面板刚弹出、
-    // 异步渲染还没落地就点了分享)在这里同步兜底生成一次,不强求走后台。
-    UIImage *card = self.previewView.image;
-    if (!card) {
-        NSString *quote = [self p_currentQuote];
-        if (quote.length > 0) {
-            card = [RDShareCardBuilder cardImageWithQuote:quote book:self.book];
-        }
-    }
-    if (!card) {
+    NSString *quote = [self p_currentQuote];
+    if (quote.length == 0) {
         [RDToastView showText:@"本页没有可分享的文字" delay:1.2 inView:self.view];
         return;
     }
-    //落成 jpg 文件后以 fileURL 分享:预览带缩略图,微信等目标按图片接收;
-    //渐变底的卡片 PNG 压缩极差,JPEG 0.88 质量肉眼无差、体积小一个量级
-    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"quote_card.jpg"];
+
+    // 若导出已缓存则主线程秒开;否则后台渲全尺寸再 present,避免卡住分享按钮
+    if ([quote isEqualToString:self.cachedExportQuote] && self.cachedExportImage) {
+        [self p_presentShareWithImage:self.cachedExportImage];
+        return;
+    }
+
+    self.shareButton.enabled = NO;
+    [self.shareButton setTitle:@"生成中…" forState:UIControlStateNormal];
+    RDBookDetailModel *book = self.book;
+    UIImage *cover = self.cachedCover;
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(self.renderQueue, ^{
+        UIImage *card = [RDShareCardBuilder cardImageWithQuote:quote
+                                                          book:book
+                                                     pixelSize:RDShareCardExportPixelSize
+                                                         cover:cover];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            self.shareButton.enabled = YES;
+            [self.shareButton setTitle:@"生成卡片并分享" forState:UIControlStateNormal];
+            if (!card) {
+                [RDToastView showText:@"卡片生成失败" delay:1.2 inView:self.view];
+                return;
+            }
+            self.cachedExportQuote = quote;
+            self.cachedExportImage = card;
+            [self p_presentShareWithImage:card];
+        });
+    });
+}
+
+- (void)p_presentShareWithImage:(UIImage *)card
+{
+    // 落 jpg:渐变卡 PNG 体积大一个量级;0.88 质量肉眼无差
+    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                      [NSString stringWithFormat:@"quote_card_%u.jpg", arc4random()]];
     NSData *jpg = UIImageJPEGRepresentation(card, 0.88);
     if (!jpg || ![jpg writeToFile:path atomically:YES]) {
         [RDToastView showText:@"卡片生成失败" delay:1.2 inView:self.view];
@@ -642,6 +791,10 @@ static uint32_t RDCardHash(NSString *text) {
     UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:@[fileURL] applicationActivities:nil];
     avc.popoverPresentationController.sourceView = self.shareButton;
     avc.popoverPresentationController.sourceRect = self.shareButton.bounds;
+    // 分享结束后清临时文件
+    avc.completionWithItemsHandler = ^(UIActivityType activityType, BOOL completed, NSArray *returnedItems, NSError *activityError) {
+        [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+    };
     [self presentViewController:avc animated:YES completion:nil];
 }
 
