@@ -13,16 +13,18 @@
 
 @implementation RDReadRecordManager
 
-+(void)insertOrReplaceModel:(RDBookDetailModel *)model
++(BOOL)insertOrReplaceModel:(RDBookDetailModel *)model
 {
-    [self insertOrReplaceModel:model touchReadTime:YES];
+    return [self insertOrReplaceModel:model touchReadTime:YES];
 }
 
-+(void)insertOrReplaceModel:(RDBookDetailModel *)model touchReadTime:(BOOL)touchReadTime
++(BOOL)insertOrReplaceModel:(RDBookDetailModel *)model touchReadTime:(BOOL)touchReadTime
 {
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [self db_insertOrReplaceModel:model touchReadTime:touchReadTime inDatabase:db];
+        success = [self db_insertOrReplaceModel:model touchReadTime:touchReadTime inDatabase:db];
     }];
+    return success;
 }
 
 +(BOOL)db_insertOrReplaceModel:(RDBookDetailModel *)model
@@ -64,10 +66,10 @@
     return light;
 }
 
-+(void)updateProgressWithModel:(RDBookDetailModel *)model
++(BOOL)updateProgressWithModel:(RDBookDetailModel *)model
 {
     if (model.bookId == 0) {
-        return;
+        return NO;
     }
     RDCharpterModel *original = model.charpterModel;
     RDCharpterModel *light = [self p_lightCharpter:original];
@@ -79,13 +81,14 @@
         model.readChapterName = model.charpterModel.name;
     }
     __block BOOL exists = NO;
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
         RDBookDetailModel *row = [db getOneObjectOnResults:{RDBookDetailModel.bookId}
                                                  fromTable:kReadRecordTable
                                                      where:RDBookDetailModel.bookId.is(model.bookId)];
         exists = row != nil;
         if (exists) {
-            [db updateRowsInTable:kReadRecordTable
+            success = [db updateRowsInTable:kReadRecordTable
                      onProperties:{RDBookDetailModel.charpterModel,
                                    RDBookDetailModel.page,
                                    RDBookDetailModel.charOffset,
@@ -95,28 +98,31 @@
                             where:RDBookDetailModel.bookId.is(model.bookId)];
         }
         else {
-            [db insertOrReplaceObject:model into:kReadRecordTable];
+            success = [db insertOrReplaceObject:model into:kReadRecordTable];
         }
     }];
     if (light) {
         model.charpterModel = original;
     }
+    return success;
 }
 
-+(void)updateTitle:(NSString *)title author:(NSString *)author forBookId:(NSInteger)bookId
++(BOOL)updateTitle:(NSString *)title author:(NSString *)author forBookId:(NSInteger)bookId
 {
     if (bookId == 0 || title.length == 0) {
-        return;
+        return NO;
     }
     RDBookDetailModel *patch = [[RDBookDetailModel alloc] init];
     patch.title = title;
     patch.author = author ?: @"";
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db updateRowsInTable:kReadRecordTable
-                 onProperties:{RDBookDetailModel.title, RDBookDetailModel.author}
-                   withObject:patch
-                        where:RDBookDetailModel.bookId.is(bookId)];
+        success = [db updateRowsInTable:kReadRecordTable
+                           onProperties:{RDBookDetailModel.title, RDBookDetailModel.author}
+                             withObject:patch
+                                  where:RDBookDetailModel.bookId.is(bookId)];
     }];
+    return success;
 }
 
 +(BOOL)updateCoverImg:(NSString *)coverImg forBookId:(NSInteger)bookId
@@ -152,20 +158,24 @@
     }];
 }
 
-+(void)updateBookshelfState:(RDBookDetailModel *)model
++(BOOL)updateBookshelfState:(RDBookDetailModel *)model
 {
     model.readTime = [NSDate date].timeIntervalSince1970;
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db updateRowsInTable:kReadRecordTable onProperties:{RDBookDetailModel.onBookshelf,RDBookDetailModel.readTime} withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
+        success = [db updateRowsInTable:kReadRecordTable onProperties:{RDBookDetailModel.onBookshelf,RDBookDetailModel.readTime} withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
     }];
+    return success;
 }
 
-+(void)updateReadTime:(RDBookDetailModel *)model
++(BOOL)updateReadTime:(RDBookDetailModel *)model
 {
     model.readTime = [NSDate date].timeIntervalSince1970;
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db updateRowsInTable:kReadRecordTable onProperties:RDBookDetailModel.readTime withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
+        success = [db updateRowsInTable:kReadRecordTable onProperties:RDBookDetailModel.readTime withObject:model where:RDBookDetailModel.bookId.is(model.bookId)];
     }];
+    return success;
 }
 
 +(RDBookDetailModel *)getReadRecordWithBookId:(NSInteger)bookid
@@ -186,6 +196,24 @@
                                  where:RDBookDetailModel.onBookshelf.is(YES) && RDBookDetailModel.bookId < 0
                                orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
     }];
+    return result;
+}
+
++(NSArray <RDBookDetailModel *>*)getAllRecordsForDestructiveClear
+{
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        // 清空必须覆盖全部记录行,包括历史遗留的正 bookId 与已下架的行,
+        // 否则"清空书架"与实际残留不符(P2-18)。只取清理所需的轻量列。
+        result = [db getAllObjectsOnResults:{
+            RDBookDetailModel.bookId,
+            RDBookDetailModel.coverImg,
+            RDBookDetailModel.localPath,
+            RDBookDetailModel.fileType,
+        } fromTable:kReadRecordTable];
+    }];
+    // 同 getBookshelfDisplayList:失败返回 nil,清空流程据此报错,
+    // 不能把"查不出来"当成"没有东西要删"然后提示已清空。
     return result;
 }
 
@@ -223,20 +251,26 @@
              where:RDBookDetailModel.onBookshelf.is(YES) && RDBookDetailModel.bookId < 0
            orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
     }];
-    return result ?: @[];
+    // 查询失败返回 nil,与"确实没有书"的空数组区分开:
+    // 调用方必须据此显示错误态,而不是提交一份空快照(P1-07)。
+    return result;
 }
 
-+(void)removeBookFromBookShelfWithBookId:(NSInteger)bookid
++(BOOL)removeBookFromBookShelfWithBookId:(NSInteger)bookid
 {
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db deleteObjectsFromTable:kReadRecordTable where:RDBookDetailModel.bookId.is(bookid)];
+        success = [db deleteObjectsFromTable:kReadRecordTable where:RDBookDetailModel.bookId.is(bookid)];
     }];
+    return success;
 }
 
-+(void)updateOnBookselfUpdateWithBookId:(NSInteger)bookid update:(BOOL)update
++(BOOL)updateOnBookselfUpdateWithBookId:(NSInteger)bookid update:(BOOL)update
 {
+    __block BOOL success = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db updateRowsInTable:kReadRecordTable onProperty:RDBookDetailModel.bookUpdate withValue:@(update) where:RDBookDetailModel.bookId.is(bookid)];
+        success = [db updateRowsInTable:kReadRecordTable onProperty:RDBookDetailModel.bookUpdate withValue:@(update) where:RDBookDetailModel.bookId.is(bookid)];
     }];
+    return success;
 }
 @end

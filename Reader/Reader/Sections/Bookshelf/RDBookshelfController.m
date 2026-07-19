@@ -71,6 +71,11 @@
 
 -(void)importAction
 {
+    // 只有已上屏且没在展示别的模态时才 present;否则 UIKit 会丢弃这次 presentation。
+    // 入口有三个(顶栏、空书架按钮、设置页通知),这里统一兜底(P2-01)。
+    if (!self.view.window || self.presentedViewController) {
+        return;
+    }
     NSMutableArray <UTType *>*types = [NSMutableArray array];
     [types addObject:UTTypePlainText];
     [types addObject:UTTypePDF];
@@ -508,6 +513,21 @@
     NSUInteger generation = [RDBookshelfPrefetch beginRefreshGeneration];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSArray *books = [RDReadRecordManager getBookshelfDisplayList];
+        if (!books) {
+            // 查询失败:保留当前展示内容并提示可重试,绝不提交空快照把
+            // 数据库错误显示成"一日无书"(P1-07 书架错误态)。
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.isReloading = NO;
+                if (self.isViewLoaded && self.view.window) {
+                    [RDToastView showText:@"书架读取失败,请稍后重试" delay:1.5 inView:self.view];
+                }
+                if (self.pendingReload) {
+                    self.pendingReload = NO;
+                    [self p_reload];
+                }
+            });
+            return;
+        }
         [RDLocalBookManager preparePDFCoversForBooks:books];
         [RDBookshelfPrefetch commitBooks:books columns:columns generation:generation];
         dispatch_async(dispatch_get_main_queue(), ^{

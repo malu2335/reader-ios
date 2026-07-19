@@ -993,7 +993,8 @@ static NSUInteger RDReadTranslateTextHash(NSString *text) {
     self.translateBackgroundEnabled = NO;
     self.translateDisplayEnabled = NO;
     [self.translatePendingKeys removeAllObjects];
-    // 不 cancel 网络:让已发出的请求写完缓存也可;若需立刻停可 cancel
+    // 真正取消在途的后台请求:否则"已停止"之后旧请求仍在计费、仍会写缓存(P2-07)
+    [[RDAIClient sharedClient] cancelBackgroundTranslations];
     RDReadController *cur = [self p_currentReadController];
     [cur showInlineTranslation:nil];
 }

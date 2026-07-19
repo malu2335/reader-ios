@@ -55,6 +55,10 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 /// 删除本地书:阅读记录、章节与文件
 + (void)removeLocalBook:(RDBookDetailModel *)book;
 
+/// 同上;completion 在**所有**文件与表(含体积最大的章节表)清理完成后,
+/// 在变更队列上回调,调用方据此判断"删干净了"(P2-17)
++ (void)removeLocalBook:(RDBookDetailModel *)book completion:(nullable dispatch_block_t)completion;
+
 /// 重新解析书籍文件得到章节(恢复备份用),同步执行,在后台队列调用。
 /// 只解析不写库:章节与读记录由 RDLibraryTransaction 一次性原子提交;
 /// 同时把 book.charpterModel 归位到解析结果里的对应章节。

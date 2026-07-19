@@ -15,6 +15,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// 不包含章节内容的章节信息
 +(NSArray *)getBriefCharptersWithBookId:(NSInteger)bookid;
 
+/// 有正文的章节 id 集合。只读 charpterId 列,不反序列化 content,
+/// 供目录一次性判定"已下载"状态,避免每个可见 cell 各查一次全文(P2-03)。
++(NSSet<NSNumber *> *)charpterIdsWithContentForBookId:(NSInteger)bookid;
+
 +(BOOL)isExsitWithBookId:(NSInteger)bookid;
 
 +(BOOL)isExsitWithBookId:(NSInteger)bookid charpterId:(NSInteger)charpterId;
@@ -28,7 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param bookId 书籍Id
 +(NSInteger)getFirstCharpterIdWirhBookId:(NSInteger)bookId;
 
-+(void)insertObjectsWithCharpters:(NSArray *)charpters;
++(BOOL)insertObjectsWithCharpters:(NSArray *)charpters;
 
 /// 原子替换整本书的章节:同一事务内先删旧再插新。
 /// 任一写失败即整体回滚,旧章节保持不变(P1-02)。
@@ -49,7 +53,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 删除本地记录书籍
 /// @param bookid
-+(void)deleteAllCharpterWithBookId:(NSInteger)bookid;
++(BOOL)deleteAllCharpterWithBookId:(NSInteger)bookid;
 @end
 
 NS_ASSUME_NONNULL_END

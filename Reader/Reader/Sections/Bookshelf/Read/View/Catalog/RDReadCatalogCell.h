@@ -16,6 +16,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RDReadCatalogCell : UITableViewCell
 @property (nonatomic,strong) RDCharpterModel *model;
+/// 该章是否已有正文。由列表统一算好后下发,cell 自己不查库(P2-03)。
+/// 必须在 model 之前设置。
+@property (nonatomic,assign) BOOL hasContent;
 @property (nonatomic,weak) id<RDReadCatalogCellDelegate>delegate;
 @end
 

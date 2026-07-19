@@ -16,7 +16,13 @@
 
 NSString * const RDDatabaseErrorDomain = @"RDDatabaseErrorDomain";
 
-static NSString * const kPrimaryIdMigratedKey = @"RDChapterPrimaryIdMigrated_v1";
+/// 旧版本把迁移完成标志写在 NSUserDefaults,与数据库文件生命周期脱钩
+/// (删库重建后标志还在,迁移被永久跳过)。现改用 PRAGMA user_version,
+/// 该键只用于一次性把旧标志接过来。
+static NSString * const kLegacyPrimaryIdMigratedKey = @"RDChapterPrimaryIdMigrated_v1";
+
+/// schema 版本:1 = chapter.primaryId 已统一为 bookId_charpterId
+static const int kRDSchemaVersionPrimaryId = 1;
 static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
 
 @interface RDDatabaseManager ()
@@ -192,9 +198,63 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
     }
 }
 
+/// 读数据库自身的 schema 版本(PRAGMA user_version)
+- (int)p_schemaVersion
+{
+    if (self.dbPath.length == 0) {
+        return 0;
+    }
+    sqlite3 *db = NULL;
+    if (sqlite3_open_v2(self.dbPath.fileSystemRepresentation, &db,
+                        SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, NULL) != SQLITE_OK || !db) {
+        if (db) {
+            sqlite3_close(db);
+        }
+        return -1;   // 打不开:当作未知,不要据此跳过迁移
+    }
+    int version = 0;
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            version = sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    sqlite3_close(db);
+    return version;
+}
+
+- (BOOL)p_setSchemaVersion:(int)version
+{
+    if (self.dbPath.length == 0) {
+        return NO;
+    }
+    sqlite3 *db = NULL;
+    if (sqlite3_open_v2(self.dbPath.fileSystemRepresentation, &db,
+                        SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, NULL) != SQLITE_OK || !db) {
+        if (db) {
+            sqlite3_close(db);
+        }
+        return NO;
+    }
+    NSString *sql = [NSString stringWithFormat:@"PRAGMA user_version = %d;", version];
+    BOOL ok = sqlite3_exec(db, sql.UTF8String, NULL, NULL, NULL) == SQLITE_OK;
+    sqlite3_close(db);
+    return ok;
+}
+
 - (void)p_migratePrimaryIdsIfNeeded
 {
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrimaryIdMigratedKey]) {
+    // 一次性接管旧的 NSUserDefaults 标志:老用户已迁移过的库直接补写 user_version
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if ([defaults boolForKey:kLegacyPrimaryIdMigratedKey]) {
+        if ([self p_schemaVersion] < kRDSchemaVersionPrimaryId) {
+            [self p_setSchemaVersion:kRDSchemaVersionPrimaryId];
+        }
+        [defaults removeObjectForKey:kLegacyPrimaryIdMigratedKey];
+        return;
+    }
+    if ([self p_schemaVersion] >= kRDSchemaVersionPrimaryId) {
         return;
     }
     // 只取键列(绝不把章节正文整表载入内存),大书库首启不再有 OOM 风险
@@ -213,7 +273,7 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         [pending addObject:@[old ?: @"", desired]];
     }
     if (pending.count == 0) {
-        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
+        [self p_setSchemaVersion:kRDSchemaVersionPrimaryId];
         return;
     }
     // 分批小事务,中途被杀也可幂等续跑(按主键更新,不搬 content)
@@ -258,7 +318,7 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
     if (!allBatchesCommitted || ![self p_primaryIdMigrationIsComplete]) {
         return;
     }
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPrimaryIdMigratedKey];
+    [self p_setSchemaVersion:kRDSchemaVersionPrimaryId];
 }
 
 /// 复查:全表已不存在 primaryId 与 bookId_charpterId 不一致的行

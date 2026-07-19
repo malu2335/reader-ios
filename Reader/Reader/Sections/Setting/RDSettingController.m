@@ -47,6 +47,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 @property (nonatomic,copy) NSString *aiDetailText;
 @property (nonatomic,copy) NSString *voiceDetailText;
 @property (nonatomic,assign) BOOL storageRefreshing;
+@property (nonatomic,assign) BOOL storageRefreshPending;
 @property (nonatomic,assign) BOOL detailsLoadedOnce;
 @end
 
@@ -117,11 +118,15 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)p_refreshDetailsAsync
 {
     self.detailsLoadedOnce = YES;
-    // AI / 语音 / 存储统计全部后台,主线程只更新文案
+    // AI / 语音 / 存储统计全部后台,主线程只更新文案。
+    // 扫描期间再次请求不能直接丢弃(清空/恢复/改 AI 配置都会触发),
+    // 记 pending,本轮结束后补跑一次,否则页面一直停在旧数字(P2-04)。
     if (self.storageRefreshing) {
+        self.storageRefreshPending = YES;
         return;
     }
     self.storageRefreshing = YES;
+    self.storageRefreshPending = NO;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         // 首次访问会读盘/Keychain,放后台
         RDAIConfigProfile *active = [[RDAIConfigStore sharedInstance] activeProfile];
@@ -177,6 +182,10 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             if (changed) {
                 [self p_reloadDetailRows];
                 [self p_reloadRow:RDSettingRowStorage];
+            }
+            if (self.storageRefreshPending) {
+                self.storageRefreshPending = NO;
+                [self p_refreshDetailsAsync];
             }
         });
     });
@@ -347,8 +356,12 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     RDSettingRow row = self.sections[indexPath.section][indexPath.row].integerValue;
     if (row == RDSettingRowImport) {
-        [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportRequestNotification object:nil];
+        // 必须先切到书架、等 tab 切换落地后再请求 picker:
+        // 反过来会由尚不可见的 controller 去 present,picker 可能不显示(P2-01)
         [RDAppDelegate.mainController setSelectedIndex:RDMainBookShelf];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportRequestNotification object:nil];
+        });
     }
     else if (row == RDSettingRowImportFont) {
         [self p_pickFont];
@@ -520,14 +533,24 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     [self showLoading:@"正在清理..." cancel:nil];
     // 清空与导入/删除/恢复同队列串行,避免与并发导入交叉
     [RDLibraryMutationCoordinator performAsync:^{
-        NSArray *books = [RDReadRecordManager getAllOnBookshelf];
+        // 枚举全部记录行,而不是只枚举书架上的负 id:否则历史遗留的正 bookId
+        // read/chapter/bookmark 会残留,与"清空"文案不符(P2-18)。
+        NSArray *books = [RDReadRecordManager getAllRecordsForDestructiveClear];
+        if (!books) {
+            // 枚举都失败就不可能删干净,必须报错而不是提示"已清空"
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self hideLoading];
+                [self showText:@"读取书架失败,未执行清空"];
+            });
+            return;
+        }
         for (RDBookDetailModel *book in books) {
             if (book.isLocalBook) {
                 // 本地书由 manager 在同一串行队列内删除记录、源文件与两类封面。
                 [RDLocalBookManager removeLocalBook:book];
             }
             else{
-                // 在线书先删记录，迟到的封面保存会校验失败，再清理确定性文件。
+                // 历史遗留的在线书:先删记录，迟到的封面保存会校验失败，再清理确定性文件。
                 [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
                 [RDLocalBookManager removeCustomCoverForBook:book];
                 [RDBookmarkManager deleteAllForBookId:book.bookId];

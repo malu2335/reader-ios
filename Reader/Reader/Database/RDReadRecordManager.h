@@ -13,17 +13,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RDReadRecordManager : NSObject
 
-+(void)insertOrReplaceModel:(RDBookDetailModel *)model;
++(BOOL)insertOrReplaceModel:(RDBookDetailModel *)model;
 
 /// touchReadTime=NO 时保留 model.readTime(备份恢复等场景,不顶到书架最前)
-+(void)insertOrReplaceModel:(RDBookDetailModel *)model touchReadTime:(BOOL)touchReadTime;
++(BOOL)insertOrReplaceModel:(RDBookDetailModel *)model touchReadTime:(BOOL)touchReadTime;
 
 /// 阅读进度按列更新(章节引用/页码/字符偏移/章节名/阅读时间),不动其余列。
 /// 行不存在时回退整行插入。翻页高频调用,禁止走整行 insertOrReplace。
-+(void)updateProgressWithModel:(RDBookDetailModel *)model;
++(BOOL)updateProgressWithModel:(RDBookDetailModel *)model;
 
 /// 仅改书名/作者,不触碰进度与 readTime(书架长按改名用)
-+(void)updateTitle:(NSString *)title author:(NSString *)author forBookId:(NSInteger)bookId;
++(BOOL)updateTitle:(NSString *)title author:(NSString *)author forBookId:(NSInteger)bookId;
 
 /// 仅改封面字段,不触碰进度、书名与 readTime(PDF 自动封面回填用)
 +(BOOL)updateCoverImg:(NSString *)coverImg forBookId:(NSInteger)bookId;
@@ -34,17 +34,24 @@ NS_ASSUME_NONNULL_BEGIN
 +(RDBookDetailModel *)getReadRecordWithBookId:(NSInteger)bookid;
 
 
-+(void)updateReadTime:(RDBookDetailModel *)model;
++(BOOL)updateReadTime:(RDBookDetailModel *)model;
 
-+(void)updateBookshelfState:(RDBookDetailModel *)model;
++(BOOL)updateBookshelfState:(RDBookDetailModel *)model;
 
-+(void)removeBookFromBookShelfWithBookId:(NSInteger)bookid;
+/// 清空书架专用:返回**全部**记录行(含正 bookId 的历史遗留与已下架行),
+/// 只带清理所需的轻量列。产品书架展示一律走 getBookshelfDisplayList(P2-18)。
+/// 返回 nil 表示查询失败(与"没有任何记录"区分)。
++(nullable NSArray <RDBookDetailModel *>*)getAllRecordsForDestructiveClear;
+
++(BOOL)removeBookFromBookShelfWithBookId:(NSInteger)bookid;
 
 /// 获取所有书架上的书籍(含 charpterModel,较重)
 +(NSArray *)getAllOnBookshelf;
 
-/// 书架展示用轻量列表(不读 charpterModel 大字段,优先 readChapterName)
-+(NSArray <RDBookDetailModel *>*)getBookshelfDisplayList;
+/// 书架展示用轻量列表(不读 charpterModel 大字段,优先 readChapterName)。
+/// 返回 nil 表示**查询失败**,空数组才表示书架确实为空——调用方不能把两者
+/// 都当成"没有书",否则数据库出错时会显示成空书架(P1-07)。
++(nullable NSArray <RDBookDetailModel *>*)getBookshelfDisplayList;
 
 /// 仅统计书架本数(不反序列化章节内容,设置页用)
 +(NSInteger)countOnBookshelf;
@@ -52,7 +59,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// 书架上的书籍是否有更新的章节
 /// @param bookid
 /// @param update 是否有更新的章节
-+(void)updateOnBookselfUpdateWithBookId:(NSInteger)bookid update:(BOOL)update;
++(BOOL)updateOnBookselfUpdateWithBookId:(NSInteger)bookid update:(BOOL)update;
 
 @end
 

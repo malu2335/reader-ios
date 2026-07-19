@@ -19,7 +19,45 @@
 #import "RDComicHelper.h"
 #import "RDLocalBookManager.h"
 
+/// 正在打开中的 bookId,仅主线程读写(P2-02 阅读入口 single-flight)
+static NSInteger sRDOpeningBookId = 0;
+
 @implementation RDReadHelper
+
+/// 顶部是否已经是同一本书的阅读器
++ (BOOL)p_isAlreadyReadingBookId:(NSInteger)bookId
+{
+    UIViewController *top = RDAppDelegate.mainController.navigationController.topViewController;
+    RDBookDetailModel *detail = nil;
+    if ([top isKindOfClass:RDReadPageViewController.class]) {
+        detail = [(RDReadPageViewController *)top bookDetail];
+    }
+    else if ([top isKindOfClass:RDPdfReadController.class]) {
+        detail = [(RDPdfReadController *)top bookDetail];
+    }
+    else if ([top isKindOfClass:RDComicReadController.class]) {
+        detail = [(RDComicReadController *)top bookDetail];
+    }
+    return detail != nil && detail.bookId == bookId;
+}
+
+/// 返回 NO 表示这次打开请求应被忽略(重复点击或已在阅读同一本)
++ (BOOL)p_beginOpeningBookId:(NSInteger)bookId
+{
+    if (bookId == 0) {
+        return NO;
+    }
+    if (sRDOpeningBookId != 0 || [self p_isAlreadyReadingBookId:bookId]) {
+        return NO;
+    }
+    sRDOpeningBookId = bookId;
+    return YES;
+}
+
++ (void)p_endOpening
+{
+    sRDOpeningBookId = 0;
+}
 
 +(void)beginReadWithBookDetail:(RDBookDetailModel *)book
 {
@@ -31,11 +69,16 @@
     if (!book) {
         return;
     }
+    // 连击/重复入口只允许一次真正打开(P2-02)
+    if (![self p_beginOpeningBookId:book.bookId]) {
+        return;
+    }
     // 本地 PDF / 漫画图集使用专用阅读器(无文字章节库)
     if (book.isLocalBook && ([book.fileType isEqualToString:@"pdf"] || [RDComicHelper isComicFileType:book.fileType])) {
         NSString *path = [RDLocalBookManager absolutePathForBook:book];
         if (path.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
             [RDToastView showText:@"本地文件已丢失,请重新导入" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+            [self p_endOpening];
             return;
         }
         RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId] ?: book;
@@ -49,6 +92,7 @@
             pdfController.bookDetail = record;
             [RDAppDelegate.mainController.navigationController pushViewController:pdfController animated:animation];
         }
+        [self p_endOpening];
         return;
     }
 
@@ -57,10 +101,12 @@
         NSString *path = [RDLocalBookManager absolutePathForBook:book];
         if (path.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
             [RDToastView showText:@"本地文件已丢失,请重新导入" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+            [self p_endOpening];
             return;
         }
         if (![RDCharpterDataManager isExsitWithBookId:book.bookId]) {
             [RDToastView showText:@"章节数据缺失,请删除后重新导入" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+            [self p_endOpening];
             return;
         }
     }
@@ -79,8 +125,9 @@
                 controller.bookDetail = record;
                 [RDReadRecordManager updateReadTime:record];
                 [RDAppDelegate.mainController.navigationController pushViewController:controller animated:animation];
+                [self p_endOpening];
             } else {
-                // 章节失效则从第一章重新
+                // 章节失效则从第一章重新(p_openFromFirstChapter 内部负责收尾)
                 [self p_openFromFirstChapter:book record:record controller:controller animation:animation];
             }
         }];
@@ -119,6 +166,7 @@
         else if (book.isLocalBook) {
             [RDToastView showText:@"无法打开,请重新导入本书" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
         }
+        [self p_endOpening];
     }];
 }
 

@@ -264,10 +264,15 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
         return;
     }
     NSString *coverPath = [[self booksDirectory] stringByAppendingPathComponent:coverName];
-    UIImage *cover = [UIImage imageWithContentsOfFile:coverPath];
+    // 书架每次刷新都会走到这里。封面已就位时只做一次 stat 就返回,
+    // 不再 imageWithContentsOfFile 把每本 PDF 的封面重新解码一遍(P2-06)。
+    BOOL coverExists = [[NSFileManager defaultManager] fileExistsAtPath:coverPath];
+    if (coverExists && [book.coverImg isEqualToString:coverName]) {
+        return;
+    }
     BOOL createdCover = NO;
-    if (!cover) {
-        cover = [self p_renderFirstPageForPDFAtPath:pdfPath pageCount:NULL];
+    if (!coverExists) {
+        UIImage *cover = [self p_renderFirstPageForPDFAtPath:pdfPath pageCount:NULL];
         if (!cover || ![self p_writeJPEGImage:cover toPath:coverPath quality:0.88 error:nil]) {
             return;
         }
@@ -907,7 +912,15 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 + (void)removeLocalBook:(RDBookDetailModel *)book
 {
+    [self removeLocalBook:book completion:nil];
+}
+
++ (void)removeLocalBook:(RDBookDetailModel *)book completion:(dispatch_block_t)completion
+{
     if (!book.isLocalBook) {
+        if (completion) {
+            completion();
+        }
         return;
     }
     [self p_performSyncOnImportQueue:^{
@@ -933,10 +946,14 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
         [RDBookmarkManager deleteAllForBookId:book.bookId];
         [RDHistoryRecordManager deleteHistoryWithBookId:book.bookId];
     }];
-    // 章节表体积大、删除较慢，异步执行；但必须留在 import 串行队列内，
+    // 章节表体积大、删除较慢，异步执行；但必须留在变更串行队列内，
     // 否则"删除后立即重导"时,迟到的删除会跑到新导入之后,把刚插入的新章节清空。
+    // completion 定义为"所有文件与表都清理完成"之后才触发(P2-17)。
     dispatch_async([self importQueue], ^{
         [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
+        if (completion) {
+            completion();
+        }
     });
 }
 
