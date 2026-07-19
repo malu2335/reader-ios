@@ -7,42 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A11B001DP01BUILDFILE001 /* RDDisplayBoost.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001DP01FILEREF0001 /* RDDisplayBoost.m */; };
-		A11B001SC01BUILDFILE001 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SC01FILEREF0001 /* SceneDelegate.m */; };
-		A11B001AI05BUILDFILE001 /* RDReadTranslateHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */; };
-		A11B001AI01BUILDFILE001 /* RDAIConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI01FILEREF0001 /* RDAIConfig.m */; };
-		A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI02FILEREF0001 /* RDAIClient.m */; };
-		A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI03FILEREF0001 /* RDAIConfigController.m */; };
-		A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */; };
-		A11B002MC01BUILDFILE01 /* RDLibraryMutationCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */; };
-		A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BK01FILEREF0001 /* RDBackupManager.m */; };
-		A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP01FILEREF0001 /* RDReplaceRule.m */; };
-		A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */; };
-		A11B001RP03BUILDFILE001 /* RDReplaceRulesController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */; };
-		6F0ABC75BCD98B764AA25095 /* RDFontManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */; };
-		37BA1734531113410E2840C9 /* RDSpeechManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 97D50F2E3B94F19031CB429E /* RDSpeechManager.m */; };
-		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
-		A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV01FILEREF0001 /* RDVoiceManager.m */; };
-		A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV02FILEREF0001 /* RDVoicePickerController.m */; };
-		A11B001LG01BUILDFILE001 /* RDLegalDocumentController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */; };
-		A11B001LG02BUILDFILE001 /* PrivacyPolicy.zh-Hans.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */; };
-		A11B001LG03BUILDFILE001 /* OpenSourceLicenses.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */; };
-		A11B001SP01BUILDFILE001 /* RDSplashViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP01FILEREF0001 /* RDSplashViewController.m */; };
-		A11B001SP02BUILDFILE001 /* RDBookshelfPrefetch.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */; };
-		A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */; };
-		A11B001BM02BUILDFILE001 /* RDBookmarkManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */; };
-		A11B001BM03BUILDFILE001 /* RDReadBookmarkView.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM03FILEREF0001 /* RDReadBookmarkView.m */; };
-		3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */ = {isa = PBXBuildFile; fileRef = A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */; };
-		AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */; };
-		2818FE29C73406DBFD255D66 /* RDLocalBookParseResult.m in Sources */ = {isa = PBXBuildFile; fileRef = 986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */; };
-		88125B38064CECFDE796AC9C /* RDTxtBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */; };
-		770720095DA08678DB79B9B4 /* RDZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = 6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */; };
-		E9B9C11CA7CF66AD6807659E /* RDEpubBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */; };
+		02E2FAF0556CA8051184FCD7 /* RDBookshelfUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9CD2611127F6422656D18DB0 /* RDBookshelfUITests.m */; };
 		071B71033545EB805BBC6FF4 /* RDMobiBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 68F31C352B682E98E9009858 /* RDMobiBookParser.m */; };
-		B5C8C00B30738253136F7673 /* RDLocalBookManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */; };
-		E1C8FD090799D51DC7A68BB4 /* RDPdfReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 230E80FE544127BFB49E5639 /* RDPdfReadController.m */; };
-		63A52E4840A444CEB8643F48 /* RDComicHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 9EB2CFA1BB18478F8226647E /* RDComicHelper.m */; };
-		621C6567E53548639FD2E2F4 /* RDComicReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1868C360CBE04902804DB56E /* RDComicReadController.m */; };
+		0C829B4A531C176EFEAB483B /* RDImportDiagnosticTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0E8DA6789784B4B9BFD3E9C3 /* RDImportDiagnosticTests.m */; };
 		127B21BAA582033696A73117 /* UIColor+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2DE12A7C8DEAFCA69FF7 /* UIColor+rd_wid.m */; };
 		127B228E93D63BADCE90977E /* RDDiscoverController.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2F7282B3D5AF078835E9 /* RDDiscoverController.m */; };
 		127B23BF2F05230BF053E248 /* NSData+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2E08EF8C9D11D74CC7A2 /* NSData+rd_wid.m */; };
@@ -57,6 +24,8 @@
 		127B2DFB64AA64E862665628 /* NSString+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B28FC89616012E1619E7F /* NSString+rd_wid.m */; };
 		127B2F8BF9A7AFE6C2911C05 /* NSArray+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2256207AC30125E6FEFB /* NSArray+rd_wid.m */; };
 		127B2FE2F5400EAA7855B747 /* RDLibraryController.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2027321AFAAC3C4BCD1C /* RDLibraryController.m */; };
+		2488D2DC7100BFBE889B6E70 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DEEF549D0C695DA2CC132B /* Foundation.framework */; };
+		2818FE29C73406DBFD255D66 /* RDLocalBookParseResult.m in Sources */ = {isa = PBXBuildFile; fileRef = 986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */; };
 		292242ED23AC7ED700FE93C3 /* RDBatteryView.m in Sources */ = {isa = PBXBuildFile; fileRef = 292242EB23AC7ED700FE93C3 /* RDBatteryView.m */; };
 		292513E8236929BC00090883 /* RDBookDetailController.m in Sources */ = {isa = PBXBuildFile; fileRef = 292513E7236929BC00090883 /* RDBookDetailController.m */; };
 		29313C3B236C298A00408AF8 /* RDShareModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29313C3A236C298A00408AF8 /* RDShareModel.m */; };
@@ -180,97 +149,91 @@
 		29F97D35240CB73200909240 /* RDCommCategoryController.m in Sources */ = {isa = PBXBuildFile; fileRef = 29F97D34240CB73200909240 /* RDCommCategoryController.m */; };
 		29F97D39240CD23C00909240 /* RDSearchApi.m in Sources */ = {isa = PBXBuildFile; fileRef = 29F97D38240CD23C00909240 /* RDSearchApi.m */; };
 		29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */; };
+		3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */ = {isa = PBXBuildFile; fileRef = A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */; };
+		37BA1734531113410E2840C9 /* RDSpeechManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 97D50F2E3B94F19031CB429E /* RDSpeechManager.m */; };
+		381DD70A5C08CBB0F2413B0A /* RDTestSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = CC3C97052F262A26AF3E437A /* RDTestSupport.m */; };
+		39A490B7CC32C57918A71041 /* libPods-ReaderTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DECE569CE70495C89C7E8B5 /* libPods-ReaderTests.a */; };
+		4455CC9DE4DA9035CF071FF4 /* RDResourceBudgetTests.m in Sources */ = {isa = PBXBuildFile; fileRef = AF453A1D48A635B907582D26 /* RDResourceBudgetTests.m */; };
+		48A3A9D8AD90A22290217C61 /* RDDatabaseLayerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 07F90865936A1F0B2E3D3BBA /* RDDatabaseLayerTests.m */; };
+		621C6567E53548639FD2E2F4 /* RDComicReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1868C360CBE04902804DB56E /* RDComicReadController.m */; };
+		63A52E4840A444CEB8643F48 /* RDComicHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 9EB2CFA1BB18478F8226647E /* RDComicHelper.m */; };
+		6F0ABC75BCD98B764AA25095 /* RDFontManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */; };
+		770720095DA08678DB79B9B4 /* RDZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = 6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */; };
+		88125B38064CECFDE796AC9C /* RDTxtBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */; };
+		89DAAE454E47A99DC478634F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DEEF549D0C695DA2CC132B /* Foundation.framework */; };
+		970317B3739570C8BC5AA0EC /* RDImportTransactionTests.m in Sources */ = {isa = PBXBuildFile; fileRef = AEE92217242620230ACBF554 /* RDImportTransactionTests.m */; };
+		97AA8D9C32840D73C6438A34 /* libPods-ReaderUITests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B6FA47667B44B3E371830F4C /* libPods-ReaderUITests.a */; };
+		A11B001AI01BUILDFILE001 /* RDAIConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI01FILEREF0001 /* RDAIConfig.m */; };
+		A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI02FILEREF0001 /* RDAIClient.m */; };
+		A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI03FILEREF0001 /* RDAIConfigController.m */; };
+		A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */; };
+		A11B001AI05BUILDFILE001 /* RDReadTranslateHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */; };
+		A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BK01FILEREF0001 /* RDBackupManager.m */; };
+		A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */; };
+		A11B001BM02BUILDFILE001 /* RDBookmarkManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */; };
+		A11B001BM03BUILDFILE001 /* RDReadBookmarkView.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM03FILEREF0001 /* RDReadBookmarkView.m */; };
+		A11B001DP01BUILDFILE001 /* RDDisplayBoost.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001DP01FILEREF0001 /* RDDisplayBoost.m */; };
+		A11B001LG01BUILDFILE001 /* RDLegalDocumentController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */; };
+		A11B001LG02BUILDFILE001 /* PrivacyPolicy.zh-Hans.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */; };
+		A11B001LG03BUILDFILE001 /* OpenSourceLicenses.txt in Resources */ = {isa = PBXBuildFile; fileRef = A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */; };
+		A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP01FILEREF0001 /* RDReplaceRule.m */; };
+		A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */; };
+		A11B001RP03BUILDFILE001 /* RDReplaceRulesController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */; };
+		A11B001SC01BUILDFILE001 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SC01FILEREF0001 /* SceneDelegate.m */; };
+		A11B001SP01BUILDFILE001 /* RDSplashViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP01FILEREF0001 /* RDSplashViewController.m */; };
+		A11B001SP02BUILDFILE001 /* RDBookshelfPrefetch.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */; };
+		A11B001TV01BUILDFILE001 /* RDVoiceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV01FILEREF0001 /* RDVoiceManager.m */; };
+		A11B001TV02BUILDFILE001 /* RDVoicePickerController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001TV02FILEREF0001 /* RDVoicePickerController.m */; };
+		A11B002MC01BUILDFILE01 /* RDLibraryMutationCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */; };
+		A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */; };
 		A1B226CD0002D00E003C9645 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B226CD0001D00E003C9645 /* PrivacyInfo.xcprivacy */; };
+		A41184801E27A43C9EDFD029 /* RDRestoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 3F7D405CCC40B5C2433F455F /* RDRestoreTests.m */; };
 		AB171D4D23F0236B00D3600B /* RDDownloadController.m in Sources */ = {isa = PBXBuildFile; fileRef = AB171D4C23F0236B00D3600B /* RDDownloadController.m */; };
 		AB5B036323E3FFC300070840 /* RDReadRecordManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = AB5B036223E3FFC300070840 /* RDReadRecordManager.mm */; };
 		AB5B75DD2417DF4500D9BDAD /* RDDiscoverAllApi.m in Sources */ = {isa = PBXBuildFile; fileRef = AB5B75DC2417DF4500D9BDAD /* RDDiscoverAllApi.m */; };
 		ABB7B8F32419378900225828 /* RDBookRecommendApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABB7B8F22419378900225828 /* RDBookRecommendApi.m */; };
 		ABC3450A2439DE1200061974 /* RDCommParamManager.m in Sources */ = {isa = PBXBuildFile; fileRef = ABC345092439DE1200061974 /* RDCommParamManager.m */; };
 		ABC3450D243A1B3000061974 /* RDForceUpdateApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABC3450C243A1B3000061974 /* RDForceUpdateApi.m */; };
-		A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */; };
 		ABD329A023B842870015EAFA /* RDCharpterDataManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */; };
 		ABD329A723B853DD0015EAFA /* RDCharpterContentApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABD329A623B853DD0015EAFA /* RDCharpterContentApi.m */; };
 		ABF5D50B23B8383E008E3163 /* RDCharpterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = ABF5D50A23B8383E008E3163 /* RDCharpterManager.m */; };
 		ABF5D50E23B83BE5008E3163 /* RDDatabaseManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = ABF5D50D23B83BE5008E3163 /* RDDatabaseManager.mm */; };
 		ABFF290023F198110005B268 /* RDDownloadCell.m in Sources */ = {isa = PBXBuildFile; fileRef = ABFF28FF23F198110005B268 /* RDDownloadCell.m */; };
+		AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */; };
 		B437CA3D7535733BABFE48EB /* libPods-Reader.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B782DBADEC21A5296387B29 /* libPods-Reader.a */; };
+		B5C8C00B30738253136F7673 /* RDLocalBookManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */; };
+		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
+		D00D25E54EBD464DD7AD355A /* RDHarnessSelfTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */; };
+		E1C8FD090799D51DC7A68BB4 /* RDPdfReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 230E80FE544127BFB49E5639 /* RDPdfReadController.m */; };
+		E9B9C11CA7CF66AD6807659E /* RDEpubBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */; };
+		EFF2ECAA7E8A13DC516800F6 /* RDAITranslationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 7100E98026C9A4790A486C30 /* RDAITranslationTests.m */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		4A0F26D87AE4CBD6811A2EE8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 29407C7623607D0D003C9643 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 29407C7D23607D0D003C9643;
+			remoteInfo = Reader;
+		};
+		63A1FE180CE845BD1EACE829 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 29407C7623607D0D003C9643 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 29407C7D23607D0D003C9643;
+			remoteInfo = Reader;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		A11B001DB01FILEREF0002 /* RDDatabaseLifecycle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDatabaseLifecycle.h; sourceTree = "<group>"; };
-		A11B001DP01FILEREF0001 /* RDDisplayBoost.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDDisplayBoost.m; sourceTree = "<group>"; };
-		A11B001DP01FILEREF0002 /* RDDisplayBoost.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDisplayBoost.h; sourceTree = "<group>"; };
-		A11B001SC01FILEREF0001 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
-		A11B001SC01FILEREF0002 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
-		A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadTranslateHelper.m; sourceTree = "<group>"; };
-		A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadTranslateHelper.h; sourceTree = "<group>"; };
-		A11B001AI01FILEREF0001 /* RDAIConfig.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfig.m; sourceTree = "<group>"; };
-		A11B001AI01FILEREF0002 /* RDAIConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfig.h; sourceTree = "<group>"; };
-		A11B001AI02FILEREF0001 /* RDAIClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIClient.m; sourceTree = "<group>"; };
-		A11B001AI02FILEREF0002 /* RDAIClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIClient.h; sourceTree = "<group>"; };
-		A11B001AI03FILEREF0001 /* RDAIConfigController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfigController.m; sourceTree = "<group>"; };
-		A11B001AI03FILEREF0002 /* RDAIConfigController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfigController.h; sourceTree = "<group>"; };
-		A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIProfileEditController.m; sourceTree = "<group>"; };
-		A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIProfileEditController.h; sourceTree = "<group>"; };
-		A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLibraryMutationCoordinator.m; sourceTree = "<group>"; };
-		A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryMutationCoordinator.h; sourceTree = "<group>"; };
-		A11B001BK01FILEREF0001 /* RDBackupManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBackupManager.m; sourceTree = "<group>"; };
-		A11B001BK01FILEREF0002 /* RDBackupManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBackupManager.h; sourceTree = "<group>"; };
-		A11B001RP01FILEREF0001 /* RDReplaceRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRule.m; sourceTree = "<group>"; };
-		A11B001RP01FILEREF0002 /* RDReplaceRule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReplaceRule.h; sourceTree = "<group>"; };
-		A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDShareCardBuilder.m; sourceTree = "<group>"; };
-		A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDShareCardBuilder.h; sourceTree = "<group>"; };
-		A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRulesController.m; sourceTree = "<group>"; };
-		A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReplaceRulesController.h; sourceTree = "<group>"; };
-		AFDDB0A9ED452884DA4E076F /* RDFontManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDFontManager.h; sourceTree = "<group>"; };
-		1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDFontManager.m; sourceTree = "<group>"; };
-		1F63E6488007EA8327F65620 /* RDSpeechManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSpeechManager.h; sourceTree = "<group>"; };
-		97D50F2E3B94F19031CB429E /* RDSpeechManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSpeechManager.m; sourceTree = "<group>"; };
-		B48A0DD5A1CCD411CFE4D5BC /* RDReadSpeechBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadSpeechBar.h; sourceTree = "<group>"; };
-		9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadSpeechBar.m; sourceTree = "<group>"; };
-		A11B001TV01FILEREF0001 /* RDVoiceManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoiceManager.m; sourceTree = "<group>"; };
-		A11B001TV01FILEREF0002 /* RDVoiceManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoiceManager.h; sourceTree = "<group>"; };
-		A11B001TV02FILEREF0001 /* RDVoicePickerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoicePickerController.m; sourceTree = "<group>"; };
-		A11B001TV02FILEREF0002 /* RDVoicePickerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoicePickerController.h; sourceTree = "<group>"; };
-		A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLegalDocumentController.m; sourceTree = "<group>"; };
-		A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLegalDocumentController.h; sourceTree = "<group>"; };
-		A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "PrivacyPolicy.zh-Hans.txt"; sourceTree = "<group>"; };
-		A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OpenSourceLicenses.txt; sourceTree = "<group>"; };
-		A11B001SP01FILEREF0001 /* RDSplashViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSplashViewController.m; sourceTree = "<group>"; };
-		A11B001SP01FILEREF0002 /* RDSplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSplashViewController.h; sourceTree = "<group>"; };
-		A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfPrefetch.m; sourceTree = "<group>"; };
-		A11B001SP02FILEREF0002 /* RDBookshelfPrefetch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookshelfPrefetch.h; sourceTree = "<group>"; };
-		A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookmarkModel.mm; sourceTree = "<group>"; };
-		A11B001BM01FILEREF0002 /* RDBookmarkModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookmarkModel.h; sourceTree = "<group>"; };
-		A11B001BM01FILEREF0003 /* RDBookmarkModel+WCTTableCoding.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDBookmarkModel+WCTTableCoding.h"; sourceTree = "<group>"; };
-		A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookmarkManager.mm; sourceTree = "<group>"; };
-		A11B001BM02FILEREF0002 /* RDBookmarkManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookmarkManager.h; sourceTree = "<group>"; };
-		A11B001BM03FILEREF0001 /* RDReadBookmarkView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadBookmarkView.m; sourceTree = "<group>"; };
-		A11B001BM03FILEREF0002 /* RDReadBookmarkView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadBookmarkView.h; sourceTree = "<group>"; };
-		4C5E8A70982106BEB8323759 /* RDSettingController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSettingController.h; sourceTree = "<group>"; };
-		A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSettingController.m; sourceTree = "<group>"; };
-		0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookTextUtil.h; sourceTree = "<group>"; };
-		B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookTextUtil.m; sourceTree = "<group>"; };
-		653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLocalBookParseResult.h; sourceTree = "<group>"; };
-		986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookParseResult.m; sourceTree = "<group>"; };
-		DED15520775A9726D3E87911 /* RDTxtBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDTxtBookParser.h; sourceTree = "<group>"; };
-		80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDTxtBookParser.m; sourceTree = "<group>"; };
-		A11B001IP01FILEREF0001 /* RDImportPolicy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDImportPolicy.h; sourceTree = "<group>"; };
-		474F58F25C7A77B498A50E0D /* RDZipArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDZipArchive.h; sourceTree = "<group>"; };
-		6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDZipArchive.m; sourceTree = "<group>"; };
-		825F434656301730FD128D18 /* RDEpubBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDEpubBookParser.h; sourceTree = "<group>"; };
-		F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDEpubBookParser.m; sourceTree = "<group>"; };
-		09ED8F2A1E12E028BC54C1FC /* RDMobiBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDMobiBookParser.h; sourceTree = "<group>"; };
-		68F31C352B682E98E9009858 /* RDMobiBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDMobiBookParser.m; sourceTree = "<group>"; };
-		8FECD15395BC033E89FC4A5E /* RDLocalBookManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLocalBookManager.h; sourceTree = "<group>"; };
-		0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookManager.m; sourceTree = "<group>"; };
-		F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDPdfReadController.h; sourceTree = "<group>"; };
-		230E80FE544127BFB49E5639 /* RDPdfReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDPdfReadController.m; sourceTree = "<group>"; };
-		F175AC3051EC4FB0B4C5C39E /* RDComicHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicHelper.h; sourceTree = "<group>"; };
-		9EB2CFA1BB18478F8226647E /* RDComicHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicHelper.m; sourceTree = "<group>"; };
-		25D3CE3C0AED4878BB582152 /* RDComicReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicReadController.h; sourceTree = "<group>"; };
-		1868C360CBE04902804DB56E /* RDComicReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicReadController.m; sourceTree = "<group>"; };
+		00426DA90F1259A4B7255FE3 /* Pods-ReaderUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderUITests.debug.xcconfig"; path = "Target Support Files/Pods-ReaderUITests/Pods-ReaderUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		016DFB88DA12605DA3BF6CDE /* Pods-Reader.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Reader.release.xcconfig"; path = "Target Support Files/Pods-Reader/Pods-Reader.release.xcconfig"; sourceTree = "<group>"; };
+		07F90865936A1F0B2E3D3BBA /* RDDatabaseLayerTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDDatabaseLayerTests.m; sourceTree = "<group>"; };
+		09ED8F2A1E12E028BC54C1FC /* RDMobiBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDMobiBookParser.h; sourceTree = "<group>"; };
+		0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookManager.m; sourceTree = "<group>"; };
+		0E8DA6789784B4B9BFD3E9C3 /* RDImportDiagnosticTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDImportDiagnosticTests.m; sourceTree = "<group>"; };
+		0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookTextUtil.h; sourceTree = "<group>"; };
 		127B2027321AFAAC3C4BCD1C /* RDLibraryController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RDLibraryController.m; sourceTree = "<group>"; };
 		127B2063B3118D604E9D18F1 /* RDDiscoverController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RDDiscoverController.h; sourceTree = "<group>"; };
 		127B2072E41C4BA15B1F3C9D /* RDLibarayCategoryController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RDLibarayCategoryController.m; sourceTree = "<group>"; };
@@ -301,6 +264,11 @@
 		127B2ECF858287EF4F72F3B4 /* NSAttributedString+rd_wid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSAttributedString+rd_wid.h"; sourceTree = "<group>"; };
 		127B2F7282B3D5AF078835E9 /* RDDiscoverController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RDDiscoverController.m; sourceTree = "<group>"; };
 		127B2FC5280B99FD8662E26E /* Reader.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Reader.pch; sourceTree = "<group>"; };
+		1868C360CBE04902804DB56E /* RDComicReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicReadController.m; sourceTree = "<group>"; };
+		1F63E6488007EA8327F65620 /* RDSpeechManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSpeechManager.h; sourceTree = "<group>"; };
+		1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDFontManager.m; sourceTree = "<group>"; };
+		230E80FE544127BFB49E5639 /* RDPdfReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDPdfReadController.m; sourceTree = "<group>"; };
+		25D3CE3C0AED4878BB582152 /* RDComicReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicReadController.h; sourceTree = "<group>"; };
 		292242EB23AC7ED700FE93C3 /* RDBatteryView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RDBatteryView.m; sourceTree = "<group>"; };
 		292242EC23AC7ED700FE93C3 /* RDBatteryView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RDBatteryView.h; sourceTree = "<group>"; };
 		292513E6236929BC00090883 /* RDBookDetailController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookDetailController.h; sourceTree = "<group>"; };
@@ -551,8 +519,78 @@
 		29F97D38240CD23C00909240 /* RDSearchApi.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSearchApi.m; sourceTree = "<group>"; };
 		29F97D3A240CEB8000909240 /* RDHistoryRecordManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDHistoryRecordManager.h; sourceTree = "<group>"; };
 		29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDHistoryRecordManager.mm; sourceTree = "<group>"; };
+		39DEEF549D0C695DA2CC132B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		3F7D405CCC40B5C2433F455F /* RDRestoreTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDRestoreTests.m; sourceTree = "<group>"; };
+		474F58F25C7A77B498A50E0D /* RDZipArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDZipArchive.h; sourceTree = "<group>"; };
+		4C5E8A70982106BEB8323759 /* RDSettingController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSettingController.h; sourceTree = "<group>"; };
+		5C0F3FC1EB92C59245CF6514 /* Pods-ReaderTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderTests.release.xcconfig"; path = "Target Support Files/Pods-ReaderTests/Pods-ReaderTests.release.xcconfig"; sourceTree = "<group>"; };
+		653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLocalBookParseResult.h; sourceTree = "<group>"; };
+		68F31C352B682E98E9009858 /* RDMobiBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDMobiBookParser.m; sourceTree = "<group>"; };
 		6B782DBADEC21A5296387B29 /* libPods-Reader.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Reader.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDZipArchive.m; sourceTree = "<group>"; };
+		7100E98026C9A4790A486C30 /* RDAITranslationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDAITranslationTests.m; sourceTree = "<group>"; };
+		72B7C19412438F906491C5EF /* Pods-ReaderUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderUITests.release.xcconfig"; path = "Target Support Files/Pods-ReaderUITests/Pods-ReaderUITests.release.xcconfig"; sourceTree = "<group>"; };
+		80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDTxtBookParser.m; sourceTree = "<group>"; };
+		825F434656301730FD128D18 /* RDEpubBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDEpubBookParser.h; sourceTree = "<group>"; };
+		8DECE569CE70495C89C7E8B5 /* libPods-ReaderTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ReaderTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8FECD15395BC033E89FC4A5E /* RDLocalBookManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLocalBookManager.h; sourceTree = "<group>"; };
+		97D50F2E3B94F19031CB429E /* RDSpeechManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSpeechManager.m; sourceTree = "<group>"; };
+		986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookParseResult.m; sourceTree = "<group>"; };
+		9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadSpeechBar.m; sourceTree = "<group>"; };
+		9CD2611127F6422656D18DB0 /* RDBookshelfUITests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfUITests.m; sourceTree = "<group>"; };
+		9EB2CFA1BB18478F8226647E /* RDComicHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicHelper.m; sourceTree = "<group>"; };
+		9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDHarnessSelfTests.m; sourceTree = "<group>"; };
+		A11B001AI01FILEREF0001 /* RDAIConfig.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfig.m; sourceTree = "<group>"; };
+		A11B001AI01FILEREF0002 /* RDAIConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfig.h; sourceTree = "<group>"; };
+		A11B001AI02FILEREF0001 /* RDAIClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIClient.m; sourceTree = "<group>"; };
+		A11B001AI02FILEREF0002 /* RDAIClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIClient.h; sourceTree = "<group>"; };
+		A11B001AI03FILEREF0001 /* RDAIConfigController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfigController.m; sourceTree = "<group>"; };
+		A11B001AI03FILEREF0002 /* RDAIConfigController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfigController.h; sourceTree = "<group>"; };
+		A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIProfileEditController.m; sourceTree = "<group>"; };
+		A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIProfileEditController.h; sourceTree = "<group>"; };
+		A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadTranslateHelper.m; sourceTree = "<group>"; };
+		A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadTranslateHelper.h; sourceTree = "<group>"; };
+		A11B001BK01FILEREF0001 /* RDBackupManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBackupManager.m; sourceTree = "<group>"; };
+		A11B001BK01FILEREF0002 /* RDBackupManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBackupManager.h; sourceTree = "<group>"; };
+		A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookmarkModel.mm; sourceTree = "<group>"; };
+		A11B001BM01FILEREF0002 /* RDBookmarkModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookmarkModel.h; sourceTree = "<group>"; };
+		A11B001BM01FILEREF0003 /* RDBookmarkModel+WCTTableCoding.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDBookmarkModel+WCTTableCoding.h"; sourceTree = "<group>"; };
+		A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookmarkManager.mm; sourceTree = "<group>"; };
+		A11B001BM02FILEREF0002 /* RDBookmarkManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookmarkManager.h; sourceTree = "<group>"; };
+		A11B001BM03FILEREF0001 /* RDReadBookmarkView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadBookmarkView.m; sourceTree = "<group>"; };
+		A11B001BM03FILEREF0002 /* RDReadBookmarkView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadBookmarkView.h; sourceTree = "<group>"; };
+		A11B001DB01FILEREF0002 /* RDDatabaseLifecycle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDatabaseLifecycle.h; sourceTree = "<group>"; };
+		A11B001DP01FILEREF0001 /* RDDisplayBoost.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDDisplayBoost.m; sourceTree = "<group>"; };
+		A11B001DP01FILEREF0002 /* RDDisplayBoost.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDisplayBoost.h; sourceTree = "<group>"; };
+		A11B001IP01FILEREF0001 /* RDImportPolicy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDImportPolicy.h; sourceTree = "<group>"; };
+		A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLegalDocumentController.m; sourceTree = "<group>"; };
+		A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLegalDocumentController.h; sourceTree = "<group>"; };
+		A11B001LG02FILEREF0001 /* PrivacyPolicy.zh-Hans.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "PrivacyPolicy.zh-Hans.txt"; sourceTree = "<group>"; };
+		A11B001LG03FILEREF0001 /* OpenSourceLicenses.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OpenSourceLicenses.txt; sourceTree = "<group>"; };
+		A11B001RP01FILEREF0001 /* RDReplaceRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRule.m; sourceTree = "<group>"; };
+		A11B001RP01FILEREF0002 /* RDReplaceRule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReplaceRule.h; sourceTree = "<group>"; };
+		A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDShareCardBuilder.m; sourceTree = "<group>"; };
+		A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDShareCardBuilder.h; sourceTree = "<group>"; };
+		A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRulesController.m; sourceTree = "<group>"; };
+		A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReplaceRulesController.h; sourceTree = "<group>"; };
+		A11B001SC01FILEREF0001 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
+		A11B001SC01FILEREF0002 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
+		A11B001SP01FILEREF0001 /* RDSplashViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSplashViewController.m; sourceTree = "<group>"; };
+		A11B001SP01FILEREF0002 /* RDSplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSplashViewController.h; sourceTree = "<group>"; };
+		A11B001SP02FILEREF0001 /* RDBookshelfPrefetch.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfPrefetch.m; sourceTree = "<group>"; };
+		A11B001SP02FILEREF0002 /* RDBookshelfPrefetch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookshelfPrefetch.h; sourceTree = "<group>"; };
+		A11B001TV01FILEREF0001 /* RDVoiceManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoiceManager.m; sourceTree = "<group>"; };
+		A11B001TV01FILEREF0002 /* RDVoiceManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoiceManager.h; sourceTree = "<group>"; };
+		A11B001TV02FILEREF0001 /* RDVoicePickerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDVoicePickerController.m; sourceTree = "<group>"; };
+		A11B001TV02FILEREF0002 /* RDVoicePickerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDVoicePickerController.h; sourceTree = "<group>"; };
+		A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLibraryMutationCoordinator.m; sourceTree = "<group>"; };
+		A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryMutationCoordinator.h; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDLibraryTransaction.mm; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0002 /* RDLibraryTransaction.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryTransaction.h; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0003 /* RDCharpterDataManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDCharpterDataManager+DBInternal.h"; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0004 /* RDReadRecordManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDReadRecordManager+DBInternal.h"; sourceTree = "<group>"; };
 		A1B226CD0001D00E003C9645 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDSettingController.m; sourceTree = "<group>"; };
 		AB171D4B23F0236B00D3600B /* RDDownloadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDownloadController.h; sourceTree = "<group>"; };
 		AB171D4C23F0236B00D3600B /* RDDownloadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDDownloadController.m; sourceTree = "<group>"; };
 		AB5B036123E3FFC300070840 /* RDReadRecordManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadRecordManager.h; sourceTree = "<group>"; };
@@ -565,10 +603,6 @@
 		ABC345092439DE1200061974 /* RDCommParamManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDCommParamManager.m; sourceTree = "<group>"; };
 		ABC3450B243A1B3000061974 /* RDForceUpdateApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDForceUpdateApi.h; sourceTree = "<group>"; };
 		ABC3450C243A1B3000061974 /* RDForceUpdateApi.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDForceUpdateApi.m; sourceTree = "<group>"; };
-		A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDLibraryTransaction.mm; sourceTree = "<group>"; };
-		A11B002TX01FILEREF0002 /* RDLibraryTransaction.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryTransaction.h; sourceTree = "<group>"; };
-		A11B002TX01FILEREF0003 /* RDCharpterDataManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDCharpterDataManager+DBInternal.h"; sourceTree = "<group>"; };
-		A11B002TX01FILEREF0004 /* RDReadRecordManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDReadRecordManager+DBInternal.h"; sourceTree = "<group>"; };
 		ABD3299E23B842870015EAFA /* RDCharpterDataManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDCharpterDataManager.h; sourceTree = "<group>"; };
 		ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDCharpterDataManager.mm; sourceTree = "<group>"; };
 		ABD329A523B853DD0015EAFA /* RDCharpterContentApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDCharpterContentApi.h; sourceTree = "<group>"; };
@@ -580,6 +614,20 @@
 		ABFCBD3223F1ADF300669D84 /* RDNotifications.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDNotifications.h; sourceTree = "<group>"; };
 		ABFF28FE23F198110005B268 /* RDDownloadCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDDownloadCell.h; sourceTree = "<group>"; };
 		ABFF28FF23F198110005B268 /* RDDownloadCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDDownloadCell.m; sourceTree = "<group>"; };
+		AEE92217242620230ACBF554 /* RDImportTransactionTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDImportTransactionTests.m; sourceTree = "<group>"; };
+		AF453A1D48A635B907582D26 /* RDResourceBudgetTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDResourceBudgetTests.m; sourceTree = "<group>"; };
+		AFDDB0A9ED452884DA4E076F /* RDFontManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDFontManager.h; sourceTree = "<group>"; };
+		B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookTextUtil.m; sourceTree = "<group>"; };
+		B48A0DD5A1CCD411CFE4D5BC /* RDReadSpeechBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadSpeechBar.h; sourceTree = "<group>"; };
+		B6FA47667B44B3E371830F4C /* libPods-ReaderUITests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ReaderUITests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC3C97052F262A26AF3E437A /* RDTestSupport.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDTestSupport.m; sourceTree = "<group>"; };
+		DEA4C7D96955184AEFFA23FF /* Pods-ReaderTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderTests.debug.xcconfig"; path = "Target Support Files/Pods-ReaderTests/Pods-ReaderTests.debug.xcconfig"; sourceTree = "<group>"; };
+		DED15520775A9726D3E87911 /* RDTxtBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDTxtBookParser.h; sourceTree = "<group>"; };
+		F0367B00D4BF3C1206F62951 /* ReaderTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDPdfReadController.h; sourceTree = "<group>"; };
+		F16928315EBBE7274481B593 /* ReaderUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReaderUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F175AC3051EC4FB0B4C5C39E /* RDComicHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicHelper.h; sourceTree = "<group>"; };
+		F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDEpubBookParser.m; sourceTree = "<group>"; };
 		F8373C3D565746EC7453F14F /* Pods-Reader.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Reader.debug.xcconfig"; path = "Target Support Files/Pods-Reader/Pods-Reader.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -592,31 +640,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3F1FFC68082D89AA008B4765 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				89DAAE454E47A99DC478634F /* Foundation.framework in Frameworks */,
+				97AA8D9C32840D73C6438A34 /* libPods-ReaderUITests.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BA8BB061ECC93D0337763244 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2488D2DC7100BFBE889B6E70 /* Foundation.framework in Frameworks */,
+				39A490B7CC32C57918A71041 /* libPods-ReaderTests.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A11B001AIGROUP000000001 /* AI */ = {
-			isa = PBXGroup;
-			children = (
-				A11B001AI01FILEREF0002 /* RDAIConfig.h */,
-				A11B001AI01FILEREF0001 /* RDAIConfig.m */,
-				A11B001AI02FILEREF0002 /* RDAIClient.h */,
-				A11B001AI02FILEREF0001 /* RDAIClient.m */,
-				A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */,
-				A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */,
-			);
-			path = AI;
-			sourceTree = "<group>";
-		};
-		39B81F0A14E9E2FFBA323B4B /* Font */ = {
-			isa = PBXGroup;
-			children = (
-				AFDDB0A9ED452884DA4E076F /* RDFontManager.h */,
-				1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */,
-			);
-			path = Font;
-			sourceTree = "<group>";
-		};
 		0FF48B9F31B03B6767C039E4 /* Speech */ = {
 			isa = PBXGroup;
 			children = (
@@ -628,61 +672,6 @@
 				A11B001TV01FILEREF0001 /* RDVoiceManager.m */,
 			);
 			path = Speech;
-			sourceTree = "<group>";
-		};
-		BC9E927A0E8716ACAAA03AC3 /* Setting */ = {
-			isa = PBXGroup;
-			children = (
-				4C5E8A70982106BEB8323759 /* RDSettingController.h */,
-				A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */,
-				A11B001AI03FILEREF0002 /* RDAIConfigController.h */,
-				A11B001AI03FILEREF0001 /* RDAIConfigController.m */,
-				A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */,
-				A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */,
-				A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */,
-				A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */,
-				A11B001TV02FILEREF0002 /* RDVoicePickerController.h */,
-				A11B001TV02FILEREF0001 /* RDVoicePickerController.m */,
-				A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */,
-				A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */,
-			);
-			path = Setting;
-			sourceTree = "<group>";
-		};
-		3C60A518022DAA51CBD1DFF1 /* LocalBook */ = {
-			isa = PBXGroup;
-			children = (
-				A11B001BK01FILEREF0002 /* RDBackupManager.h */,
-				A11B001BK01FILEREF0001 /* RDBackupManager.m */,
-				A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */,
-				A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */,
-				0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */,
-				B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */,
-				653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */,
-				986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */,
-				DED15520775A9726D3E87911 /* RDTxtBookParser.h */,
-				80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */,
-				A11B001IP01FILEREF0001 /* RDImportPolicy.h */,
-				474F58F25C7A77B498A50E0D /* RDZipArchive.h */,
-				6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */,
-				825F434656301730FD128D18 /* RDEpubBookParser.h */,
-				F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */,
-				09ED8F2A1E12E028BC54C1FC /* RDMobiBookParser.h */,
-				68F31C352B682E98E9009858 /* RDMobiBookParser.m */,
-				8FECD15395BC033E89FC4A5E /* RDLocalBookManager.h */,
-				0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */,
-				F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */,
-				230E80FE544127BFB49E5639 /* RDPdfReadController.m */,
-				F175AC3051EC4FB0B4C5C39E /* RDComicHelper.h */,
-				9EB2CFA1BB18478F8226647E /* RDComicHelper.m */,
-				25D3CE3C0AED4878BB582152 /* RDComicReadController.h */,
-				1868C360CBE04902804DB56E /* RDComicReadController.m */,
-				A11B001RP01FILEREF0002 /* RDReplaceRule.h */,
-				A11B001RP01FILEREF0001 /* RDReplaceRule.m */,
-				A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */,
-				A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */,
-			);
-			path = LocalBook;
 			sourceTree = "<group>";
 		};
 		127B22B16CC3A8DA9E76395B /* Const */ = {
@@ -848,6 +837,7 @@
 				29407C7F23607D0E003C9643 /* Products */,
 				9A8666F0A987A6444FF4F374 /* Pods */,
 				A78D7332A228F01B0A78F40E /* Frameworks */,
+				3A22B04D912D9EB0121270AC /* Tests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -855,6 +845,8 @@
 			isa = PBXGroup;
 			children = (
 				29407C7E23607D0E003C9643 /* 纸羽轻阅.app */,
+				F0367B00D4BF3C1206F62951 /* ReaderTests.xctest */,
+				F16928315EBBE7274481B593 /* ReaderUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1496,19 +1488,127 @@
 			path = Search;
 			sourceTree = "<group>";
 		};
+		33C19882C1F16BBE7BB73E7A /* ReaderUITests */ = {
+			isa = PBXGroup;
+			children = (
+				9CD2611127F6422656D18DB0 /* RDBookshelfUITests.m */,
+			);
+			name = ReaderUITests;
+			path = ReaderUITests;
+			sourceTree = "<group>";
+		};
+		39B81F0A14E9E2FFBA323B4B /* Font */ = {
+			isa = PBXGroup;
+			children = (
+				AFDDB0A9ED452884DA4E076F /* RDFontManager.h */,
+				1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */,
+			);
+			path = Font;
+			sourceTree = "<group>";
+		};
+		3A22B04D912D9EB0121270AC /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				69140959903076DC053EB9A6 /* ReaderTests */,
+				33C19882C1F16BBE7BB73E7A /* ReaderUITests */,
+			);
+			name = Tests;
+			path = Tests;
+			sourceTree = SOURCE_ROOT;
+		};
+		3C60A518022DAA51CBD1DFF1 /* LocalBook */ = {
+			isa = PBXGroup;
+			children = (
+				A11B001BK01FILEREF0002 /* RDBackupManager.h */,
+				A11B001BK01FILEREF0001 /* RDBackupManager.m */,
+				A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */,
+				A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */,
+				0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */,
+				B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */,
+				653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */,
+				986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */,
+				DED15520775A9726D3E87911 /* RDTxtBookParser.h */,
+				80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */,
+				A11B001IP01FILEREF0001 /* RDImportPolicy.h */,
+				474F58F25C7A77B498A50E0D /* RDZipArchive.h */,
+				6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */,
+				825F434656301730FD128D18 /* RDEpubBookParser.h */,
+				F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */,
+				09ED8F2A1E12E028BC54C1FC /* RDMobiBookParser.h */,
+				68F31C352B682E98E9009858 /* RDMobiBookParser.m */,
+				8FECD15395BC033E89FC4A5E /* RDLocalBookManager.h */,
+				0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */,
+				F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */,
+				230E80FE544127BFB49E5639 /* RDPdfReadController.m */,
+				F175AC3051EC4FB0B4C5C39E /* RDComicHelper.h */,
+				9EB2CFA1BB18478F8226647E /* RDComicHelper.m */,
+				25D3CE3C0AED4878BB582152 /* RDComicReadController.h */,
+				1868C360CBE04902804DB56E /* RDComicReadController.m */,
+				A11B001RP01FILEREF0002 /* RDReplaceRule.h */,
+				A11B001RP01FILEREF0001 /* RDReplaceRule.m */,
+				A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */,
+				A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */,
+			);
+			path = LocalBook;
+			sourceTree = "<group>";
+		};
+		69140959903076DC053EB9A6 /* ReaderTests */ = {
+			isa = PBXGroup;
+			children = (
+				7100E98026C9A4790A486C30 /* RDAITranslationTests.m */,
+				AEE92217242620230ACBF554 /* RDImportTransactionTests.m */,
+				AF453A1D48A635B907582D26 /* RDResourceBudgetTests.m */,
+				3F7D405CCC40B5C2433F455F /* RDRestoreTests.m */,
+				CC3C97052F262A26AF3E437A /* RDTestSupport.m */,
+				9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */,
+				0E8DA6789784B4B9BFD3E9C3 /* RDImportDiagnosticTests.m */,
+				07F90865936A1F0B2E3D3BBA /* RDDatabaseLayerTests.m */,
+			);
+			name = ReaderTests;
+			path = ReaderTests;
+			sourceTree = "<group>";
+		};
+		92BB30AF841D66941574B99B /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				39DEEF549D0C695DA2CC132B /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		9A8666F0A987A6444FF4F374 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
 				F8373C3D565746EC7453F14F /* Pods-Reader.debug.xcconfig */,
 				016DFB88DA12605DA3BF6CDE /* Pods-Reader.release.xcconfig */,
+				5C0F3FC1EB92C59245CF6514 /* Pods-ReaderTests.release.xcconfig */,
+				DEA4C7D96955184AEFFA23FF /* Pods-ReaderTests.debug.xcconfig */,
+				72B7C19412438F906491C5EF /* Pods-ReaderUITests.release.xcconfig */,
+				00426DA90F1259A4B7255FE3 /* Pods-ReaderUITests.debug.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		A11B001AIGROUP000000001 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				A11B001AI01FILEREF0002 /* RDAIConfig.h */,
+				A11B001AI01FILEREF0001 /* RDAIConfig.m */,
+				A11B001AI02FILEREF0002 /* RDAIClient.h */,
+				A11B001AI02FILEREF0001 /* RDAIClient.m */,
+				A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */,
+				A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */,
+			);
+			path = AI;
 			sourceTree = "<group>";
 		};
 		A78D7332A228F01B0A78F40E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				6B782DBADEC21A5296387B29 /* libPods-Reader.a */,
+				92BB30AF841D66941574B99B /* iOS */,
+				8DECE569CE70495C89C7E8B5 /* libPods-ReaderTests.a */,
+				B6FA47667B44B3E371830F4C /* libPods-ReaderUITests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -1545,6 +1645,25 @@
 			path = Cell;
 			sourceTree = "<group>";
 		};
+		BC9E927A0E8716ACAAA03AC3 /* Setting */ = {
+			isa = PBXGroup;
+			children = (
+				4C5E8A70982106BEB8323759 /* RDSettingController.h */,
+				A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */,
+				A11B001AI03FILEREF0002 /* RDAIConfigController.h */,
+				A11B001AI03FILEREF0001 /* RDAIConfigController.m */,
+				A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */,
+				A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */,
+				A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */,
+				A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */,
+				A11B001TV02FILEREF0002 /* RDVoicePickerController.h */,
+				A11B001TV02FILEREF0001 /* RDVoicePickerController.m */,
+				A11B001LG01FILEREF0002 /* RDLegalDocumentController.h */,
+				A11B001LG01FILEREF0001 /* RDLegalDocumentController.m */,
+			);
+			path = Setting;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -1566,6 +1685,44 @@
 			productName = Reader;
 			productReference = 29407C7E23607D0E003C9643 /* 纸羽轻阅.app */;
 			productType = "com.apple.product-type.application";
+		};
+		365E0FE9D2F1D3DB4BE84EE0 /* ReaderTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1AD103C2D32FF13C96485FA8 /* Build configuration list for PBXNativeTarget "ReaderTests" */;
+			buildPhases = (
+				5A90DB23A56E464DFF325924 /* [CP] Check Pods Manifest.lock */,
+				4C6417851FCF3BFF7BA1B6B6 /* Sources */,
+				BA8BB061ECC93D0337763244 /* Frameworks */,
+				13A0F5C9B86B9F82C3FB2077 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				94C80E149F709FAD1CBE17DA /* PBXTargetDependency */,
+			);
+			name = ReaderTests;
+			productName = ReaderTests;
+			productReference = F0367B00D4BF3C1206F62951 /* ReaderTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		DA7ABF86105A6B3B8668AB8C /* ReaderUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9C6B9A14A65F6E0477CD5497 /* Build configuration list for PBXNativeTarget "ReaderUITests" */;
+			buildPhases = (
+				C9803DBDAE606A3BBF34B59E /* [CP] Check Pods Manifest.lock */,
+				7C0E3C1A619C11DCC64D6700 /* Sources */,
+				3F1FFC68082D89AA008B4765 /* Frameworks */,
+				27202DA09D0D882F0EA7FCEC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C27F45EF2BAA0C44E982688C /* PBXTargetDependency */,
+			);
+			name = ReaderUITests;
+			productName = ReaderUITests;
+			productReference = F16928315EBBE7274481B593 /* ReaderUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -1596,11 +1753,27 @@
 			projectRoot = "";
 			targets = (
 				29407C7D23607D0D003C9643 /* Reader */,
+				365E0FE9D2F1D3DB4BE84EE0 /* ReaderTests */,
+				DA7ABF86105A6B3B8668AB8C /* ReaderUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		13A0F5C9B86B9F82C3FB2077 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		27202DA09D0D882F0EA7FCEC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		29407C7C23607D0D003C9643 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1634,6 +1807,28 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Reader/Pods-Reader-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		5A90DB23A56E464DFF325924 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-ReaderTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		B2A7F1B1707323023B016A38 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -1650,6 +1845,28 @@
 			);
 			outputPaths = (
 				"$(DERIVED_FILE_DIR)/Pods-Reader-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		C9803DBDAE606A3BBF34B59E /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-ReaderUITests-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1846,7 +2063,45 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4C6417851FCF3BFF7BA1B6B6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EFF2ECAA7E8A13DC516800F6 /* RDAITranslationTests.m in Sources */,
+				970317B3739570C8BC5AA0EC /* RDImportTransactionTests.m in Sources */,
+				4455CC9DE4DA9035CF071FF4 /* RDResourceBudgetTests.m in Sources */,
+				A41184801E27A43C9EDFD029 /* RDRestoreTests.m in Sources */,
+				381DD70A5C08CBB0F2413B0A /* RDTestSupport.m in Sources */,
+				D00D25E54EBD464DD7AD355A /* RDHarnessSelfTests.m in Sources */,
+				0C829B4A531C176EFEAB483B /* RDImportDiagnosticTests.m in Sources */,
+				48A3A9D8AD90A22290217C61 /* RDDatabaseLayerTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7C0E3C1A619C11DCC64D6700 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				02E2FAF0556CA8051184FCD7 /* RDBookshelfUITests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		94C80E149F709FAD1CBE17DA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Reader;
+			target = 29407C7D23607D0D003C9643 /* Reader */;
+			targetProxy = 4A0F26D87AE4CBD6811A2EE8 /* PBXContainerItemProxy */;
+		};
+		C27F45EF2BAA0C44E982688C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Reader;
+			target = 29407C7D23607D0D003C9643 /* Reader */;
+			targetProxy = 63A1FE180CE845BD1EACE829 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		29407C8F23607D0F003C9643 /* LaunchScreen.storyboard */ = {
@@ -1860,6 +2115,33 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		01B67F184BE9E556419686C7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = DEA4C7D96955184AEFFA23FF /* Pods-ReaderTests.debug.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = Reader/Resource/Reader.pch;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Reader/**",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader.readertests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/纸羽轻阅.app/纸羽轻阅";
+			};
+			name = Debug;
+		};
 		29407C9523607D0F003C9643 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2036,9 +2318,87 @@
 			};
 			name = Release;
 		};
+		2A213D5E21A975C0D3850A0A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5C0F3FC1EB92C59245CF6514 /* Pods-ReaderTests.release.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = Reader/Resource/Reader.pch;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Reader/**",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader.readertests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/纸羽轻阅.app/纸羽轻阅";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		800966A421DC06BAACD715AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 72B7C19412438F906491C5EF /* Pods-ReaderUITests.release.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader.readeruitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Reader;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F6A0B080E8FCFA4A12121CED /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 00426DA90F1259A4B7255FE3 /* Pods-ReaderUITests.debug.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader.readeruitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Reader;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1AD103C2D32FF13C96485FA8 /* Build configuration list for PBXNativeTarget "ReaderTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2A213D5E21A975C0D3850A0A /* Release */,
+				01B67F184BE9E556419686C7 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		29407C7923607D0D003C9643 /* Build configuration list for PBXProject "Reader" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -2053,6 +2413,15 @@
 			buildConfigurations = (
 				29407C9823607D0F003C9643 /* Debug */,
 				29407C9923607D0F003C9643 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9C6B9A14A65F6E0477CD5497 /* Build configuration list for PBXNativeTarget "ReaderUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				800966A421DC06BAACD715AC /* Release */,
+				F6A0B080E8FCFA4A12121CED /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

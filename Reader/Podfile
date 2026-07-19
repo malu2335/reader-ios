@@ -23,6 +23,15 @@ target 'Reader' do
   pod 'UICKeyChainStore', '2.1.2'
   pod 'NJKWebViewProgress'
 
+  # 单元测试注入宿主 app 进程运行,符号来自 app 本体;
+  # 这里只继承头文件搜索路径,避免 Pods 被重复链接。
+  target 'ReaderTests' do
+    inherit! :search_paths
+  end
+end
+
+target 'ReaderUITests' do
+  # UI 测试跑在独立进程里,只驱动 app,不需要任何 pod
 end
 
 post_install do |installer|
