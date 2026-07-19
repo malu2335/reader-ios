@@ -89,10 +89,20 @@ export/
 
 # 本地文档与 agent 说明（不推远端）
 docs/
-# 审查报告本地留存,不入库(与 docs/ 同规)
-code-review/
 CLAUDE.md
 Claude.md
+
+# 审查报告与计划报告一律本地留存,不入版本库。
+# 新开目录/文件时请沿用下面的命名,否则记得往这里补一条。
+code-review/
+review/
+reviews/
+plans/
+audit/
+*-review-*.md
+*code-review*.md
+*-plan-*.md
+*-audit-*.md
 
 # Runtime secrets & local data (never commit)
 **/*apikey*
