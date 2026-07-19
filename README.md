@@ -1,15 +1,16 @@
 # 纸羽轻阅（reader-ios）
 
-本地优先的 iOS 阅读器。在 [阅小说开源 iOS 客户端](https://github.com/yuenov/reader-ios) 基础上，强化本地书导入、阅读体验、AI 翻译与备份能力；主界面以 **书架 + 设置** 为主，不再依赖在线书城作为默认路径。
+本地优先的 iOS 阅读器。在 [阅小说开源 iOS 客户端](https://github.com/yuenov/reader-ios) 基础上演进，专注**本地书导入、阅读体验、AI 翻译与备份**。产品路径只有 **书架 + 设置** 两个入口，在线书城相关模块已从工程中移除。
 
 | 项 | 说明 |
 |----|------|
 | 应用名 | **纸羽轻阅**（`CFBundleDisplayName`） |
+| 版本 | 1.5.0 |
 | Bundle ID | `xyz.malu2335.reader` |
 | 语言 | Objective-C |
 | 最低系统 | iOS 15.0 |
 | 设备 | 仅 iPhone |
-| 依赖管理 | CocoaPods |
+| 依赖管理 | CocoaPods（14 个依赖） |
 | 数据 | WCDB（SQLite）+ Keychain（AI 密钥） |
 | 仓库 | https://github.com/malu2335/reader-ios |
 
@@ -17,7 +18,7 @@
 
 ## 界面预览
 
-当前版本「纸羽轻阅」主要界面（图源见仓库 `Screenshots/`；App Store 全尺寸导出可放在本地 `AppStoreScreenshots/`，该目录默认不进 Git）。
+图源见仓库 `Screenshots/`；App Store 全尺寸导出放在本地 `AppStoreScreenshots/`（默认不进 Git）。
 
 | 书架 | 正文阅读 | 阅读工具 |
 |:---:|:---:|:---:|
@@ -34,44 +35,50 @@
 | <img src="Screenshots/07-privacy.png" width="180" alt="隐私声明"/> | <img src="Screenshots/08-opensource.png" width="180" alt="开源软件使用声明"/> |
 | 设置内本地文档 | 完整许可与归属 · 可滚动复制 |
 
+> 截图可能略滞后于当前版本（例如阅读页顶栏已移除「词典」按钮）。
+
 ---
 
 ## 主要能力
 
 ### 本地阅读
-- 导入 **TXT / EPUB / PDF / MOBI / ZIP / CBZ**，以及**包含图片的文件夹**（图集）
+- 导入 **TXT / EPUB / MOBI / AZW / PDF / ZIP / CBZ**，以及**包含图片的文件夹**（打包为 CBZ 入库）
 - 支持系统「用其他应用打开 / 分享」到纸羽轻阅（复制进沙盒，不修改源文件）
-- ZIP/CBZ：按文件名自然序浏览图片（jpg/png/webp/gif 等）；文件夹会打包为 CBZ 再入库
-- 章节解析与 WCDB 存储；`bookId < 0` 标识本地书，与遗留在线链路隔离
-- 内容哈希去重导入提示
-- 阅读进度（含字符偏移）、**书签**；漫画用页码进度
-- 正文净化规则、系统词典查询
+- ZIP/CBZ 按文件名自然序浏览图片；PDF 走 PDFKit 独立阅读器
+- 章节解析后全量存入 WCDB；`bookId < 0` 标识本地书
+- 按内容哈希去重，重复导入会明确提示
+- 阅读进度（章节 + 页码 + 字符偏移）、**书签**；PDF/漫画按页码记录
+- 正文净化替换规则（legado 风格）
 - 书架长按菜单、类型化分享卡片
 
 ### AI 翻译
 - 多配置档案：OpenAI / Anthropic / Gemini 官方与兼容端点（自定义 Base URL）
 - 阅读页句级翻译，译文**内嵌在原文下方**（非弹窗）
-- **翻译模式**跨翻页保持；后台批量预译，关闭展示后仍可继续后台翻译
+- 翻译模式跨翻页保持；后台批量预译，**停止后会真正取消在途请求**，不再继续计费
 - **API Key 仅存 Keychain**；磁盘配置与备份 zip **不含明文密钥**
-- 本地 HTTP 兼容端点需 ATS 例外（见设置中的自定义 Base URL）
+- 备份恢复来的 profile 一律标记为**待确认**，不会自动生效对外发请求
+- 公网 Base URL 强制 HTTPS；仅回环 / 局域网 / `.local` 允许 HTTP（本地 Ollama 等）
 
 ### 朗读与设置
 - 系统 `AVSpeech` 朗读条；语音选择、收藏、个人声音导入指引
 - 自定义字体导入
-- 备份 / 恢复（布局参考 Legado：`bookshelf.json` / `config.json` / `books/`，并含 AI 元数据）
-- 设置内可查看**隐私声明**与**开源软件使用声明**（本地文本）
+- 备份 / 恢复（布局参考 legado：`bookshelf.json` / `config.json` / `books/`，并含 AI 元数据）
+- 设置内可查看**隐私声明**与**开源软件使用声明**（随包发布的本地文本）
 
-### 体验与工程
-- UIScene 生命周期、启动页与书架预加载
-- ProMotion / 高刷新相关路径
-- 冷启动延后非关键初始化；设置页避免首点卡顿
-- AI 协议与备份脱敏等可用 `Tests/AIHarness` 做本地 harness 校验
+### 数据完整性
+本地书的导入、恢复、删除都经过一轮系统性整改，核心约定如下：
+
+- **单事务提交**：章节表与读记录表的写入合并进同一个数据库事务，失败整体回滚，不会出现「源文件在、书架无此书」或「有孤儿章节」的混合状态
+- **统一变更队列**：导入 / 删除 / 清空 / 恢复共用同一条串行队列，通知只在完整提交后发出
+- **恢复走 staging**：源文件先落 `RestoreStaging/<uuid>/`，解析成功、事务提交后才原子移入正式路径；任一步失败都把旧文件放回，保证每本书只可能是**完整旧状态或完整新状态**
+- **错误可见**：数据库写失败会向上传播并提示用户；查询失败与「确实为空」严格区分，不会把数据库错误显示成空书架
+- **导入预算**：TXT/MOBI/EPUB/CBZ 按格式设硬上限，恶意或超大文件给出明确错误而非 OOM
 
 ---
 
 ## 环境要求
 
-- macOS + **Xcode**（建议较新版本；`Podfile` 含 Xcode 15+ / 新 clang 对 AFNetworking、YYText、WCDB 的补丁）
+- macOS + **Xcode**（在 Xcode 26 上验证；`Podfile` 的 `post_install` 含 WCDB / YYText 的 clang 兼容补丁）
 - [CocoaPods](https://cocoapods.org/)
 - iOS **15.0+** 模拟器或真机（iPhone）
 
@@ -88,13 +95,35 @@ open Reader.xcworkspace
 
 在 Xcode 中选择 **Reader** scheme，目标选模拟器或真机，Run。
 
-### 可选：本地 harness
+### 测试
+
+工程有两套测试，作用不同：
+
+**1. XCTest（真正跑代码）**
 
 ```bash
-cd Reader/Tests/AIHarness && ./run_tests.sh          # AI 协议 / 备份脱敏
-cd Reader/Tests/ExternalImportHarness && ./run_tests.sh   # 外部文件导入
-cd Reader/Tests/LegalDocumentsHarness && ./run_tests.sh   # 隐私/开源声明文档
+cd Reader
+xcodebuild -workspace Reader.xcworkspace -scheme Reader \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:ReaderTests test
 ```
+
+覆盖导入事务、备份恢复的故障注入、删除清空、数据库事务、AI 翻译取消、控件接线等。
+
+> ⚠️ 单元测试注入宿主 app 进程运行，**与 app 共用同一个模拟器容器**，`setUp` 会清空书库。如果同一台模拟器上有手动测试的数据，请换一台跑测试。
+
+**2. 静态断言 harness（bash + python，只读源码）**
+
+```bash
+cd Reader
+bash Tests/AIHarness/run_tests.sh              # AI 协议 / 备份脱敏 / Base URL 策略
+bash Tests/ExternalImportHarness/run_tests.sh  # 外部文件导入的 Info.plist 声明
+bash Tests/LegalDocumentsHarness/run_tests.sh  # 隐私 / 开源声明文档
+bash Tests/LibraryMutationHarness/run_tests.sh # 单事务提交、staging、串行队列等不变量
+bash Tests/PhaseCHarness/run_tests.sh          # 业务一致性与 schema 版本等不变量
+```
+
+这类 harness 把关键约定钉在源码层面（例如「导入必须走 RDLibraryTransaction 提交」），防止重构时被悄悄改掉。除 AIHarness 外都不编译代码，**挡不住运行时缺陷**——数据链路改动仍需跑 XCTest 并在模拟器上人工过一遍。
 
 ### libwebp 下载失败
 
@@ -122,38 +151,43 @@ reader-ios/
 ├── README.md
 ├── LICENSE                 # © 2020 阅小说；© 2026 Lu Ma / 纸羽轻阅
 ├── Screenshots/            # README 界面预览（已压缩，可提交）
-├── AppStoreScreenshots/    # 本地 ASC 全尺寸导出（默认 gitignore）
+├── AppStoreScreenshots/    # 本地 ASC 全尺寸导出（gitignore）
 └── Reader/
     ├── Podfile
-    ├── Reader.xcodeproj
     ├── Reader.xcworkspace  # pod install 后打开此 workspace
     ├── Reader/             # 主工程源码
     │   ├── Application/    # AppDelegate / SceneDelegate
-    │   ├── Common/AI/      # 多厂商翻译客户端与配置
-    │   ├── Common/LocalBook/
-    │   ├── Common/Speech/
-    │   ├── Database/       # WCDB 模型与 Manager
-    │   ├── Sections/       # 书架 / 阅读 / 设置等
+    │   ├── Common/
+    │   │   ├── AI/         # 多厂商翻译客户端与配置
+    │   │   ├── LocalBook/  # 解析器、导入预算、备份恢复、变更队列
+    │   │   ├── Read/       # 分页与章节
+    │   │   └── Speech/     # 朗读
+    │   ├── Database/       # WCDB 模型、Manager 与跨表事务
+    │   ├── Sections/
+    │   │   ├── Bookshelf/  # 书架与阅读器
+    │   │   └── Setting/    # 设置、AI 配置、净化规则、语音
     │   └── Resource/       # Info.plist、隐私/开源声明、图标
-    └── Tests/              # AIHarness / ExternalImportHarness / LegalDocumentsHarness
+    └── Tests/
+        ├── ReaderTests/    # XCTest 单元测试
+        ├── ReaderUITests/  # XCUITest 主路径
+        └── *Harness/       # 静态源码断言脚本
 ```
 
 ---
 
 ## 隐私与密钥
 
-- **不要**把真实 API Key、备份 zip、个人书库数据库、模拟器截图提交进 Git。
-- AI Key：Keychain 服务名 `reader.ios.ai.apikey`；备份中的 `ai_config` 仅元数据（`apiKey` 为空）。
-- 设置页可查看随包发布的隐私声明与开源许可全文。
-- 商店全尺寸截图建议放在本地 `AppStoreScreenshots/`；README 使用仓库内 `Screenshots/`。
-- 本地调试目录 `.cursor/`、`.DS_Store`、`docs/`、`CLAUDE.md`、根目录截图等已在 `.gitignore` 中忽略。
-- 推送前建议自检：`git diff` / `git grep` 是否含 `sk-`、私钥、本机绝对路径等。
+- **不要**把真实 API Key、备份 zip、个人书库数据库、模拟器截图提交进 Git
+- AI Key：Keychain 服务名 `reader.ios.ai.apikey`；备份中的 `ai_config` 仅元数据（`apiKey` 为空）
+- 设置页可查看随包发布的隐私声明与开源许可全文
+- 已在 `.gitignore` 中忽略：`docs/`、审查与计划报告（`code-review/`、`*-review-*.md` 等）、`CLAUDE.md`、`.cursor/`、`.DS_Store`、根目录截图
+- 推送前建议自检：`git diff` / `git grep` 是否含 `sk-`、私钥、本机绝对路径等
 
 ---
 
 ## 与上游的关系
 
-本仓库基于阅小说 iOS 开源客户端演进，保留大量原工程结构与部分在线模块代码（发现 / 书库 / 搜索等历史模块仍在工程中，仅作历史追踪，默认产品路径为本地阅读 + AI 翻译）。
+本仓库基于阅小说 iOS 开源客户端演进。**发现 / 书库 / 搜索 / 书籍详情 / 在线目录 / 下载 与整个 `Service/` 网络层已从工程中删除**（128 个文件），相应的 `JLRoutes`、`MJRefresh`、`WMPageController`、`YTKNetwork`、`NJKWebViewProgress`、`AFNetworking` 依赖也已移除。当前工程只保留本地阅读所需代码。
 
 | 资源 | 链接 |
 |------|------|
@@ -168,6 +202,6 @@ reader-ios/
 
 ## 声明
 
-- 上游服务侧能力以阅小说开源说明为准；本客户端强调**本地文件阅读**与用户自备 AI 服务。
-- 请勿将本项目用于侵犯著作权或其他违法行为；用户导入的内容与配置的 AI 密钥由用户自行负责。
-- 软件按 MIT 许可提供，详见 [LICENSE](LICENSE)。本衍生版本保留上游「阅小说」版权声明，并增加 2026 年 Lu Ma（纸羽轻阅）版权行。
+- 本客户端只做**本地文件阅读**，AI 翻译使用用户自备的服务与密钥，不含任何自有服务端
+- 请勿将本项目用于侵犯著作权或其他违法行为；用户导入的内容与配置的 AI 密钥由用户自行负责
+- 软件按 MIT 许可提供，详见 [LICENSE](LICENSE)。本衍生版本保留上游「阅小说」版权声明，并增加 2026 年 Lu Ma（纸羽轻阅）版权行
