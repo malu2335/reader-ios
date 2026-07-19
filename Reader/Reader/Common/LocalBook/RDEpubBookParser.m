@@ -166,6 +166,19 @@
 
 + (RDLocalBookParseResult *)parseFileAtPath:(NSString *)path error:(NSString **)errorMessage
 {
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+    unsigned long long fileSize = attrs.fileSize;
+    if (attrs == nil) {
+        if (errorMessage) *errorMessage = @"无法读取 EPUB 文件";
+        return nil;
+    }
+    if (fileSize > kRDImportMaxEpubFileBytes) {
+        if (errorMessage) {
+            *errorMessage = [NSString stringWithFormat:@"EPUB 文件过大(上限 %llu MB),无法导入",
+                             kRDImportMaxEpubFileBytes / (1024ull * 1024ull)];
+        }
+        return nil;
+    }
     RDZipArchive *zip = [[RDZipArchive alloc] initWithPath:path];
     if (!zip) {
         if (errorMessage) *errorMessage = @"不是有效的 EPUB 文件";

@@ -52,11 +52,12 @@ FOUNDATION_EXPORT NSString * const RDAIConfigBackupEntryName;
 
 - (nullable RDAIConfigProfile *)activeProfile;
 - (nullable RDAIConfigProfile *)profileWithId:(NSString *)profileId;
-/// 写入 profile 与 Keychain;Keychain 失败返回 NO,不更新内存/磁盘
+/// 写入 profile 与 Keychain/磁盘;失败返回 NO 并回滚内存(不留下半应用状态)
 - (BOOL)upsertProfile:(RDAIConfigProfile *)profile;
 - (void)removeProfileId:(NSString *)profileId;
-/// 设为当前并清除该 profile 的 pendingConfirm(用户确认)
-- (void)setActiveProfileId:(nullable NSString *)activeProfileId;
+/// 设为当前并清除该 profile 的 pendingConfirm(用户确认);磁盘失败返回 NO 并回滚。
+/// 注意:不可命名为 setActiveProfileId:(与 readonly 属性合成 setter 冲突且必须 void)
+- (BOOL)activateProfileId:(nullable NSString *)profileId;
 - (void)reloadFromDisk;
 - (BOOL)saveToDisk;
 /// 清空内存与磁盘(备份恢复测试用)

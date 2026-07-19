@@ -20,6 +20,19 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
 
 + (RDLocalBookParseResult *)parseFileAtPath:(NSString *)path error:(NSString **)errorMessage
 {
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+    unsigned long long fileSize = attrs.fileSize;
+    if (attrs == nil) {
+        if (errorMessage) *errorMessage = @"无法读取 MOBI 文件";
+        return nil;
+    }
+    if (fileSize > kRDImportMaxMobiFileBytes) {
+        if (errorMessage) {
+            *errorMessage = [NSString stringWithFormat:@"MOBI 文件过大(上限 %llu MB),无法导入",
+                             kRDImportMaxMobiFileBytes / (1024ull * 1024ull)];
+        }
+        return nil;
+    }
     NSData *data = [NSData dataWithContentsOfFile:path options:NSDataReadingMappedIfSafe error:nil];
     const uint8_t *bytes = data.bytes;
     if (data.length < 78 + 8) {

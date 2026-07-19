@@ -13,8 +13,14 @@ NS_ASSUME_NONNULL_BEGIN
 /// TXT 整文件读取前的最大字节数(64MB)
 static const unsigned long long kRDImportMaxTxtFileBytes = 64ull * 1024 * 1024;
 
+/// MOBI 容器文件读取前的最大字节数(256MB;封面等使容器可大于正文上限)
+static const unsigned long long kRDImportMaxMobiFileBytes = 256ull * 1024 * 1024;
+
 /// MOBI 解压后正文累计硬上限(64MB);每次 append 前检查,非 capacity hint
 static const unsigned long long kRDImportMaxMobiTextBytes = 64ull * 1024 * 1024;
+
+/// EPUB 容器(ZIP)文件读取前的最大字节数(512MB)
+static const unsigned long long kRDImportMaxEpubFileBytes = 512ull * 1024 * 1024;
 
 /// EPUB 全部章节纯文本累计上限(64MB,UTF-16 字符按 2 字节粗估用 length 比较前先转字节)
 static const unsigned long long kRDImportMaxEpubTotalTextBytes = 64ull * 1024 * 1024;

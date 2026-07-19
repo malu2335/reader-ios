@@ -429,10 +429,14 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
         // "同 id、换 baseURL" 备份),旧 Keychain 密钥会被原样保留,同时把请求目标换成攻击者
         // 服务器。这里先快照导入前(可信)的 profile 列表,随后一律重新生成 profileId,
         // 密钥只按 "provider 类型 + 规范化 baseURL" 内容匹配重新绑定,而不是按不可信的 id。
-        NSArray <RDAIConfigProfile *>*previousProfiles = [self.mutableProfiles copy];
+        NSMutableArray <RDAIConfigProfile *>*previousProfiles = [NSMutableArray arrayWithCapacity:self.mutableProfiles.count];
+        for (RDAIConfigProfile *old in self.mutableProfiles) {
+            [previousProfiles addObject:[old copy]];
+        }
+        NSString *previousActive = [self.activeProfileId copy];
 
         NSDictionary *root = (NSDictionary *)json;
-        [self.mutableProfiles removeAllObjects];
+        NSMutableArray <RDAIConfigProfile *>*imported = [NSMutableArray array];
         NSArray *list = root[@"profiles"];
         if ([list isKindOfClass:NSArray.class]) {
             for (id item in list) {
@@ -446,13 +450,31 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
                 if (p.apiKey.length == 0) {
                     p.apiKey = [self p_matchingKeyForType:p.type baseURL:p.baseURL amongProfiles:previousProfiles] ?: @"";
                 }
-                // 明文 key / rebind 的 key 都在 saveToDisk 时写入 Keychain;失败则整体 import 失败
-                [self.mutableProfiles addObject:p];
+                // 明文 key / rebind 的 key 都在 saveToDisk 时写入 Keychain;失败则整体 import 失败并回滚
+                [imported addObject:p];
             }
         }
         // 不沿用备份 activeProfileId,也不自动选中可用项;须用户在设置中「设为当前」后才可出站。
+        self.mutableProfiles = imported;
         _activeProfileId = nil;
-        return [self saveToDisk];
+        if ([self saveToDisk]) {
+            return YES;
+        }
+        // 磁盘/Keychain 失败:完整回滚内存,并尽力把密钥写回导入前快照,避免 UI/运行态半应用
+        self.mutableProfiles = previousProfiles;
+        _activeProfileId = previousActive;
+        for (RDAIConfigProfile *p in self.mutableProfiles) {
+            (void)RDAISaveAPIKey(p.profileId, p.apiKey ?: @"");
+        }
+        // 清理本次导入生成的新 profileId 在 Keychain 中可能残留的条目
+        for (RDAIConfigProfile *p in imported) {
+            RDAIDeleteAPIKey(p.profileId);
+        }
+        if (error) {
+            *error = [NSError errorWithDomain:@"RDAIConfig" code:3
+                                     userInfo:@{NSLocalizedDescriptionKey: @"AI 配置写入失败,已保持导入前状态"}];
+        }
+        return NO;
     }
 }
 
@@ -477,9 +499,9 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
 {
     @synchronized (self) {
         if (self.activeProfileId.length == 0) {
-            // 不再在 active 为空时回退到「第一个可用/首个 profile」,
-            // 避免备份恢复后 pending 配置在用户确认前被出站翻译选中。
-            // 已确认的用户配置在 upsert 时会写入 activeProfileId。
+            // active 为空时:不回退到「首个 profile / 不可用项」;
+            // 仅 soft-fallback 到第一个 isUsable(已确认且字段齐全)的项,兼容历史未写 activeId 的磁盘状态。
+            // 备份导入会强制 pendingConfirm=YES 且 active=nil,故导入后此处仍返回 nil,翻译保持阻断。
             for (RDAIConfigProfile *p in self.mutableProfiles) {
                 if (p.isUsable) {
                     return p;
@@ -529,10 +551,14 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
         RDAIConfigProfile *copy = [profile copy];
         // 用户在编辑页显式保存 = 确认,清除 pending
         copy.pendingConfirm = NO;
-        // Key 先落安全存储成功,再改内存/磁盘,避免「UI 已成功但 Key 丢失」
-        if (!RDAISaveAPIKey(copy.profileId, copy.apiKey ?: @"")) {
-            return NO;
+
+        // 快照以便 saveToDisk 失败时完整回滚内存与密钥
+        NSMutableArray <RDAIConfigProfile *>*snapshot = [NSMutableArray arrayWithCapacity:self.mutableProfiles.count];
+        for (RDAIConfigProfile *old in self.mutableProfiles) {
+            [snapshot addObject:[old copy]];
         }
+        NSString *snapActive = [self.activeProfileId copy];
+
         if (idx == NSNotFound) {
             [self.mutableProfiles addObject:copy];
         } else {
@@ -541,7 +567,19 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
         if (self.activeProfileId.length == 0) {
             _activeProfileId = copy.profileId;
         }
-        return [self saveToDisk];
+        if ([self saveToDisk]) {
+            return YES;
+        }
+        // 回滚内存,并尽力把 Keychain 恢复为快照(含更新失败时还原旧 Key)
+        self.mutableProfiles = snapshot;
+        _activeProfileId = snapActive;
+        for (RDAIConfigProfile *p in self.mutableProfiles) {
+            (void)RDAISaveAPIKey(p.profileId, p.apiKey ?: @"");
+        }
+        if (idx == NSNotFound) {
+            RDAIDeleteAPIKey(copy.profileId);
+        }
+        return NO;
     }
 }
 
@@ -573,20 +611,35 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
     }
 }
 
-- (void)setActiveProfileId:(NSString *)activeProfileId
+- (BOOL)activateProfileId:(NSString *)profileId
 {
     @synchronized (self) {
-        _activeProfileId = [activeProfileId copy];
-        // 「设为当前」即用户确认:清除 pending,允许出站
-        if (activeProfileId.length > 0) {
+        NSString *snapActive = [self.activeProfileId copy];
+        BOOL snapPending = NO;
+        RDAIConfigProfile *target = nil;
+        if (profileId.length > 0) {
             for (RDAIConfigProfile *p in self.mutableProfiles) {
-                if ([p.profileId isEqualToString:activeProfileId]) {
-                    p.pendingConfirm = NO;
+                if ([p.profileId isEqualToString:profileId]) {
+                    target = p;
+                    snapPending = p.pendingConfirm;
                     break;
                 }
             }
         }
-        [self saveToDisk];
+        _activeProfileId = [profileId copy];
+        // 「设为当前」即用户确认:清除 pending,允许出站
+        if (target) {
+            target.pendingConfirm = NO;
+        }
+        if ([self saveToDisk]) {
+            return YES;
+        }
+        // 磁盘失败:回滚 active 与 pending,避免会话已可翻译而 JSON 仍为待确认
+        _activeProfileId = snapActive;
+        if (target) {
+            target.pendingConfirm = snapPending;
+        }
+        return NO;
     }
 }
 

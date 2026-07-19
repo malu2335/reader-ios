@@ -137,10 +137,10 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     return url;
 }
 
-/// 判断 host 是否为 loopback 或 RFC1918/链路本地 IPv4,或常见本地主机名
+/// 判断 host 是否为 loopback / RFC1918 / 链路本地 / IPv6 ULA / mDNS `.local`
 + (BOOL)p_isLoopbackOrLANHost:(NSString *)host
 {
-    if (host.length == 0) {
+    if (host.length == 0 || host.length > 253) {
         return NO;
     }
     NSString *h = host.lowercaseString;
@@ -151,9 +151,42 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     // 去掉 IPv6 方括号
     if ([h hasPrefix:@"["] && [h hasSuffix:@"]"] && h.length > 2) {
         h = [h substringWithRange:NSMakeRange(1, h.length - 2)];
-        if ([h isEqualToString:@"::1"] || [h hasPrefix:@"fe80:"]) {
+    }
+    if ([h isEqualToString:@"::1"]) {
+        return YES;
+    }
+    // IPv6 link-local fe80::/10 与 ULA fc00::/7 (含 fd00::/8)
+    if ([h containsString:@":"]) {
+        if ([h hasPrefix:@"fe80:"] || [h hasPrefix:@"fe8"] || [h hasPrefix:@"fe9"]
+            || [h hasPrefix:@"fea"] || [h hasPrefix:@"feb"]) {
             return YES;
         }
+        if ([h hasPrefix:@"fc"] || [h hasPrefix:@"fd"]) {
+            // ULA: 前 7 bit 为 1111110 → fc00::/7,即以 fc 或 fd 开头的十六进制地址
+            if (h.length >= 2) {
+                unichar c0 = [h characterAtIndex:0];
+                unichar c1 = [h characterAtIndex:1];
+                if (c0 == 'f' && (c1 == 'c' || c1 == 'd')) {
+                    return YES;
+                }
+            }
+        }
+        return NO;
+    }
+    // mDNS / Bonjour 主机名,如 ollama.local(仅限单层 .local 后缀,限制长度与字符)
+    if ([h hasSuffix:@".local"] && h.length > 6) {
+        NSString *label = [h substringToIndex:h.length - 6]; // strip ".local"
+        if (label.length == 0 || label.length > 63 || [label containsString:@"."]) {
+            return NO;
+        }
+        for (NSUInteger i = 0; i < label.length; i++) {
+            unichar ch = [label characterAtIndex:i];
+            BOOL ok = (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_';
+            if (!ok) {
+                return NO;
+            }
+        }
+        return YES;
     }
     NSArray <NSString *>*parts = [h componentsSeparatedByString:@"."];
     if (parts.count != 4) {
@@ -208,7 +241,7 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         }
         return NO;
     }
-    // 无 scheme 时按 https 解析以便取 host,但最终仍要求显式合法 scheme
+    // scheme 必填(https 或 http);不自动补全
     NSURLComponents *components = [NSURLComponents componentsWithString:raw];
     if (!components || components.scheme.length == 0) {
         if (error) {

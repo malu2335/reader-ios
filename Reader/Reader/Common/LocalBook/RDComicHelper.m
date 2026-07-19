@@ -9,6 +9,7 @@
 #import <UIKit/UIKit.h>
 #import <ImageIO/ImageIO.h>
 #import <SDWebImage/SDImageCodersManager.h>
+#import <SDWebImage/SDImageCoder.h>
 
 @implementation RDComicHelper
 
@@ -193,6 +194,8 @@
         return nil;
     }
 
+    NSUInteger maxEdge = kRDImportMaxComicMaxPixelSize;
+
     // 优先 ImageIO thumbnail:按最长边/像素总数下采样,避免主线程全分辨率解码与像素炸弹
     CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
     if (source) {
@@ -212,10 +215,6 @@
                 CFRelease(source);
                 return nil;
             }
-        }
-        NSUInteger maxEdge = kRDImportMaxComicMaxPixelSize;
-        if (pixelW > 0 && pixelH > 0) {
-            unsigned long long pixels = (unsigned long long)pixelW * (unsigned long long)pixelH;
             if (pixels > kRDImportMaxComicPixelCount) {
                 // 等比缩到像素总数上限内
                 double scale = sqrt((double)kRDImportMaxComicPixelCount / (double)pixels);
@@ -242,14 +241,23 @@
         }
     }
 
-    // WebP 等 ImageIO 可能不支持:走 SDWebImage,仍受字节上限约束
-    UIImage *image = [[SDImageCodersManager sharedManager] decodedImageWithData:data options:nil];
+    // WebP 等 ImageIO 可能不支持:用 SDWebImage thumbnail 选项下采样,禁止全分辨率解码后再拒绝
+    CGFloat thumbEdge = (CGFloat)maxEdge;
+    NSDictionary *sdOptions = @{
+        SDImageCoderDecodeThumbnailPixelSize: [NSValue valueWithCGSize:CGSizeMake(thumbEdge, thumbEdge)],
+        SDImageCoderDecodePreserveAspectRatio: @YES,
+        SDImageCoderDecodeFirstFrameOnly: @YES,
+    };
+    UIImage *image = [[SDImageCodersManager sharedManager] decodedImageWithData:data options:sdOptions];
     if (image) {
-        CGFloat w = image.size.width * image.scale;
-        CGFloat h = image.size.height * image.scale;
-        if (w > 0 && h > 0 && (unsigned long long)(w * h) > kRDImportMaxComicPixelCount) {
-            // 超像素仍返回原图会 OOM;这里简单拒绝(常见 WebP 封面/页应能走 ImageIO 路径)
-            return nil;
+        // 用整数像素乘积再比上限,避免 CGFloat 先乘后截断/非有限值
+        NSUInteger pxW = (NSUInteger)llround(image.size.width * image.scale);
+        NSUInteger pxH = (NSUInteger)llround(image.size.height * image.scale);
+        if (pxW > 0 && pxH > 0) {
+            unsigned long long pixels = (unsigned long long)pxW * (unsigned long long)pxH;
+            if (pixels > kRDImportMaxComicPixelCount) {
+                return nil;
+            }
         }
         return image;
     }
