@@ -70,7 +70,10 @@
         chip.titleLabel.font = [RDFontManager readFontWithName:option.fontName size:14];
         chip.layer.cornerRadius = 15;
         chip.layer.borderWidth = 1;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations" // UIButtonConfiguration rewrite deferred
         chip.contentEdgeInsets = UIEdgeInsetsMake(0, 14, 0, 14);
+#pragma clang diagnostic pop
         BOOL selected = (option.fontName == nil && currentName.length == 0) ||
                         (option.fontName && [option.fontName isEqualToString:currentName]);
         [chip setTitleColor:selected ? RDAccentColor : RDGrayColor forState:UIControlStateNormal];

@@ -187,6 +187,8 @@
         _tableView.estimatedRowHeight = 0;
         _tableView.estimatedSectionHeaderHeight = 0;
         _tableView.estimatedSectionFooterHeight = 0;
+        // Frame is below custom topView; never auto-adjust safe-area (replaces old VC insets flag).
+        _tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
         // 书架顶部留白:第一行封面不要贴顶栏
         _tableView.contentInset = UIEdgeInsetsMake(18, 0, 24, 0);
         _tableView.scrollIndicatorInsets = _tableView.contentInset;

@@ -25,7 +25,7 @@
 @property (nonatomic,strong) NSMutableArray <NSString *>*spine;      //idref 顺序
 @property (nonatomic,copy) NSString *title;
 @property (nonatomic,copy) NSString *author;
-@property (nonatomic,copy) NSString *coverId;    //<meta name="cover" content="...">
+@property (nonatomic,copy) NSString *coverId;    // <meta name="cover" content="...">
 @property (nonatomic,strong) NSMutableString *characters;
 @property (nonatomic,copy) NSString *currentElement;
 @end

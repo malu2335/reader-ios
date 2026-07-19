@@ -194,7 +194,6 @@
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"下载系统 TTS 语音"
                                                                    message:@"路径:设置 → 辅助功能 → 朗读内容 → 声音\n下载「中文(普通话)」增强/高级语音后返回本页刷新即可使用。\n\n个人声音:设置 → 辅助功能 → 个人声音"
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    __weak typeof(self) weakSelf = self;
     [alert addAction:[UIAlertAction actionWithTitle:@"打开系统设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         [[RDVoiceManager sharedInstance] openSystemVoiceDownloadHelp];
     }]];

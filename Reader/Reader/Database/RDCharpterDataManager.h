@@ -42,7 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 /// 获取书籍的最后一章
-/// @param bookId <#bookId description#>
+/// @param bookId 书籍Id
 +(RDCharpterModel *)getLastChapterWithBookId:(NSInteger)bookId;
 
 
@@ -52,7 +52,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 /// 删除本地记录书籍
-/// @param bookid
+/// @param bookid 书籍Id
 +(BOOL)deleteAllCharpterWithBookId:(NSInteger)bookid;
 @end
 

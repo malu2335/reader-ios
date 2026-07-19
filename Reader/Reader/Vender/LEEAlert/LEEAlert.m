@@ -1164,11 +1164,11 @@ CornerRadii CornerRadiiMake(CGFloat topLeft, CGFloat topRight, CGFloat bottomLef
     };
 }
 
-CornerRadii CornerRadiiZero() {
+CornerRadii CornerRadiiZero(void) {
     return (CornerRadii){0, 0, 0, 0};
 }
 
-CornerRadii CornerRadiiNull() {
+CornerRadii CornerRadiiNull(void) {
     return (CornerRadii){-1, -1, -1, -1};
 }
 
@@ -1506,9 +1506,12 @@ CGPathRef _Nullable LEECGPathCreateWithRoundedRect(CGRect bounds, CornerRadii co
     
     if (action.cornerRadius) [self.layer setCornerRadius:action.cornerRadius];
     
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations" // UIButtonConfiguration rewrite deferred
     [self setImageEdgeInsets:action.imageEdgeInsets];
     
     [self setTitleEdgeInsets:action.titleEdgeInsets];
+#pragma clang diagnostic pop
     
     if (action.borderPosition & LEEActionBorderPositionTop &&
         action.borderPosition & LEEActionBorderPositionBottom &&
@@ -1873,7 +1876,7 @@ CGPathRef _Nullable LEECGPathCreateWithRoundedRect(CGRect bounds, CornerRadii co
     
     self.extendedLayoutIncludesOpaqueBars = NO;
     
-    self.automaticallyAdjustsScrollViewInsets = NO;
+    // iOS 11+: use per-scroll-view contentInsetAdjustmentBehavior instead of deprecated VC property.
     
     if (self.config.modelBackgroundStyle == LEEBackgroundStyleBlur) {
         

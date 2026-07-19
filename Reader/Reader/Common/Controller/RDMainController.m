@@ -19,6 +19,11 @@
 
 
 
+// RDVTabBar keeps tabBarItemWasSelected: private; declare for @selector use.
+@interface RDVTabBar (RDPrivateSelector)
+- (void)tabBarItemWasSelected:(id)sender;
+@end
+
 @interface RDMainController ()
 
 @end
@@ -27,9 +32,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    if ([self respondsToSelector:@selector(setAutomaticallyAdjustsScrollViewInsets:)]) {
-        self.automaticallyAdjustsScrollViewInsets = NO;
-    }
+    // Scroll-view safe-area: child tabs (bookshelf/settings) set contentInsetAdjustmentNever.
     self.navigationController.navigationBarHidden = YES;
     if (@available(iOS 11.0, *)) {
         CGFloat safeAreaBottom = [RDUtilities applicationKeyWindow].safeAreaInsets.bottom;

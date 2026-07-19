@@ -102,6 +102,8 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         _tableView.rowHeight = 54;
         _tableView.sectionHeaderHeight = 12;
         _tableView.sectionFooterHeight = 12;
+        // Frame is below custom topView; never auto-adjust safe-area (replaces old VC insets flag).
+        _tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     }
     return _tableView;
 }

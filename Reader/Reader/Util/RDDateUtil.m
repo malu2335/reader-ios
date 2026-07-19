@@ -19,19 +19,19 @@
     month = interval/60/60/24/30;
     year = interval/60/60/24/365;
     if (year>0) {
-        return [NSString stringWithFormat:@"%d年前",year];
+        return [NSString stringWithFormat:@"%ld年前",(long)year];
     }
     if (month>0) {
-        return [NSString stringWithFormat:@"%d月前",month];
+        return [NSString stringWithFormat:@"%ld月前",(long)month];
     }
     if (day>0) {
-        return [NSString stringWithFormat:@"%d天前",day];
+        return [NSString stringWithFormat:@"%ld天前",(long)day];
     }
     if (hour>0) {
-        return [NSString stringWithFormat:@"%d小时前",hour];
+        return [NSString stringWithFormat:@"%ld小时前",(long)hour];
     }
     if (mintiue>0) {
-        return [NSString stringWithFormat:@"%d分钟前",mintiue];
+        return [NSString stringWithFormat:@"%ld分钟前",(long)mintiue];
     }
     return nil;
 }

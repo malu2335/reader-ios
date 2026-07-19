@@ -90,8 +90,12 @@ NSString* const GzipErrorDomain = @"org.skyfox.Gzip";
 
 - (NSString *)md5String
 {
+    // Content fingerprint only (stable ids/dedup), not cryptographic use — keep MD5.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     unsigned char bytes[CC_MD5_DIGEST_LENGTH];
     CC_MD5([self bytes], (CC_LONG)[self length], bytes);
+#pragma clang diagnostic pop
     return [self stringFromBytes:bytes length:CC_MD5_DIGEST_LENGTH];
 }
 

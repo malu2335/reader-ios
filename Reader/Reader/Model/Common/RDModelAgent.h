@@ -28,7 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  *  Write Model instance to File
  *
- *  @param modelClass Should be derived from JHModel.
+ *  @param model Model derived from RDModel.
  *
  */
 - (BOOL)writeModel:(RDModel *)model;
@@ -36,8 +36,8 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  *  Write Model instance to File
  *
- *  @param modelClass Should be derived from JHModel.
- *  @param fileName   fileName but not full path.
+ *  @param model    Model derived from RDModel.
+ *  @param fileName fileName but not full path.
  *
  */
 - (BOOL)writeModel:(RDModel *)model toFileWithName:(NSString *)fileName;
@@ -45,7 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  *  Write Model instance to File
  *
- *  @param modelClass Should be derived from JHModel.
+ *  @param model Model derived from RDModel.
  *  @param path  fullpath.
  *
  */
@@ -54,7 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  *  Read Model instance for Class
  *
- *  @param class .
+ *  @param class1 Model class.
  *
  */
 - (id)readModelForClass:(Class)class1;
@@ -78,8 +78,8 @@ NS_ASSUME_NONNULL_BEGIN
 /*
  *  Delete Model from File
  *
- *  @param modelClass Should be derived from JHModel.
- *  @param fileName   fileName but not full path.
+ *  @param model    Model derived from RDModel.
+ *  @param fileName fileName but not full path.
  */
 - (BOOL)removeModel:(RDModel *)model toFileWithName:(NSString *)fileName;
 

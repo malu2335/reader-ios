@@ -564,8 +564,12 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
     if (data.length == 0) {
         return 0;
     }
+    // Content fingerprint / bookId only — not crypto; MD5 kept for stable dedup IDs.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     unsigned char digest[CC_MD5_DIGEST_LENGTH];
     CC_MD5(data.bytes, (CC_LONG)data.length, digest);
+#pragma clang diagnostic pop
     return [self bookIdFromDigest:digest];
 }
 
@@ -581,6 +585,9 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
         [stream close];
         return 0;
     }
+    // Content fingerprint / bookId only — not crypto; MD5 kept for stable dedup IDs.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     CC_MD5_CTX ctx;
     CC_MD5_Init(&ctx);
     uint8_t buffer[64 * 1024];
@@ -603,6 +610,7 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
     }
     unsigned char digest[CC_MD5_DIGEST_LENGTH];
     CC_MD5_Final(digest, &ctx);
+#pragma clang diagnostic pop
     return [self bookIdFromDigest:digest];
 }
 
@@ -613,6 +621,9 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
     if (images.count == 0) {
         return 0;
     }
+    // Content fingerprint / bookId only — not crypto; MD5 kept for stable dedup IDs.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     CC_MD5_CTX ctx;
     CC_MD5_Init(&ctx);
     NSInteger total = 0;
@@ -644,6 +655,7 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
     }
     unsigned char digest[CC_MD5_DIGEST_LENGTH];
     CC_MD5_Final(digest, &ctx);
+#pragma clang diagnostic pop
     return [self bookIdFromDigest:digest];
 }
 

@@ -33,7 +33,10 @@
 - (RDLayoutButton *)backBtn {
     if (!_backBtn) {
         RDLayoutButton *button = [[RDLayoutButton alloc] initWithFrame:CGRectMake(0, [UIView statusBar], 40, [UIView navigationBar])];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations" // UIButtonConfiguration rewrite deferred
         button.adjustsImageWhenDisabled = NO;
+#pragma clang diagnostic pop
         [button setImage:[UIImage imageNamed:@"button_back"] forState:UIControlStateNormal];
         button.imageSize = CGSizeMake(11, 19);
         _backBtn = button;

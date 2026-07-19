@@ -26,7 +26,9 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.automaticallyAdjustsScrollViewInsets = NO;
+    // Do not use deprecated automaticallyAdjustsScrollViewInsets. Scroll views laid out under a
+    // custom topView with fixed frames (bookshelf/settings tabs, etc.) set
+    // contentInsetAdjustmentBehavior = Never at creation so safe-area insets do not double-apply.
     self.navigationController.navigationBarHidden = YES;
     self.view.backgroundColor = RDBackgroudColor;
     self.fd_prefersNavigationBarHidden = YES;
