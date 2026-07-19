@@ -16,6 +16,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// 数据库层统一错误域;code 直接透传 WCDB/SQLite 的错误码
+extern NSString * const RDDatabaseErrorDomain;
+
 @interface RDDatabaseManager : NSObject
 @property (nonatomic, strong, readonly) WCTDatabase *database;
 
@@ -25,6 +28,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)performSync:(void (^)(WCTDatabase *db))block;
 /// 在串行队列异步执行
 - (void)performAsync:(void (^)(WCTDatabase *db))block;
+
+/// 在串行队列内跑一次数据库事务。block 返回 NO 或内部写失败即整体回滚,
+/// 并把 WCDB 的错误转成 NSError 输出(P1-03:写失败不得被吞成"成功")。
+/// block 收到的是本次事务句柄(WCTTransaction),所有写必须走它才在事务内。
+- (BOOL)performTransactionSync:(BOOL (^)(WCTInterface *db))block error:(NSError **)error;
 
 /// 将 WAL 合并进主库并尽量截断 -wal(后台调用,减少下次启动 recover frames)
 - (void)checkpointWALAsync;

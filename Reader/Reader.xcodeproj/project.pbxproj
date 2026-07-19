@@ -186,6 +186,7 @@
 		ABB7B8F32419378900225828 /* RDBookRecommendApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABB7B8F22419378900225828 /* RDBookRecommendApi.m */; };
 		ABC3450A2439DE1200061974 /* RDCommParamManager.m in Sources */ = {isa = PBXBuildFile; fileRef = ABC345092439DE1200061974 /* RDCommParamManager.m */; };
 		ABC3450D243A1B3000061974 /* RDForceUpdateApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABC3450C243A1B3000061974 /* RDForceUpdateApi.m */; };
+		A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */; };
 		ABD329A023B842870015EAFA /* RDCharpterDataManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */; };
 		ABD329A723B853DD0015EAFA /* RDCharpterContentApi.m in Sources */ = {isa = PBXBuildFile; fileRef = ABD329A623B853DD0015EAFA /* RDCharpterContentApi.m */; };
 		ABF5D50B23B8383E008E3163 /* RDCharpterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = ABF5D50A23B8383E008E3163 /* RDCharpterManager.m */; };
@@ -561,6 +562,10 @@
 		ABC345092439DE1200061974 /* RDCommParamManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDCommParamManager.m; sourceTree = "<group>"; };
 		ABC3450B243A1B3000061974 /* RDForceUpdateApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDForceUpdateApi.h; sourceTree = "<group>"; };
 		ABC3450C243A1B3000061974 /* RDForceUpdateApi.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDForceUpdateApi.m; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDLibraryTransaction.mm; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0002 /* RDLibraryTransaction.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryTransaction.h; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0003 /* RDCharpterDataManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDCharpterDataManager+DBInternal.h"; sourceTree = "<group>"; };
+		A11B002TX01FILEREF0004 /* RDReadRecordManager+DBInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RDReadRecordManager+DBInternal.h"; sourceTree = "<group>"; };
 		ABD3299E23B842870015EAFA /* RDCharpterDataManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDCharpterDataManager.h; sourceTree = "<group>"; };
 		ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDCharpterDataManager.mm; sourceTree = "<group>"; };
 		ABD329A523B853DD0015EAFA /* RDCharpterContentApi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDCharpterContentApi.h; sourceTree = "<group>"; };
@@ -1198,6 +1203,10 @@
 				AB5B036223E3FFC300070840 /* RDReadRecordManager.mm */,
 				ABD3299E23B842870015EAFA /* RDCharpterDataManager.h */,
 				ABD3299F23B842870015EAFA /* RDCharpterDataManager.mm */,
+				A11B002TX01FILEREF0003 /* RDCharpterDataManager+DBInternal.h */,
+				A11B002TX01FILEREF0004 /* RDReadRecordManager+DBInternal.h */,
+				A11B002TX01FILEREF0002 /* RDLibraryTransaction.h */,
+				A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */,
 				29F97D3A240CEB8000909240 /* RDHistoryRecordManager.h */,
 				29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */,
 				A11B001BM01FILEREF0002 /* RDBookmarkModel.h */,
@@ -1752,6 +1761,7 @@
 				29BA848C2361C897000FE927 /* KafkaReplicatorLayer.m in Sources */,
 				295A668923FCDA6600E2631A /* LEEAlert.m in Sources */,
 				ABD329A023B842870015EAFA /* RDCharpterDataManager.mm in Sources */,
+				A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */,
 				29406FEB23B0E61500E4495F /* RDBaseApi.m in Sources */,
 				29BA84972361D263000FE927 /* RDBookshelfNoneCell.m in Sources */,
 				29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */,

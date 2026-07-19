@@ -9,6 +9,7 @@
 #import "RDBookDetailModel.h"
 #import "RDCharpterModel.h"
 #import "RDReadRecordManager.h"
+#import "RDLibraryTransaction.h"
 #import "RDReadConfigManager.h"
 #import "RDAIConfig.h"
 #import "RDBookmarkManager.h"
@@ -380,9 +381,10 @@ static NSString * const kBackupFontsDir = @"fonts";
             placeholder.charpterId = [MakeNSNumber(item[@"durChapterId"]) integerValue];
             book.charpterModel = placeholder;
 
-            //重新解析生成章节(章节内容不入备份,从源文件重建)
+            //重新解析生成章节(章节内容不入备份,从源文件重建);此处只解析不写库
             NSString *rebuildError = nil;
-            if (![RDLocalBookManager rebuildChaptersForBook:book errorMessage:&rebuildError]) {
+            NSArray *chapters = [RDLocalBookManager parseChaptersForBook:book errorMessage:&rebuildError];
+            if (!chapters) {
                 lastError = rebuildError;
                 failed++;
                 continue;
@@ -400,8 +402,17 @@ static NSString * const kBackupFontsDir = @"fonts";
                 // 旧备份没有手动封面时也应清掉同 bookId 的旧文件，避免恢复前状态泄漏。
                 [RDLocalBookManager removeCustomCoverForBook:book];
             }
-            // 保留备份里的 lastReadTime,恢复后书架顺序与备份前一致
-            [RDReadRecordManager insertOrReplaceModel:book touchReadTime:NO];
+            // 保留备份里的 lastReadTime,恢复后书架顺序与备份前一致;
+            // 章节与读记录同一事务提交,失败则旧章节原样保留(P1-01/P1-02)。
+            NSError *commitError = nil;
+            if (![RDLibraryTransaction commitBook:book
+                                         chapters:chapters
+                                    touchReadTime:NO
+                                            error:&commitError]) {
+                lastError = commitError.localizedDescription ?: @"写入书籍记录失败";
+                failed++;
+                continue;
+            }
             restored++;
         }
 
