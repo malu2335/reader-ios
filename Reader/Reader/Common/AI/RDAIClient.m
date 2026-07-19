@@ -72,6 +72,9 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
 @property (nonatomic, strong, nullable) id inFlightToken;
 @property (nonatomic, assign, readwrite) BOOL isTranslating;
 @property (nonatomic, assign) NSUInteger translateGeneration;
+/// 后台(concurrent)请求的 token 集合与代次;两者都在 @synchronized(self) 下访问
+@property (nonatomic, strong) NSMutableSet *backgroundTokens;
+@property (nonatomic, assign) NSUInteger backgroundGeneration;
 @end
 
 @implementation RDAIClient
@@ -85,6 +88,41 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         client.transport = [[RDAIURLSessionTransport alloc] init];
     });
     return client;
+}
+
+- (NSMutableSet *)backgroundTokens
+{
+    @synchronized (self) {
+        if (!_backgroundTokens) {
+            _backgroundTokens = [NSMutableSet set];
+        }
+        return _backgroundTokens;
+    }
+}
+
+- (NSUInteger)backgroundTaskCount
+{
+    @synchronized (self) {
+        return self.backgroundTokens.count;
+    }
+}
+
+- (void)cancelBackgroundTranslations
+{
+    NSArray *tokens = nil;
+    @synchronized (self) {
+        tokens = [self.backgroundTokens allObjects];
+        [self.backgroundTokens removeAllObjects];
+        // 代次递增:已在途的回调回来时会发现代次变了,直接丢弃,不写缓存
+        self.backgroundGeneration += 1;
+    }
+    id<RDAIHTTPTransport> transport = self.transport;
+    if (![transport respondsToSelector:@selector(cancelToken:)]) {
+        return;
+    }
+    for (id token in tokens) {
+        [transport cancelToken:token];
+    }
 }
 
 - (void)cancelInFlightTranslate
@@ -587,9 +625,17 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     }
     id<RDAIHTTPTransport> transport = self.transport ?: [[RDAIURLSessionTransport alloc] init];
     NSUInteger generation = concurrent ? 0 : self.translateGeneration;
-    if (!concurrent) {
+    __block NSUInteger bgGeneration = 0;
+    if (concurrent) {
+        @synchronized (self) {
+            bgGeneration = self.backgroundGeneration;
+        }
+    }
+    else {
         self.isTranslating = YES;
     }
+    __block id sentToken = nil;
+    __block BOOL completedInline = NO;
     __weak typeof(self) weakSelf = self;
     id token = [transport sendRequest:request completion:^(NSData *data, NSHTTPURLResponse *response, NSError *error) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -599,8 +645,24 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
             }
             self.inFlightToken = nil;
             self.isTranslating = NO;
-        } else if (!self) {
-            return;
+        } else {
+            if (!self) {
+                return;
+            }
+            // 后台请求:先摘掉自己的 token,再确认代次没被 cancelBackgroundTranslations 顶掉
+            @synchronized (self) {
+                if (sentToken) {
+                    [self.backgroundTokens removeObject:sentToken];
+                }
+                else {
+                    // 同步 transport:回调跑在 sendRequest 内部,此时还没拿到 token,
+                    // 标记一下,避免事后又把一个已完成的 token 登记进集合
+                    completedInline = YES;
+                }
+                if (bgGeneration != self.backgroundGeneration) {
+                    return; // 已停止,不回调、不写缓存(P2-07)
+                }
+            }
         }
         if (error) {
             if ([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) {
@@ -659,6 +721,16 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     }];
     if (!concurrent) {
         self.inFlightToken = token;
+        return;
+    }
+    sentToken = token;
+    if (!token || completedInline) {
+        return;
+    }
+    @synchronized (self) {
+        if (bgGeneration == self.backgroundGeneration) {
+            [self.backgroundTokens addObject:token];
+        }
     }
 }
 

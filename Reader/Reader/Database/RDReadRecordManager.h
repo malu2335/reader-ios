@@ -38,6 +38,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 +(void)updateBookshelfState:(RDBookDetailModel *)model;
 
+/// 清空书架专用:返回**全部**记录行(含正 bookId 的历史遗留与已下架行),
+/// 只带清理所需的轻量列。产品书架展示一律走 getBookshelfDisplayList(P2-18)。
++(NSArray <RDBookDetailModel *>*)getAllRecordsForDestructiveClear;
+
 +(void)removeBookFromBookShelfWithBookId:(NSInteger)bookid;
 
 /// 获取所有书架上的书籍(含 charpterModel,较重)

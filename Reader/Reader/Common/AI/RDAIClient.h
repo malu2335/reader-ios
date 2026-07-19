@@ -40,6 +40,13 @@ typedef void (^RDAITransportCompletion)(NSData * _Nullable data, NSHTTPURLRespon
 /// 取消「可取消」类进行中的翻译(Replace 策略)
 - (void)cancelInFlightTranslate;
 
+/// 取消全部后台(concurrent=YES)翻译请求,并让已在途的回调不再触发 completion,
+/// 避免停止后旧结果继续写缓存、继续消耗服务额度(P2-07)
+- (void)cancelBackgroundTranslations;
+
+/// 当前在途的后台翻译请求数(供测试断言"停止后归零")
+@property (nonatomic, assign, readonly) NSUInteger backgroundTaskCount;
+
 /// 统一翻译入口;默认会取消上一次 Replace 请求
 - (void)translateText:(NSString *)text
               profile:(RDAIConfigProfile *)profile

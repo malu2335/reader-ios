@@ -189,6 +189,22 @@
     return result;
 }
 
++(NSArray <RDBookDetailModel *>*)getAllRecordsForDestructiveClear
+{
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        // 清空必须覆盖全部记录行,包括历史遗留的正 bookId 与已下架的行,
+        // 否则"清空书架"与实际残留不符(P2-18)。只取清理所需的轻量列。
+        result = [db getAllObjectsOnResults:{
+            RDBookDetailModel.bookId,
+            RDBookDetailModel.coverImg,
+            RDBookDetailModel.localPath,
+            RDBookDetailModel.fileType,
+        } fromTable:kReadRecordTable];
+    }];
+    return result ?: @[];
+}
+
 +(NSInteger)countOnBookshelf
 {
     __block NSInteger count = 0;

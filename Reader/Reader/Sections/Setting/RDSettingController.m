@@ -533,14 +533,16 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     [self showLoading:@"正在清理..." cancel:nil];
     // 清空与导入/删除/恢复同队列串行,避免与并发导入交叉
     [RDLibraryMutationCoordinator performAsync:^{
-        NSArray *books = [RDReadRecordManager getAllOnBookshelf];
+        // 枚举全部记录行,而不是只枚举书架上的负 id:否则历史遗留的正 bookId
+        // read/chapter/bookmark 会残留,与"清空"文案不符(P2-18)。
+        NSArray *books = [RDReadRecordManager getAllRecordsForDestructiveClear];
         for (RDBookDetailModel *book in books) {
             if (book.isLocalBook) {
                 // 本地书由 manager 在同一串行队列内删除记录、源文件与两类封面。
                 [RDLocalBookManager removeLocalBook:book];
             }
             else{
-                // 在线书先删记录，迟到的封面保存会校验失败，再清理确定性文件。
+                // 历史遗留的在线书:先删记录，迟到的封面保存会校验失败，再清理确定性文件。
                 [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
                 [RDLocalBookManager removeCustomCoverForBook:book];
                 [RDBookmarkManager deleteAllForBookId:book.bookId];
