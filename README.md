@@ -1,17 +1,23 @@
 # 纸羽轻阅（reader-ios）
 
-本地优先的 iOS 阅读器。在 [阅小说开源 iOS 客户端](https://github.com/yuenov/reader-ios) 基础上演进，专注**本地书导入、阅读体验、AI 翻译与备份**。产品路径只有 **书架 + 设置** 两个入口，在线书城相关模块已从工程中移除。
+**严格纯本地**的 iOS 阅读器。在 [阅小说开源 iOS 客户端](https://github.com/yuenov/reader-ios) 基础上演进，专注**本地书导入、阅读体验与备份**。产品路径只有 **书架 + 设置** 两个入口。
+
+> ### 本分支不联网
+> 这是 `codex/jianyue-offline-reader` 分支，定位是**不涉及任何联网功能**：没有 AI 翻译、没有在线书城、没有远程配置或更新检查，`Info.plist` 不声明任何 ATS 例外，工程内不存在任何网络 API 调用。
+> 该约定由 `Tests/OfflineOnlyHarness` 在源码层面强制，不依赖人工记忆。
+>
+> 保留 AI 翻译的版本在 **`master`** 分支。
 
 | 项 | 说明 |
 |----|------|
 | 应用名 | **纸羽轻阅**（`CFBundleDisplayName`） |
-| 版本 | 1.5.0 |
+| 版本 | 1.5.0（离线版） |
 | Bundle ID | `xyz.malu2335.reader` |
 | 语言 | Objective-C |
 | 最低系统 | iOS 15.0 |
 | 设备 | 仅 iPhone |
-| 依赖管理 | CocoaPods（14 个依赖） |
-| 数据 | WCDB（SQLite）+ Keychain（AI 密钥） |
+| 依赖管理 | CocoaPods（14 个依赖，无网络库） |
+| 数据 | WCDB（SQLite），全部落本地沙盒 |
 | 仓库 | https://github.com/malu2335/reader-ios |
 
 ---
@@ -28,14 +34,14 @@
 | 排版设置 | 应用设置 | 正文净化 |
 |:---:|:---:|:---:|
 | <img src="Screenshots/04-typography.png" width="180" alt="排版设置"/> | <img src="Screenshots/05-settings.png" width="180" alt="应用设置"/> | <img src="Screenshots/06-reading-rules.png" width="180" alt="正文净化"/> |
-| 字号 · 字体 · 翻页动画 | 导入 · AI · 备份 · 隐私/开源入口 | legado 风格替换规则 |
+| 字号 · 字体 · 翻页动画 | 导入 · 备份 · 隐私/开源入口 | legado 风格替换规则 |
 
 | 隐私声明 | 开源软件使用声明 |
 |:---:|:---:|
 | <img src="Screenshots/07-privacy.png" width="180" alt="隐私声明"/> | <img src="Screenshots/08-opensource.png" width="180" alt="开源软件使用声明"/> |
 | 设置内本地文档 | 完整许可与归属 · 可滚动复制 |
 
-> 截图可能略滞后于当前版本（例如阅读页顶栏已移除「词典」按钮）。
+> 截图滞后于当前版本：阅读页顶栏已移除「词典」与「译」按钮，设置页已无「AI 配置」入口。
 
 ---
 
@@ -51,18 +57,11 @@
 - 正文净化替换规则（legado 风格）
 - 书架长按菜单、类型化分享卡片
 
-### AI 翻译
-- 多配置档案：OpenAI / Anthropic / Gemini 官方与兼容端点（自定义 Base URL）
-- 阅读页句级翻译，译文**内嵌在原文下方**（非弹窗）
-- 翻译模式跨翻页保持；后台批量预译，**停止后会真正取消在途请求**，不再继续计费
-- **API Key 仅存 Keychain**；磁盘配置与备份 zip **不含明文密钥**
-- 备份恢复来的 profile 一律标记为**待确认**，不会自动生效对外发请求
-- 公网 Base URL 强制 HTTPS；仅回环 / 局域网 / `.local` 允许 HTTP（本地 Ollama 等）
-
 ### 朗读与设置
 - 系统 `AVSpeech` 朗读条；语音选择、收藏、个人声音导入指引
 - 自定义字体导入
-- 备份 / 恢复（布局参考 legado：`bookshelf.json` / `config.json` / `books/`，并含 AI 元数据）
+- 备份 / 恢复（布局参考 legado：`bookshelf.json` / `config.json` / `books/`）
+- 恢复旧版本（含 AI 配置）的备份时，`ai_config.json` 条目会被直接忽略，不影响书籍与进度还原
 - 设置内可查看**隐私声明**与**开源软件使用声明**（随包发布的本地文本）
 
 ### 数据完整性
@@ -108,7 +107,7 @@ xcodebuild -workspace Reader.xcworkspace -scheme Reader \
   -only-testing:ReaderTests test
 ```
 
-覆盖导入事务、备份恢复的故障注入、删除清空、数据库事务、AI 翻译取消、控件接线等。
+覆盖导入事务、备份恢复的故障注入、删除清空、数据库事务、控件接线等，共 30 条。
 
 > ⚠️ 单元测试注入宿主 app 进程运行，**与 app 共用同一个模拟器容器**，`setUp` 会清空书库。如果同一台模拟器上有手动测试的数据，请换一台跑测试。
 
@@ -116,14 +115,16 @@ xcodebuild -workspace Reader.xcworkspace -scheme Reader \
 
 ```bash
 cd Reader
-bash Tests/AIHarness/run_tests.sh              # AI 协议 / 备份脱敏 / Base URL 策略
+bash Tests/OfflineOnlyHarness/run_tests.sh     # 断网门禁:无网络 API / 无 ATS 例外 / 无网络库
 bash Tests/ExternalImportHarness/run_tests.sh  # 外部文件导入的 Info.plist 声明
 bash Tests/LegalDocumentsHarness/run_tests.sh  # 隐私 / 开源声明文档
 bash Tests/LibraryMutationHarness/run_tests.sh # 单事务提交、staging、串行队列等不变量
 bash Tests/PhaseCHarness/run_tests.sh          # 业务一致性与 schema 版本等不变量
 ```
 
-这类 harness 把关键约定钉在源码层面（例如「导入必须走 RDLibraryTransaction 提交」），防止重构时被悄悄改掉。除 AIHarness 外都不编译代码，**挡不住运行时缺陷**——数据链路改动仍需跑 XCTest 并在模拟器上人工过一遍。
+这类 harness 把关键约定钉在源码层面（例如「导入必须走 RDLibraryTransaction 提交」「工程内不得出现 NSURLSession」），防止重构时被悄悄改掉。它们不编译代码，**挡不住运行时缺陷**——数据链路改动仍需跑 XCTest 并在模拟器上人工过一遍。
+
+**`OfflineOnlyHarness` 是本分支的核心保障**：从 `master` 合并改动后必须跑一次，确认联网能力没有被带回来。它上线当天就抓出三处残留（`RDWebView`、`RDCommBookCell` 两个死文件，以及书架里不可达的在线封面分支）——光靠人记住「这个分支不能联网」并不可靠。
 
 ### libwebp 下载失败
 
@@ -158,14 +159,13 @@ reader-ios/
     ├── Reader/             # 主工程源码
     │   ├── Application/    # AppDelegate / SceneDelegate
     │   ├── Common/
-    │   │   ├── AI/         # 多厂商翻译客户端与配置
     │   │   ├── LocalBook/  # 解析器、导入预算、备份恢复、变更队列
     │   │   ├── Read/       # 分页与章节
     │   │   └── Speech/     # 朗读
     │   ├── Database/       # WCDB 模型、Manager 与跨表事务
     │   ├── Sections/
     │   │   ├── Bookshelf/  # 书架与阅读器
-    │   │   └── Setting/    # 设置、AI 配置、净化规则、语音
+    │   │   └── Setting/    # 设置、净化规则、语音
     │   └── Resource/       # Info.plist、隐私/开源声明、图标
     └── Tests/
         ├── ReaderTests/    # XCTest 单元测试
@@ -177,17 +177,23 @@ reader-ios/
 
 ## 隐私与密钥
 
-- **不要**把真实 API Key、备份 zip、个人书库数据库、模拟器截图提交进 Git
-- AI Key：Keychain 服务名 `reader.ios.ai.apikey`；备份中的 `ai_config` 仅元数据（`apiKey` 为空）
+- **不要**把备份 zip、个人书库数据库、模拟器截图提交进 Git
+- 本分支不含任何密钥或凭据：没有联网功能，也就没有 API Key 需要保管
 - 设置页可查看随包发布的隐私声明与开源许可全文
 - 已在 `.gitignore` 中忽略：`docs/`、审查与计划报告（`code-review/`、`*-review-*.md` 等）、`CLAUDE.md`、`.cursor/`、`.DS_Store`、根目录截图
-- 推送前建议自检：`git diff` / `git grep` 是否含 `sk-`、私钥、本机绝对路径等
+- 推送前建议自检：`git diff` / `git grep` 是否含私钥、本机绝对路径等；并跑一次 `Tests/OfflineOnlyHarness`
 
 ---
 
 ## 与上游的关系
 
-本仓库基于阅小说 iOS 开源客户端演进。**发现 / 书库 / 搜索 / 书籍详情 / 在线目录 / 下载 与整个 `Service/` 网络层已从工程中删除**（128 个文件），相应的 `JLRoutes`、`MJRefresh`、`WMPageController`、`YTKNetwork`、`NJKWebViewProgress`、`AFNetworking` 依赖也已移除。当前工程只保留本地阅读所需代码。
+本仓库基于阅小说 iOS 开源客户端演进，本分支在此基础上进一步去除全部联网能力：
+
+1. **在线模块**：发现 / 书库 / 搜索 / 书籍详情 / 在线目录 / 下载 与整个 `Service/` 网络层已删除（128 个文件），`JLRoutes`、`MJRefresh`、`WMPageController`、`YTKNetwork`、`NJKWebViewProgress`、`AFNetworking` 依赖一并移除。
+2. **AI 翻译**：`Common/AI/`、设置页 AI 配置、阅读页翻译入口、备份中的 `ai_config` 与 Keychain 密钥存储共 14 个文件已删除。
+3. **残余联网面**：`RDWebView`（WKWebView）、`RDCommBookCell`（远程封面）两个死文件，以及书架里不可达的在线封面分支已清理。
+
+当前工程只保留本地阅读所需代码，不含任何网络调用。
 
 | 资源 | 链接 |
 |------|------|
@@ -202,6 +208,6 @@ reader-ios/
 
 ## 声明
 
-- 本客户端只做**本地文件阅读**，AI 翻译使用用户自备的服务与密钥，不含任何自有服务端
-- 请勿将本项目用于侵犯著作权或其他违法行为；用户导入的内容与配置的 AI 密钥由用户自行负责
+- 本客户端只做**本地文件阅读**，不含任何网络能力与服务端；所有数据仅存于设备沙盒
+- 请勿将本项目用于侵犯著作权或其他违法行为；用户导入的内容由用户自行负责
 - 软件按 MIT 许可提供，详见 [LICENSE](LICENSE)。本衍生版本保留上游「阅小说」版权声明，并增加 2026 年 Lu Ma（纸羽轻阅）版权行
