@@ -12,6 +12,7 @@
 #import "RDCharpterDataManager.h"
 #import "RDReadRecordManager.h"
 #import "RDLibraryTransaction.h"
+#import "RDLibraryMutationCoordinator.h"
 #import "RDBookmarkManager.h"
 #import "RDHistoryRecordManager.h"
 #import "RDLocalBookParseResult.h"
@@ -28,7 +29,6 @@ static NSString * const kLocalBooksDirName = @"LocalBooks";
 static NSString * const kPDFAutoCoverVersion = @"v1";
 static NSString * const kCustomCoverVersion = @"v1";
 static const CGSize kBookCoverPixelSize = {600.0, 840.0};
-static void *kRDLocalBookImportQueueKey = &kRDLocalBookImportQueueKey;
 static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 @interface RDLocalBookManager ()
@@ -87,32 +87,16 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 #pragma mark - 导入
 
-/// 导入专用串行队列:同内容文件并发导入时,去重检查与落盘天然互斥
+/// 书库变更串行队列:导入/删除/清空/恢复共用同一条,
+/// 同内容文件并发导入时去重检查与落盘天然互斥(见 RDLibraryMutationCoordinator)
 + (dispatch_queue_t)importQueue
 {
-    static dispatch_queue_t queue;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        queue = dispatch_queue_create("com.reader.localbook.import", DISPATCH_QUEUE_SERIAL);
-        dispatch_queue_set_specific(queue,
-                                    kRDLocalBookImportQueueKey,
-                                    kRDLocalBookImportQueueKey,
-                                    NULL);
-    });
-    return queue;
+    return [RDLibraryMutationCoordinator queue];
 }
 
 + (void)p_performSyncOnImportQueue:(dispatch_block_t)block
 {
-    if (!block) {
-        return;
-    }
-    if (dispatch_get_specific(kRDLocalBookImportQueueKey)) {
-        block();
-    }
-    else {
-        dispatch_sync([self importQueue], block);
-    }
+    [RDLibraryMutationCoordinator performSync:block];
 }
 
 + (dispatch_queue_t)p_customCoverQueue
@@ -869,10 +853,16 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 + (NSArray *)parseChaptersForBook:(RDBookDetailModel *)book errorMessage:(NSString **)errorMessage
 {
+    return [self parseChaptersForBook:book atPath:[self absolutePathForBook:book] errorMessage:errorMessage];
+}
+
++ (NSArray *)parseChaptersForBook:(RDBookDetailModel *)book
+                           atPath:(NSString *)path
+                     errorMessage:(NSString **)errorMessage
+{
     if (!book.isLocalBook || [book.fileType isEqualToString:@"pdf"] || [RDComicHelper isComicFileType:book.fileType]) {
         return @[];   // PDF / 漫画图集无文字章节
     }
-    NSString *path = [self absolutePathForBook:book];
     if (!path || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
         if (errorMessage) *errorMessage = @"书籍文件缺失";
         return nil;

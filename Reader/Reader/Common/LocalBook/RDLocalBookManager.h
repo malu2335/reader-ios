@@ -61,6 +61,11 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 /// 返回 nil 表示失败(errorMessage 有值);PDF/漫画返回空数组。
 + (nullable NSArray *)parseChaptersForBook:(RDBookDetailModel *)book errorMessage:(NSString * _Nullable * _Nullable)errorMessage;
 
+/// 同上,但从指定路径解析(恢复备份时源文件还在 staging 目录里,尚未进正式路径)
++ (nullable NSArray *)parseChaptersForBook:(RDBookDetailModel *)book
+                                    atPath:(nullable NSString *)path
+                              errorMessage:(NSString * _Nullable * _Nullable)errorMessage;
+
 + (NSString *)booksDirectory;
 
 @end

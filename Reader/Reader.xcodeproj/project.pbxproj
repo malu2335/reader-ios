@@ -14,6 +14,7 @@
 		A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI02FILEREF0001 /* RDAIClient.m */; };
 		A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI03FILEREF0001 /* RDAIConfigController.m */; };
 		A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */; };
+		A11B002MC01BUILDFILE01 /* RDLibraryMutationCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */; };
 		A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BK01FILEREF0001 /* RDBackupManager.m */; };
 		A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP01FILEREF0001 /* RDReplaceRule.m */; };
 		A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001RP02FILEREF0001 /* RDShareCardBuilder.m */; };
@@ -211,6 +212,8 @@
 		A11B001AI03FILEREF0002 /* RDAIConfigController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfigController.h; sourceTree = "<group>"; };
 		A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIProfileEditController.m; sourceTree = "<group>"; };
 		A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIProfileEditController.h; sourceTree = "<group>"; };
+		A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLibraryMutationCoordinator.m; sourceTree = "<group>"; };
+		A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLibraryMutationCoordinator.h; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0001 /* RDBackupManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBackupManager.m; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0002 /* RDBackupManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBackupManager.h; sourceTree = "<group>"; };
 		A11B001RP01FILEREF0001 /* RDReplaceRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReplaceRule.m; sourceTree = "<group>"; };
@@ -651,6 +654,8 @@
 			children = (
 				A11B001BK01FILEREF0002 /* RDBackupManager.h */,
 				A11B001BK01FILEREF0001 /* RDBackupManager.m */,
+				A11B002MC01FILEREF0002 /* RDLibraryMutationCoordinator.h */,
+				A11B002MC01FILEREF0001 /* RDLibraryMutationCoordinator.m */,
 				0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */,
 				B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */,
 				653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */,
@@ -1664,6 +1669,7 @@
 				A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */,
 				A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */,
 				A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */,
+				A11B002MC01BUILDFILE01 /* RDLibraryMutationCoordinator.m in Sources */,
 				A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */,
 				A11B001RP02BUILDFILE001 /* RDShareCardBuilder.m in Sources */,
 				A11B001RP03BUILDFILE001 /* RDReplaceRulesController.m in Sources */,

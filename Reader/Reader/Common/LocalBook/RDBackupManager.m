@@ -10,6 +10,7 @@
 #import "RDCharpterModel.h"
 #import "RDReadRecordManager.h"
 #import "RDLibraryTransaction.h"
+#import "RDLibraryMutationCoordinator.h"
 #import "RDReadConfigManager.h"
 #import "RDAIConfig.h"
 #import "RDBookmarkManager.h"
@@ -291,6 +292,53 @@ static NSString * const kBackupFontsDir = @"fonts";
 
 #pragma mark - 恢复
 
+/// 本次恢复专用的暂存目录;失败返回 nil
++ (NSString *)p_createRestoreStagingDirectory
+{
+    NSString *root = [PATH_DOCUMENT stringByAppendingPathComponent:@"RestoreStaging"];
+    NSString *dir = [root stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] createDirectoryAtPath:dir
+                                   withIntermediateDirectories:YES
+                                                    attributes:@{NSFileProtectionKey: NSFileProtectionCompleteUntilFirstUserAuthentication}
+                                                         error:&error]) {
+        return nil;
+    }
+    return dir;
+}
+
+/// 把暂存文件移进正式路径;正式路径上已有文件时先移到 backupPath 留作回滚
++ (BOOL)p_commitStagedFile:(NSString *)staged toTarget:(NSString *)target backupPath:(NSString *)backupPath
+{
+    NSFileManager *fm = [NSFileManager defaultManager];
+    [fm removeItemAtPath:backupPath error:nil];
+    BOOL hadOld = [fm fileExistsAtPath:target];
+    if (hadOld && ![fm moveItemAtPath:target toPath:backupPath error:nil]) {
+        return NO;
+    }
+    if ([fm moveItemAtPath:staged toPath:target error:nil]) {
+        return YES;
+    }
+    // 新文件没能就位:把旧文件原样放回
+    if (hadOld) {
+        [fm moveItemAtPath:backupPath toPath:target error:nil];
+    }
+    return NO;
+}
+
+/// 数据库提交失败时把旧源文件放回正式路径
++ (void)p_rollbackTarget:(NSString *)target fromBackup:(NSString *)backupPath
+{
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if (![fm fileExistsAtPath:backupPath]) {
+        // 恢复前本来就没有这本书的文件,删掉刚放进去的新文件即可
+        [fm removeItemAtPath:target error:nil];
+        return;
+    }
+    [fm removeItemAtPath:target error:nil];
+    [fm moveItemAtPath:backupPath toPath:target error:nil];
+}
+
 + (void)restoreFromURL:(NSURL *)url complete:(void(^)(NSInteger, NSString * _Nullable))complete
 {
     void (^finish)(NSInteger, NSString *) = ^(NSInteger count, NSString *message) {
@@ -300,7 +348,8 @@ static NSString * const kBackupFontsDir = @"fonts";
             }
         });
     };
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+    // 恢复必须与导入/删除/清空同队列串行,否则会与并发导入交叉写同一本书(P1-01)
+    [RDLibraryMutationCoordinator performAsync:^{
         BOOL scoped = [url startAccessingSecurityScopedResource];
         RDZipArchive *zip = [[RDZipArchive alloc] initWithPath:url.path];
         if (scoped) {
@@ -325,6 +374,12 @@ static NSString * const kBackupFontsDir = @"fonts";
         NSInteger failed = 0;
         NSInteger customCoverFailed = 0;
         NSString *lastError = nil;
+        // 本次恢复的暂存目录:源文件先落这里,提交成功才进正式路径(P1-01)
+        NSString *stagingRoot = [self p_createRestoreStagingDirectory];
+        if (stagingRoot.length == 0) {
+            finish(0, @"无法创建恢复暂存目录");
+            return;
+        }
         for (NSDictionary *item in shelf) {
             if (![item isKindOfClass:NSDictionary.class]) {
                 continue;
@@ -344,23 +399,15 @@ static NSString * const kBackupFontsDir = @"fonts";
                 failed++;
                 continue;
             }
+            //先落到暂存目录:正式路径上的旧文件在提交成功前一律不动
+            NSString *staged = [stagingRoot stringByAppendingPathComponent:localPath];
             NSString *bookEntry = [NSString stringWithFormat:@"%@/%@", kBackupBooksDir, localPath];
-            if (![zip writeEntry:bookEntry toFile:target]) {
+            if (![zip writeEntry:bookEntry toFile:staged]) {
                 lastError = @"备份中缺少书籍文件或写入失败";
                 failed++;
                 continue;
             }
-            //还原封面(同样只信任规约后的文件名)
             NSString *cover = RDBackupSafeFileName(MakeNSStringNoNull(item[@"coverImg"]));
-            if (cover.length > 0) {
-                NSString *coverTarget = [booksDirectory stringByAppendingPathComponent:cover];
-                if (RDBackupPathIsInsideDirectory(coverTarget, booksDirectory)) {
-                    NSData *coverData = [zip dataForEntry:[NSString stringWithFormat:@"%@/%@", kBackupBooksDir, cover]];
-                    if (coverData.length > 0) {
-                        [coverData writeToFile:coverTarget atomically:YES];
-                    }
-                }
-            }
 
             //还原书籍记录与进度
             RDBookDetailModel *book = [[RDBookDetailModel alloc] init];
@@ -383,11 +430,45 @@ static NSString * const kBackupFontsDir = @"fonts";
 
             //重新解析生成章节(章节内容不入备份,从源文件重建);此处只解析不写库
             NSString *rebuildError = nil;
-            NSArray *chapters = [RDLocalBookManager parseChaptersForBook:book errorMessage:&rebuildError];
+            NSArray *chapters = [RDLocalBookManager parseChaptersForBook:book atPath:staged errorMessage:&rebuildError];
             if (!chapters) {
                 lastError = rebuildError;
                 failed++;
                 continue;
+            }
+
+            // 提交点:先把旧源文件挪到暂存备份,再把新文件原子移入正式路径,
+            // 最后提交数据库事务。任一步失败都把旧文件放回去,保证只可能是
+            // "完整旧状态"或"完整新状态",不出现文件与章节互不匹配(P1-01)。
+            NSString *backup = [stagingRoot stringByAppendingPathComponent:
+                                [NSString stringWithFormat:@"old_%@", localPath]];
+            if (![self p_commitStagedFile:staged toTarget:target backupPath:backup]) {
+                lastError = @"写入书籍文件失败";
+                failed++;
+                continue;
+            }
+            // 保留备份里的 lastReadTime,恢复后书架顺序与备份前一致;
+            // 章节与读记录同一事务提交,失败则整体回滚(P1-02)。
+            NSError *commitError = nil;
+            if (![RDLibraryTransaction commitBook:book
+                                         chapters:chapters
+                                    touchReadTime:NO
+                                            error:&commitError]) {
+                [self p_rollbackTarget:target fromBackup:backup];
+                lastError = commitError.localizedDescription ?: @"写入书籍记录失败";
+                failed++;
+                continue;
+            }
+
+            // 数据库已提交,以下是不影响可读性的附属文件,失败只降级为警告
+            if (cover.length > 0) {
+                NSString *coverTarget = [booksDirectory stringByAppendingPathComponent:cover];
+                if (RDBackupPathIsInsideDirectory(coverTarget, booksDirectory)) {
+                    NSData *coverData = [zip dataForEntry:[NSString stringWithFormat:@"%@/%@", kBackupBooksDir, cover]];
+                    if (coverData.length > 0) {
+                        [coverData writeToFile:coverTarget atomically:YES];
+                    }
+                }
             }
             // 新备份可携带手动封面；manager 在全局封面队列内失效旧请求并原子恢复。
             NSString *customCoverValue = MakeNSStringNoNull(item[@"customCover"]);
@@ -402,24 +483,15 @@ static NSString * const kBackupFontsDir = @"fonts";
                 // 旧备份没有手动封面时也应清掉同 bookId 的旧文件，避免恢复前状态泄漏。
                 [RDLocalBookManager removeCustomCoverForBook:book];
             }
-            // 保留备份里的 lastReadTime,恢复后书架顺序与备份前一致;
-            // 章节与读记录同一事务提交,失败则旧章节原样保留(P1-01/P1-02)。
-            NSError *commitError = nil;
-            if (![RDLibraryTransaction commitBook:book
-                                         chapters:chapters
-                                    touchReadTime:NO
-                                            error:&commitError]) {
-                lastError = commitError.localizedDescription ?: @"写入书籍记录失败";
-                failed++;
-                continue;
-            }
             restored++;
         }
 
+        // 暂存目录里剩下的都是已提交的旧文件副本或失败残留,统一清掉
+        [[NSFileManager defaultManager] removeItemAtPath:stagingRoot error:nil];
+
+        // 全部书籍处理完毕后才发一次书架刷新,避免中途的混合状态被 UI 读到
         if (restored > 0) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:nil];
-            });
+            [RDLibraryMutationCoordinator postLibraryChanged:nil];
         }
 
         //还原阅读配置
@@ -536,7 +608,7 @@ static NSString * const kBackupFontsDir = @"fonts";
         else{
             finish(restored, nil);
         }
-    });
+    }];
 }
 
 @end
