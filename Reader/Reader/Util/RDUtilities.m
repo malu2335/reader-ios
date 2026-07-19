@@ -108,11 +108,6 @@
     return vc;
 }
 
-+ (NSString *)buildPicUrlWithPath:(NSString *)path
-{
-    return [NSString stringWithFormat:@"%@%@",[RDGlobalModel sharedInstance].picBaseUrl,path];
-}
-
 + (BOOL)iPad
 {
     // 启动/列表热路径避免 GBDeviceInfo 解析设备树

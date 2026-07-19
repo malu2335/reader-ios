@@ -21,8 +21,6 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIViewController *_Nullable)getCurrentVC;
 
 /// 构建静态文件URL
-/// @param path 文件路径
-+ (NSString *)buildPicUrlWithPath:(NSString *)path;
 
 /// 判断是否是iPAD
 + (BOOL)iPad;

@@ -12,7 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol RDReadTopBarDelegate <NSObject>
 -(void)backAction;
 -(void)speechAction;
--(void)translateAction;
 -(void)shareQuoteAction;
 @end
 

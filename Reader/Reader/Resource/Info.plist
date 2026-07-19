@@ -154,16 +154,10 @@
 	</array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>保存金句卡片与书籍封面到相册时需要此权限</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>连接同一网络下的本地 AI 服务(如 Ollama)以进行翻译时需要访问本地网络</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<!-- 仅放行局域网 HTTP(Ollama 等本地 AI 网关);公网一律 HTTPS;不开启 NSAllowsArbitraryLoads -->
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
+	<!-- 纯本地阅读器:不发起任何网络请求,因此不声明任何 ATS 例外。
+	     若将来确有联网需求,应先评估是否违背本分支的离线定位。 -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

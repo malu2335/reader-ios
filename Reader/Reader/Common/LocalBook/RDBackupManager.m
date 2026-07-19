@@ -12,7 +12,6 @@
 #import "RDLibraryTransaction.h"
 #import "RDLibraryMutationCoordinator.h"
 #import "RDReadConfigManager.h"
-#import "RDAIConfig.h"
 #import "RDBookmarkManager.h"
 #import "RDBookmarkModel.h"
 #import "RDReplaceRule.h"
@@ -50,50 +49,6 @@ static NSString * const kBackupFontsDir = @"fonts";
 
 @implementation RDBackupManager
 
-+ (NSString *)aiConfigEntryName
-{
-    return RDAIConfigBackupEntryName;
-}
-
-+ (NSData *)aiConfigBackupData
-{
-    return [[RDAIConfigStore sharedInstance] exportBackupData];
-}
-
-+ (BOOL)restoreAIConfigFromData:(NSData *)data error:(NSError **)error
-{
-    if (data.length == 0) {
-        return YES; // 旧备份无 AI 配置,视为成功跳过
-    }
-    return [[RDAIConfigStore sharedInstance] importBackupData:data error:error];
-}
-
-+ (BOOL)writeAIConfigToZipWriter:(id)writer
-{
-    if (![writer isKindOfClass:RDZipWriter.class]) {
-        return NO;
-    }
-    RDZipWriter *zipWriter = (RDZipWriter *)writer;
-    NSData *aiData = [self aiConfigBackupData];
-    if (aiData.length == 0) {
-        // 保证条目存在,便于恢复路径稳定
-        aiData = [@"{\"version\":1,\"activeProfileId\":\"\",\"profiles\":[]}" dataUsingEncoding:NSUTF8StringEncoding];
-    }
-    return [zipWriter addEntryWithName:[self aiConfigEntryName] data:aiData];
-}
-
-+ (void)restoreAIConfigFromZip:(id)zip
-{
-    if (![zip isKindOfClass:RDZipArchive.class]) {
-        return;
-    }
-    RDZipArchive *archive = (RDZipArchive *)zip;
-    NSData *aiData = [archive dataForEntry:[self aiConfigEntryName]];
-    if (aiData.length > 0) {
-        [[RDAIConfigStore sharedInstance] importBackupData:aiData error:nil];
-    }
-}
-
 #pragma mark - 备份
 
 + (void)createBackupWithComplete:(void(^)(NSString * _Nullable, NSString * _Nullable))complete
@@ -126,10 +81,8 @@ static NSString * const kBackupFontsDir = @"fonts";
         if (missingSourceCount > 0) {
             [warnings addObject:[NSString stringWithFormat:@"%ld 本书源文件缺失,已跳过", (long)missingSourceCount]];
         }
-        BOOL hasAI = [RDAIConfigStore sharedInstance].profiles.count > 0;
-        // 允许仅备份 AI/阅读配置(无本地书时)
-        if (localBooks.count == 0 && !hasAI) {
-            finish(nil, missingSourceCount > 0 ? @"书架上的本地书均缺失源文件,也没有 AI 配置可备份" : @"书架上还没有本地书籍,也没有 AI 配置可备份");
+        if (localBooks.count == 0) {
+            finish(nil, missingSourceCount > 0 ? @"书架上的本地书均缺失源文件,无可备份内容" : @"书架上还没有本地书籍");
             return;
         }
 
@@ -193,12 +146,6 @@ static NSString * const kBackupFontsDir = @"fonts";
         NSData *configData = [NSJSONSerialization dataWithJSONObject:configDict options:NSJSONWritingPrettyPrinted error:nil];
         if (![writer addEntryWithName:kBackupConfigEntry data:configData]) {
             [warnings addObject:@"阅读配置写入失败"];
-        }
-
-        //ai_config.json(AI 翻译配置,legado 兼容扩展)
-        if (![self writeAIConfigToZipWriter:writer]) {
-            finish(nil, @"写入 AI 配置失败");
-            return;
         }
 
         //bookmarks.json(本地书全部书签)
@@ -364,9 +311,8 @@ static NSString * const kBackupFontsDir = @"fonts";
         if (![shelf isKindOfClass:NSArray.class]) {
             shelf = @[];
         }
-        NSData *aiProbe = [zip dataForEntry:[self aiConfigEntryName]];
-        if (shelf.count == 0 && aiProbe.length == 0) {
-            finish(0, @"备份中没有书架或 AI 配置数据");
+        if (shelf.count == 0) {
+            finish(0, @"备份中没有书架数据");
             return;
         }
 
@@ -584,14 +530,7 @@ static NSString * const kBackupFontsDir = @"fonts";
             });
         }
 
-        //还原 AI 配置(不含密钥明文;密钥若本机 Keychain 已有同 profileId 会保留)
-        [self restoreAIConfigFromZip:zip];
 
-        if (restored == 0 && failed == 0 && aiProbe.length > 0) {
-            // 仅 AI/配置备份
-            finish(0, nil);
-            return;
-        }
         if (restored == 0) {
             finish(0, lastError ?: @"没有可恢复的书籍");
         }

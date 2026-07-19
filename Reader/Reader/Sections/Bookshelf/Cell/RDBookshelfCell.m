@@ -55,8 +55,6 @@
     if (cover) {
         [self.cover sd_cancelCurrentImageLoad];
         self.cover.image = cover;
-    } else if (!book.isLocalBook && book.coverImg.length) {
-        [self.cover sd_setImageWithURL:[NSURL URLWithString:[RDUtilities buildPicUrlWithPath:book.coverImg]] placeholderImage:[UIImage imageNamed:@"app_placeholder"]];
     } else {
         [self.cover sd_cancelCurrentImageLoad];
         self.cover.image = [UIImage imageNamed:@"app_placeholder"];

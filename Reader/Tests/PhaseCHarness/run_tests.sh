@@ -24,7 +24,6 @@ helper   = (src/"Common/Read/RDReadHelper.m").read_text()
 catcell  = (src/"Sections/Bookshelf/Read/View/Catalog/RDReadCatalogCell.m").read_text()
 catview  = (src/"Sections/Bookshelf/Read/View/Catalog/RDReadCatalogView.m").read_text()
 localbk  = (src/"Common/LocalBook/RDLocalBookManager.m").read_text()
-aiclient = (src/"Common/AI/RDAIClient.m").read_text()
 readpage = (src/"Sections/Bookshelf/Read/RDReadPageViewController.m").read_text()
 record_h = (src/"Database/RDReadRecordManager.h").read_text()
 record_m = (src/"Database/RDReadRecordManager.mm").read_text()
@@ -61,16 +60,6 @@ check("目录列表一次查出有正文的章节 id",
 check("PDF 封面已就位时只 stat 不解码",
       "fileExistsAtPath:coverPath" in localbk
       and "imageWithContentsOfFile:coverPath" not in localbk)
-
-# --- P2-07 翻译取消 ---
-check("AI 客户端跟踪后台请求 token 与代次",
-      "backgroundTokens" in aiclient and "backgroundGeneration" in aiclient)
-
-check("cancelBackgroundTranslations 取消 token 并递增代次",
-      re.search(r"cancelBackgroundTranslations.*?backgroundGeneration \+= 1.*?cancelToken:", aiclient, re.S) is not None)
-
-check("停止后台翻译时真正取消在途请求",
-      "cancelBackgroundTranslations" in readpage)
 
 # --- P2-17 / P2-18 ---
 check("removeLocalBook 提供 completion",

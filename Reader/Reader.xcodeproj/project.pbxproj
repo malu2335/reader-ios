@@ -63,7 +63,6 @@
 		2992BB6B23B213AC00C599B1 /* RDLoadIngView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB6A23B213AC00C599B1 /* RDLoadIngView.m */; };
 		2992BB6F23B21B8800C599B1 /* RDDateUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB6E23B21B8800C599B1 /* RDDateUtil.m */; };
 		2992BB7923B2375500C599B1 /* RDUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB7823B2375500C599B1 /* RDUtilities.m */; };
-		2998A7FA2428DE1B00C4E07B /* RDWebView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7F92428DE1B00C4E07B /* RDWebView.m */; };
 		2998A7FD2428E0A200C4E07B /* RDWebTopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7FC2428E0A200C4E07B /* RDWebTopView.m */; };
 		2998A8002428E86500C4E07B /* RDButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7FF2428E86500C4E07B /* RDButton.m */; };
 		2998A816242A23A100C4E07B /* RDUpdateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A815242A23A100C4E07B /* RDUpdateModel.m */; };
@@ -89,7 +88,6 @@
 		29EFAF4C236472800020E5AE /* RDModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29EFAF4B236472800020E5AE /* RDModel.m */; };
 		29EFAF4F236473350020E5AE /* RDModelAgent.m in Sources */ = {isa = PBXBuildFile; fileRef = 29EFAF4E236473350020E5AE /* RDModelAgent.m */; };
 		29EFAF52236473B00020E5AE /* NSFileManager+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 29EFAF51236473B00020E5AE /* NSFileManager+rd_wid.m */; };
-		29F5598524067B1800742C19 /* RDCommBookCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 29F5598424067B1800742C19 /* RDCommBookCell.m */; };
 		29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */; };
 		3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */ = {isa = PBXBuildFile; fileRef = A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */; };
 		37BA1734531113410E2840C9 /* RDSpeechManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 97D50F2E3B94F19031CB429E /* RDSpeechManager.m */; };
@@ -105,11 +103,6 @@
 		89DAAE454E47A99DC478634F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DEEF549D0C695DA2CC132B /* Foundation.framework */; };
 		970317B3739570C8BC5AA0EC /* RDImportTransactionTests.m in Sources */ = {isa = PBXBuildFile; fileRef = AEE92217242620230ACBF554 /* RDImportTransactionTests.m */; };
 		97AA8D9C32840D73C6438A34 /* libPods-ReaderUITests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B6FA47667B44B3E371830F4C /* libPods-ReaderUITests.a */; };
-		A11B001AI01BUILDFILE001 /* RDAIConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI01FILEREF0001 /* RDAIConfig.m */; };
-		A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI02FILEREF0001 /* RDAIClient.m */; };
-		A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI03FILEREF0001 /* RDAIConfigController.m */; };
-		A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */; };
-		A11B001AI05BUILDFILE001 /* RDReadTranslateHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */; };
 		A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BK01FILEREF0001 /* RDBackupManager.m */; };
 		A11B001BM01BUILDFILE001 /* RDBookmarkModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */; };
 		A11B001BM02BUILDFILE001 /* RDBookmarkManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = A11B001BM02FILEREF0001 /* RDBookmarkManager.mm */; };
@@ -143,7 +136,6 @@
 		D00D25E54EBD464DD7AD355A /* RDHarnessSelfTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */; };
 		E1C8FD090799D51DC7A68BB4 /* RDPdfReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 230E80FE544127BFB49E5639 /* RDPdfReadController.m */; };
 		E9B9C11CA7CF66AD6807659E /* RDEpubBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */; };
-		EFF2ECAA7E8A13DC516800F6 /* RDAITranslationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 7100E98026C9A4790A486C30 /* RDAITranslationTests.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -282,8 +274,6 @@
 		2992BB7723B2375500C599B1 /* RDUtilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDUtilities.h; sourceTree = "<group>"; };
 		2992BB7823B2375500C599B1 /* RDUtilities.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDUtilities.m; sourceTree = "<group>"; };
 		2998A7F42428DCD600C4E07B /* RDUrl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDUrl.h; sourceTree = "<group>"; };
-		2998A7F82428DE1B00C4E07B /* RDWebView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebView.h; sourceTree = "<group>"; };
-		2998A7F92428DE1B00C4E07B /* RDWebView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDWebView.m; sourceTree = "<group>"; };
 		2998A7FB2428E0A200C4E07B /* RDWebTopView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDWebTopView.h; sourceTree = "<group>"; };
 		2998A7FC2428E0A200C4E07B /* RDWebTopView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDWebTopView.m; sourceTree = "<group>"; };
 		2998A7FE2428E86500C4E07B /* RDButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDButton.h; sourceTree = "<group>"; };
@@ -336,8 +326,6 @@
 		29EFAF4E236473350020E5AE /* RDModelAgent.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDModelAgent.m; sourceTree = "<group>"; };
 		29EFAF50236473B00020E5AE /* NSFileManager+rd_wid.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSFileManager+rd_wid.h"; sourceTree = "<group>"; };
 		29EFAF51236473B00020E5AE /* NSFileManager+rd_wid.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSFileManager+rd_wid.m"; sourceTree = "<group>"; };
-		29F5598324067B1800742C19 /* RDCommBookCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDCommBookCell.h; sourceTree = "<group>"; };
-		29F5598424067B1800742C19 /* RDCommBookCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDCommBookCell.m; sourceTree = "<group>"; };
 		29F97D3A240CEB8000909240 /* RDHistoryRecordManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDHistoryRecordManager.h; sourceTree = "<group>"; };
 		29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDHistoryRecordManager.mm; sourceTree = "<group>"; };
 		39DEEF549D0C695DA2CC132B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -350,7 +338,6 @@
 		68F31C352B682E98E9009858 /* RDMobiBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDMobiBookParser.m; sourceTree = "<group>"; };
 		6B782DBADEC21A5296387B29 /* libPods-Reader.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Reader.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDZipArchive.m; sourceTree = "<group>"; };
-		7100E98026C9A4790A486C30 /* RDAITranslationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDAITranslationTests.m; sourceTree = "<group>"; };
 		72B7C19412438F906491C5EF /* Pods-ReaderUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderUITests.release.xcconfig"; path = "Target Support Files/Pods-ReaderUITests/Pods-ReaderUITests.release.xcconfig"; sourceTree = "<group>"; };
 		80B38F6FEC775BF8318B0A5E /* RDTxtBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDTxtBookParser.m; sourceTree = "<group>"; };
 		825F434656301730FD128D18 /* RDEpubBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDEpubBookParser.h; sourceTree = "<group>"; };
@@ -362,16 +349,6 @@
 		9CD2611127F6422656D18DB0 /* RDBookshelfUITests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfUITests.m; sourceTree = "<group>"; };
 		9EB2CFA1BB18478F8226647E /* RDComicHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicHelper.m; sourceTree = "<group>"; };
 		9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDHarnessSelfTests.m; sourceTree = "<group>"; };
-		A11B001AI01FILEREF0001 /* RDAIConfig.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfig.m; sourceTree = "<group>"; };
-		A11B001AI01FILEREF0002 /* RDAIConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfig.h; sourceTree = "<group>"; };
-		A11B001AI02FILEREF0001 /* RDAIClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIClient.m; sourceTree = "<group>"; };
-		A11B001AI02FILEREF0002 /* RDAIClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIClient.h; sourceTree = "<group>"; };
-		A11B001AI03FILEREF0001 /* RDAIConfigController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIConfigController.m; sourceTree = "<group>"; };
-		A11B001AI03FILEREF0002 /* RDAIConfigController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIConfigController.h; sourceTree = "<group>"; };
-		A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAIProfileEditController.m; sourceTree = "<group>"; };
-		A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAIProfileEditController.h; sourceTree = "<group>"; };
-		A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadTranslateHelper.m; sourceTree = "<group>"; };
-		A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadTranslateHelper.h; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0001 /* RDBackupManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBackupManager.m; sourceTree = "<group>"; };
 		A11B001BK01FILEREF0002 /* RDBackupManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBackupManager.h; sourceTree = "<group>"; };
 		A11B001BM01FILEREF0001 /* RDBookmarkModel.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookmarkModel.mm; sourceTree = "<group>"; };
@@ -790,10 +767,6 @@
 				29CE2B9223FD2715001B0D03 /* RDLimitInput.m */,
 				29CE2BB323FFBA4D001B0D03 /* RDUpdateControl.h */,
 				29CE2BB423FFBA4D001B0D03 /* RDUpdateControl.m */,
-				29F5598324067B1800742C19 /* RDCommBookCell.h */,
-				29F5598424067B1800742C19 /* RDCommBookCell.m */,
-				2998A7F82428DE1B00C4E07B /* RDWebView.h */,
-				2998A7F92428DE1B00C4E07B /* RDWebView.m */,
 				2998A7FB2428E0A200C4E07B /* RDWebTopView.h */,
 				2998A7FC2428E0A200C4E07B /* RDWebTopView.m */,
 			);
@@ -1241,7 +1214,6 @@
 		69140959903076DC053EB9A6 /* ReaderTests */ = {
 			isa = PBXGroup;
 			children = (
-				7100E98026C9A4790A486C30 /* RDAITranslationTests.m */,
 				AEE92217242620230ACBF554 /* RDImportTransactionTests.m */,
 				AF453A1D48A635B907582D26 /* RDResourceBudgetTests.m */,
 				3F7D405CCC40B5C2433F455F /* RDRestoreTests.m */,
@@ -1279,12 +1251,6 @@
 		A11B001AIGROUP000000001 /* AI */ = {
 			isa = PBXGroup;
 			children = (
-				A11B001AI01FILEREF0002 /* RDAIConfig.h */,
-				A11B001AI01FILEREF0001 /* RDAIConfig.m */,
-				A11B001AI02FILEREF0002 /* RDAIClient.h */,
-				A11B001AI02FILEREF0001 /* RDAIClient.m */,
-				A11B001AI05FILEREF0002 /* RDReadTranslateHelper.h */,
-				A11B001AI05FILEREF0001 /* RDReadTranslateHelper.m */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -1333,10 +1299,6 @@
 			children = (
 				4C5E8A70982106BEB8323759 /* RDSettingController.h */,
 				A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */,
-				A11B001AI03FILEREF0002 /* RDAIConfigController.h */,
-				A11B001AI03FILEREF0001 /* RDAIConfigController.m */,
-				A11B001AI04FILEREF0002 /* RDAIProfileEditController.h */,
-				A11B001AI04FILEREF0001 /* RDAIProfileEditController.m */,
 				A11B001RP03FILEREF0002 /* RDReplaceRulesController.h */,
 				A11B001RP03FILEREF0001 /* RDReplaceRulesController.m */,
 				A11B001TV02FILEREF0002 /* RDVoicePickerController.h */,
@@ -1545,11 +1507,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A11B001AI01BUILDFILE001 /* RDAIConfig.m in Sources */,
-				A11B001AI05BUILDFILE001 /* RDReadTranslateHelper.m in Sources */,
-				A11B001AI02BUILDFILE001 /* RDAIClient.m in Sources */,
-				A11B001AI03BUILDFILE001 /* RDAIConfigController.m in Sources */,
-				A11B001AI04BUILDFILE001 /* RDAIProfileEditController.m in Sources */,
 				A11B001BK01BUILDFILE001 /* RDBackupManager.m in Sources */,
 				A11B002MC01BUILDFILE01 /* RDLibraryMutationCoordinator.m in Sources */,
 				A11B001RP01BUILDFILE001 /* RDReplaceRule.m in Sources */,
@@ -1594,7 +1551,6 @@
 				29CE2B9323FD2715001B0D03 /* RDLimitInput.m in Sources */,
 				29BA849D2361D584000FE927 /* UIImage+rd_wid.m in Sources */,
 				29406FEE23B0E6B200E4495F /* RDGlobalModel.m in Sources */,
-				29F5598524067B1800742C19 /* RDCommBookCell.m in Sources */,
 				29BBC3B923840B300023825B /* RDReadToolTheme.m in Sources */,
 				29696CF42386D62F00212879 /* RDBookDetailModel.mm in Sources */,
 				2998A8002428E86500C4E07B /* RDButton.m in Sources */,
@@ -1618,7 +1574,6 @@
 				A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */,
 				29BA84972361D263000FE927 /* RDBookshelfNoneCell.m in Sources */,
 				29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */,
-				2998A7FA2428DE1B00C4E07B /* RDWebView.m in Sources */,
 				29406FF123B0E88A00E4495F /* RDHttpModel.m in Sources */,
 				29696CE42386B7EF00212879 /* RDReadModel.m in Sources */,
 				29B00C02237C451200E1B892 /* RDReadTopBar.m in Sources */,
@@ -1668,7 +1623,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EFF2ECAA7E8A13DC516800F6 /* RDAITranslationTests.m in Sources */,
 				970317B3739570C8BC5AA0EC /* RDImportTransactionTests.m in Sources */,
 				4455CC9DE4DA9035CF071FF4 /* RDResourceBudgetTests.m in Sources */,
 				A41184801E27A43C9EDFD029 /* RDRestoreTests.m in Sources */,

@@ -14,8 +14,6 @@
 #import "LEEAlert.h"
 #import "RDFontManager.h"
 #import "RDBackupManager.h"
-#import "RDAIConfigController.h"
-#import "RDAIConfig.h"
 #import "RDReplaceRulesController.h"
 #import "RDVoicePickerController.h"
 #import "RDLegalDocumentController.h"
@@ -29,7 +27,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowImportFont,
     RDSettingRowStorage,
     RDSettingRowClear,
-    RDSettingRowAIConfig,
     RDSettingRowPurify,
     RDSettingRowTTSVoice,
     RDSettingRowBackup,
@@ -43,7 +40,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) NSArray <NSArray <NSNumber *>*>*sections;
 @property (nonatomic,copy) NSString *storageText;
-@property (nonatomic,copy) NSString *aiDetailText;
 @property (nonatomic,copy) NSString *voiceDetailText;
 @property (nonatomic,assign) BOOL storageRefreshing;
 @property (nonatomic,assign) BOOL storageRefreshPending;
@@ -57,11 +53,10 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     [super viewDidLoad];
     // 书籍 / 阅读增强 / 备份 / 关于（隐私声明 · 开源声明 · 版本）
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
-                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowTTSVoice)],
+                      @[@(RDSettingRowPurify), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowPrivacy), @(RDSettingRowOpenSource), @(RDSettingRowVersion)]];
     self.storageText = @"…";
-    self.aiDetailText = @"OpenAI · Anthropic · Gemini";
     self.voiceDetailText = @"自动(中文)";
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
@@ -117,8 +112,8 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)p_refreshDetailsAsync
 {
     self.detailsLoadedOnce = YES;
-    // AI / 语音 / 存储统计全部后台,主线程只更新文案。
-    // 扫描期间再次请求不能直接丢弃(清空/恢复/改 AI 配置都会触发),
+    // 语音 / 存储统计全部后台,主线程只更新文案。
+    // 扫描期间再次请求不能直接丢弃(清空/恢复都会触发),
     // 记 pending,本轮结束后补跑一次,否则页面一直停在旧数字(P2-04)。
     if (self.storageRefreshing) {
         self.storageRefreshPending = YES;
@@ -127,17 +122,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     self.storageRefreshing = YES;
     self.storageRefreshPending = NO;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        // 首次访问会读盘/Keychain,放后台
-        RDAIConfigProfile *active = [[RDAIConfigStore sharedInstance] activeProfile];
-        NSString *aiText = nil;
-        if (active.isUsable) {
-            NSString *label = active.name.length > 0 ? active.name : active.type;
-            aiText = [NSString stringWithFormat:@"%@ · %@", label, active.model ?: @""];
-        } else if (active) {
-            aiText = @"未完成配置";
-        } else {
-            aiText = @"OpenAI · Anthropic · Gemini";
-        }
         NSString *voiceText = [[RDVoiceManager sharedInstance] preferredDisplayName];
 
         NSInteger count = [RDReadRecordManager countOnBookshelf];
@@ -166,10 +150,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         dispatch_async(dispatch_get_main_queue(), ^{
             self.storageRefreshing = NO;
             BOOL changed = NO;
-            if (![self.aiDetailText isEqualToString:aiText]) {
-                self.aiDetailText = aiText;
-                changed = YES;
-            }
             if (![self.voiceDetailText isEqualToString:voiceText]) {
                 self.voiceDetailText = voiceText;
                 changed = YES;
@@ -228,7 +208,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         return;
     }
     NSMutableArray *paths = [NSMutableArray array];
-    for (NSNumber *n in @[@(RDSettingRowAIConfig), @(RDSettingRowTTSVoice)]) {
+    for (NSNumber *n in @[@(RDSettingRowTTSVoice)]) {
         NSIndexPath *ip = [self p_indexPathForRow:n.integerValue];
         if (ip) {
             [paths addObject:ip];
@@ -301,12 +281,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.textLabel.text = @"清空书架";
             cell.textLabel.textColor = [UIColor systemRedColor];
             break;
-        case RDSettingRowAIConfig: {
-            cell.textLabel.text = @"AI 配置";
-            cell.detailTextLabel.text = self.aiDetailText;
-            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-            break;
-        }
         case RDSettingRowPurify:
             cell.textLabel.text = @"正文净化";
             cell.detailTextLabel.text = @"替换规则 · legado";
@@ -319,7 +293,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             break;
         case RDSettingRowBackup:
             cell.textLabel.text = @"备份到文件";
-            cell.detailTextLabel.text = @"书籍 · 进度 · 书签 · 字体 · 规则 · AI";
+            cell.detailTextLabel.text = @"书籍 · 进度 · 书签 · 字体 · 规则";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         case RDSettingRowRestore:
@@ -362,13 +336,6 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     }
     else if (row == RDSettingRowClear) {
         [self p_confirmClear];
-    }
-    else if (row == RDSettingRowAIConfig) {
-        // 延后一帧再 push,让 deselect 动画先跑完,避免点选卡顿感
-        dispatch_async(dispatch_get_main_queue(), ^{
-            RDAIConfigController *ai = [[RDAIConfigController alloc] init];
-            [self.navigationController pushViewController:ai animated:YES];
-        });
     }
     else if (row == RDSettingRowPurify) {
         dispatch_async(dispatch_get_main_queue(), ^{
