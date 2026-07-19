@@ -10,6 +10,7 @@
 #import "RDReadCatalogView.h"
 #import "RDUtilities.h"
 #import "RDReadCatalogHeader.h"
+#import "RDCharpterDataManager.h"
 #import "RDReadCatalogCell.h"
 #import "RDReadCatalogView.h"
 #import "RDBookDetailModel.h"
@@ -19,6 +20,7 @@
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) RDReadCatalogHeader *header;
 @property (nonatomic,strong) UIView *contentView;
+@property (nonatomic,strong) NSSet <NSNumber *>*contentChapterIds;
 @end
 
 @implementation RDReadCatalogView
@@ -53,6 +55,11 @@
 -(void)setCharpters:(NSArray<RDCharpterModel *> *)charpters
 {
     _charpters = charpters.copy;
+    // 一次查出有正文的章节 id,cell 不再各自读整章(P2-03)
+    NSInteger bookId = charpters.firstObject.bookId;
+    self.contentChapterIds = bookId != 0
+        ? [RDCharpterDataManager charpterIdsWithContentForBookId:bookId]
+        : [NSSet set];
     [self.tableView reloadData];
 }
 -(void)setBook:(RDBookDetailModel *)book
@@ -100,7 +107,9 @@
         cell = [[RDReadCatalogCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"RDReadCatalogCell"];
         cell.delegate = self;
     }
-    cell.model = self.charpters[indexPath.row];
+    RDCharpterModel *charpter = self.charpters[indexPath.row];
+    cell.hasContent = [self.contentChapterIds containsObject:@(charpter.charpterId)];
+    cell.model = charpter;
     return cell;
 }
 

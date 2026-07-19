@@ -19,6 +19,22 @@
     return result;
 }
 
++(NSSet<NSNumber *> *)charpterIdsWithContentForBookId:(NSInteger)bookid
+{
+    NSMutableSet <NSNumber *>*ids = [NSMutableSet set];
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        NSArray *rows = [db getObjectsOnResults:{RDCharpterModel.charpterId}
+                                      fromTable:kCharpterTable
+                                          where:RDCharpterModel.bookId.is(bookid)
+                                                && !RDCharpterModel.content.isNull()
+                                                && RDCharpterModel.content.length() > 0];
+        for (RDCharpterModel *row in rows) {
+            [ids addObject:@(row.charpterId)];
+        }
+    }];
+    return ids;
+}
+
 +(BOOL)isExsitWithBookId:(NSInteger)bookid
 {
     __block BOOL exist = NO;

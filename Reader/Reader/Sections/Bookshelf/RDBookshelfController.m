@@ -71,6 +71,11 @@
 
 -(void)importAction
 {
+    // 只有已上屏且没在展示别的模态时才 present;否则 UIKit 会丢弃这次 presentation。
+    // 入口有三个(顶栏、空书架按钮、设置页通知),这里统一兜底(P2-01)。
+    if (!self.view.window || self.presentedViewController) {
+        return;
+    }
     NSMutableArray <UTType *>*types = [NSMutableArray array];
     [types addObject:UTTypePlainText];
     [types addObject:UTTypePDF];

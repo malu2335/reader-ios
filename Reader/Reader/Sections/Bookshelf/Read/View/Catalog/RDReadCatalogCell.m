@@ -7,7 +7,6 @@
 //
 
 #import "RDReadCatalogCell.h"
-#import "RDCharpterDataManager.h"
 @interface RDReadCatalogCell ()
 @property (nonatomic,strong) UILabel *chapterLabel;
 @property (nonatomic,strong) UIView *separate;
@@ -30,9 +29,8 @@
 {
     _model = model;
     self.chapterLabel.text = model.name;
-    RDCharpterModel *charpterModel = [RDCharpterDataManager getCharpterWithBookId:model.bookId charpterId:model.charpterId];
-    (charpterModel.content.length == 0) ? (_chapterLabel.textColor = RDLightGrayColor) : (_chapterLabel.textColor = RDBlackColor);
-    
+    // 已下载状态由列表一次性算好(hasContent),不再逐 cell 读整章正文
+    _chapterLabel.textColor = self.hasContent ? RDBlackColor : RDLightGrayColor;
 }
 
 -(UILabel *)chapterLabel
