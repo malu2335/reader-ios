@@ -89,6 +89,8 @@ export/
 
 # 本地文档与 agent 说明（不推远端）
 docs/
+# 审查报告本地留存,不入库(与 docs/ 同规)
+code-review/
 CLAUDE.md
 Claude.md
 
