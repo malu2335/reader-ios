@@ -12,7 +12,7 @@
 #import "RDReadRecordManager.h"
 #import "RDReadPageViewController.h"
 #import "RDCharpterManager.h"
-#import "LEEAlert.h"
+#import "RDPaperAlert.h"
 #import "RDCharpterDataManager.h"
 #import "RDLocalBookManager.h"
 #import "RDCharpterModel.h"
@@ -234,76 +234,29 @@
     }
 
     __weak typeof(self) weakSelf = self;
-    LEEBaseConfigModel *config = [LEEAlert actionsheet].config
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDefault;
-        action.title = @"分享书籍";
-        action.titleColor = RDBlackColor;
-        action.font = RDBoldFont17;
-        action.clickBlock = ^{
-            [weakSelf p_shareBook:book];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDefault;
-        action.title = @"修改书名";
-        action.titleColor = RDBlackColor;
-        action.font = RDBoldFont17;
-        action.clickBlock = ^{
-            [weakSelf p_renameBook:book];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDefault;
-        action.title = @"更换封面";
-        action.titleColor = RDBlackColor;
-        action.font = RDBoldFont17;
-        action.clickBlock = ^{
-            if (weakSelf.changeCover) {
-                weakSelf.changeCover(book);
-            }
-        };
-    });
-
+    NSMutableArray *actions = [NSMutableArray array];
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"分享书籍" style:RDPaperAlertActionStyleDefault handler:^{
+        [weakSelf p_shareBook:book];
+    }]];
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"修改书名" style:RDPaperAlertActionStyleDefault handler:^{
+        [weakSelf p_renameBook:book];
+    }]];
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"更换封面" style:RDPaperAlertActionStyleDefault handler:^{
+        if (weakSelf.changeCover) {
+            weakSelf.changeCover(book);
+        }
+    }]];
     if ([RDLocalBookManager customCoverForBook:book]) {
-        config.LeeAddAction(^(LEEAction *action) {
-            action.type = LEEActionTypeDefault;
-            action.title = @"恢复默认封面";
-            action.titleColor = RDBlackColor;
-            action.font = RDBoldFont17;
-            action.clickBlock = ^{
-                if (weakSelf.resetCover) {
-                    weakSelf.resetCover(book);
-                }
-            };
-        });
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"恢复默认封面" style:RDPaperAlertActionStyleDefault handler:^{
+            if (weakSelf.resetCover) {
+                weakSelf.resetCover(book);
+            }
+        }]];
     }
-
-    config.LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDestructive;
-        action.title = @"删除";
-        action.titleColor = [UIColor systemRedColor];
-        action.font = RDBoldFont17;
-        action.clickBlock = ^{
-            [weakSelf p_confirmDelete:book];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeCancel;
-        action.title = @"取消";
-        action.titleColor = RDBlackColor;
-        action.font = RDBoldFont17;
-    })
-    .LeeActionSheetCancelActionSpaceColor(RDBackgroudColor)
-    .LeeActionSheetBottomMargin(0.0f)
-    .LeeCornerRadii(CornerRadiiMake(12, 12, 0, 0))
-    .LeeActionSheetHeaderCornerRadii(CornerRadiiZero())
-    .LeeActionSheetCancelActionCornerRadii(CornerRadiiZero())
-    .LeeConfigMaxWidth(^CGFloat(LEEScreenOrientationType type) {
-        return ScreenWidth;
-    })
-    .LeeActionSheetBackgroundColor(RDSurfaceColor)
-    .LeeShow();
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"删除" style:RDPaperAlertActionStyleDestructive handler:^{
+        [weakSelf p_confirmDelete:book];
+    }]];
+    [RDPaperAlert showActionSheetWithTitle:nil message:nil actions:actions];
 }
 
 - (void)p_shareBook:(RDBookDetailModel *)book
@@ -325,24 +278,19 @@
 
 - (void)p_renameBook:(RDBookDetailModel *)book
 {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"修改书名"
-                                                                   message:book.author.length ? [NSString stringWithFormat:@"作者：%@", book.author] : nil
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
-        tf.text = book.title;
-        tf.clearButtonMode = UITextFieldViewModeWhileEditing;
-        tf.placeholder = @"书名";
-    }];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
-        tf.text = book.author;
-        tf.clearButtonMode = UITextFieldViewModeWhileEditing;
-        tf.placeholder = @"作者(可选)";
-    }];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        NSString *title = [alert.textFields[0].text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        NSString *author = [alert.textFields[1].text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *msg = book.author.length ? [NSString stringWithFormat:@"作者：%@", book.author] : nil;
+    [RDPaperAlert showTextFieldsWithTitle:@"修改书名"
+                                  message:msg
+                               fieldSpecs:@[
+        @{@"placeholder": @"书名", @"text": book.title ?: @""},
+        @{@"placeholder": @"作者(可选)", @"text": book.author ?: @""},
+    ]
+                              cancelTitle:@"取消"
+                             confirmTitle:@"保存"
+                                  confirm:^(NSArray<NSString *> *values) {
+        NSString *title = [values[0] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        NSString *author = [values[1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
         if (title.length == 0) {
             return;
         }
@@ -355,47 +303,36 @@
         if (weakSelf.needReload) {
             weakSelf.needReload();
         }
-    }]];
-    [[RDUtilities getCurrentVC] presentViewController:alert animated:YES completion:nil];
+    }];
 }
 
 - (void)p_confirmDelete:(RDBookDetailModel *)book
 {
     __weak typeof(self) weakSelf = self;
-    [LEEAlert alert].config
-    .LeeTitle(@"删除书籍")
-    .LeeContent([NSString stringWithFormat:@"确定删除《%@》？本地文件与章节缓存将一并清除。", book.title ?: @""])
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeCancel;
-        action.title = @"取消";
-        action.titleColor = RDGrayColor;
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDestructive;
-        action.title = @"删除";
-        action.titleColor = [UIColor systemRedColor];
-        action.clickBlock = ^{
-            // 文件/PDF 回填可能正在串行队列中，删除放后台避免阻塞主线程。
-            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-                if (book.isLocalBook) {
-                    [RDLocalBookManager removeLocalBook:book];
-                } else {
-                    // 先删记录，迟到的封面保存会校验失败；再串行清理磁盘文件。
-                    [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
-                    [RDLocalBookManager removeCustomCoverForBook:book];
-                    [RDBookmarkManager deleteAllForBookId:book.bookId];
-                    [RDHistoryRecordManager deleteHistoryWithBookId:book.bookId];
-                    [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
+    [RDPaperAlert showConfirmWithTitle:@"删除书籍"
+                               message:[NSString stringWithFormat:@"确定删除《%@》？本地文件与章节缓存将一并清除。", book.title ?: @""]
+                           cancelTitle:@"取消"
+                          confirmTitle:@"删除"
+                           destructive:YES
+                               confirm:^{
+        // 文件/PDF 回填可能正在串行队列中，删除放后台避免阻塞主线程。
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            if (book.isLocalBook) {
+                [RDLocalBookManager removeLocalBook:book];
+            } else {
+                [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
+                [RDLocalBookManager removeCustomCoverForBook:book];
+                [RDBookmarkManager deleteAllForBookId:book.bookId];
+                [RDHistoryRecordManager deleteHistoryWithBookId:book.bookId];
+                [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (weakSelf.needReload) {
+                    weakSelf.needReload();
                 }
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    if (weakSelf.needReload) {
-                        weakSelf.needReload();
-                    }
-                });
             });
-        };
-    })
-    .LeeShow();
+        });
+    }];
 }
 
 -(void)setBooks:(NSArray<RDBookDetailModel *> *)books

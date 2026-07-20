@@ -22,6 +22,7 @@
 		127B2F8BF9A7AFE6C2911C05 /* NSArray+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 127B2256207AC30125E6FEFB /* NSArray+rd_wid.m */; };
 		2488D2DC7100BFBE889B6E70 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DEEF549D0C695DA2CC132B /* Foundation.framework */; };
 		2818FE29C73406DBFD255D66 /* RDLocalBookParseResult.m in Sources */ = {isa = PBXBuildFile; fileRef = 986F12BB1575D85B1F7C9BD1 /* RDLocalBookParseResult.m */; };
+		286255AB57ECFC4A7BDC827D /* RDHttpTTS.m in Sources */ = {isa = PBXBuildFile; fileRef = 27407EB7EFC2100F010BE453 /* RDHttpTTS.m */; };
 		292242ED23AC7ED700FE93C3 /* RDBatteryView.m in Sources */ = {isa = PBXBuildFile; fileRef = 292242EB23AC7ED700FE93C3 /* RDBatteryView.m */; };
 		29313C3B236C298A00408AF8 /* RDShareModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29313C3A236C298A00408AF8 /* RDShareModel.m */; };
 		29406FE123B0DAE100E4495F /* RDConfigModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FE023B0DAE100E4495F /* RDConfigModel.m */; };
@@ -91,6 +92,7 @@
 		29EFAF52236473B00020E5AE /* NSFileManager+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 29EFAF51236473B00020E5AE /* NSFileManager+rd_wid.m */; };
 		29F5598524067B1800742C19 /* RDCommBookCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 29F5598424067B1800742C19 /* RDCommBookCell.m */; };
 		29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */; };
+		2DAC736E7FC4D3A02C9EF67C /* RDPaperAlert.m in Sources */ = {isa = PBXBuildFile; fileRef = F38F3AC3F4E4FAC9953AF893 /* RDPaperAlert.m */; };
 		3766293F2AA94CD06A5D468A /* RDSettingController.m in Sources */ = {isa = PBXBuildFile; fileRef = A630CCEDD150C6A7DEA65EA9 /* RDSettingController.m */; };
 		37BA1734531113410E2840C9 /* RDSpeechManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 97D50F2E3B94F19031CB429E /* RDSpeechManager.m */; };
 		381DD70A5C08CBB0F2413B0A /* RDTestSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = CC3C97052F262A26AF3E437A /* RDTestSupport.m */; };
@@ -138,6 +140,7 @@
 		AE17267905DEF149F9EB22C4 /* RDBookTextUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */; };
 		B437CA3D7535733BABFE48EB /* libPods-Reader.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B782DBADEC21A5296387B29 /* libPods-Reader.a */; };
 		B5C8C00B30738253136F7673 /* RDLocalBookManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */; };
+		B7D025E8CB4DF8EF9B268A17 /* RDHttpTTSClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 171905187CC84F9913627451 /* RDHttpTTSClient.m */; };
 		BD1F48326CEBE97710F2912A /* RDControlWiringTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 54B97D62649234542E258935 /* RDControlWiringTests.m */; };
 		CD4B52A939E347FF05195421 /* RDReadSpeechBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */; };
 		D00D25E54EBD464DD7AD355A /* RDHarnessSelfTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FB3613545F1AFC7B1F12077 /* RDHarnessSelfTests.m */; };
@@ -171,6 +174,7 @@
 		0C6B3BCFCE7AC67DE11D8E40 /* RDLocalBookManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDLocalBookManager.m; sourceTree = "<group>"; };
 		0E8DA6789784B4B9BFD3E9C3 /* RDImportDiagnosticTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDImportDiagnosticTests.m; sourceTree = "<group>"; };
 		0EB3351C68E5672939DFB598 /* RDBookTextUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookTextUtil.h; sourceTree = "<group>"; };
+		0EDADEE715BEFC767E58CB3A /* RDPaperAlert.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = RDPaperAlert.h; sourceTree = "<group>"; };
 		127B20D888DA959CFD8DD78F /* UIFont+rd_wid.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIFont+rd_wid.m"; sourceTree = "<group>"; };
 		127B20DFBFA6325CB02D6418 /* NSData+rd_wid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+rd_wid.h"; sourceTree = "<group>"; };
 		127B2256207AC30125E6FEFB /* NSArray+rd_wid.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSArray+rd_wid.m"; sourceTree = "<group>"; };
@@ -193,11 +197,13 @@
 		127B2EA6693D9C0F71C58960 /* RDBookshelfController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RDBookshelfController.h; sourceTree = "<group>"; };
 		127B2ECF858287EF4F72F3B4 /* NSAttributedString+rd_wid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSAttributedString+rd_wid.h"; sourceTree = "<group>"; };
 		127B2FC5280B99FD8662E26E /* Reader.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Reader.pch; sourceTree = "<group>"; };
+		171905187CC84F9913627451 /* RDHttpTTSClient.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDHttpTTSClient.m; sourceTree = "<group>"; };
 		1868C360CBE04902804DB56E /* RDComicReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicReadController.m; sourceTree = "<group>"; };
 		1F63E6488007EA8327F65620 /* RDSpeechManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDSpeechManager.h; sourceTree = "<group>"; };
 		1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDFontManager.m; sourceTree = "<group>"; };
 		230E80FE544127BFB49E5639 /* RDPdfReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDPdfReadController.m; sourceTree = "<group>"; };
 		25D3CE3C0AED4878BB582152 /* RDComicReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicReadController.h; sourceTree = "<group>"; };
+		27407EB7EFC2100F010BE453 /* RDHttpTTS.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDHttpTTS.m; sourceTree = "<group>"; };
 		292242EB23AC7ED700FE93C3 /* RDBatteryView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RDBatteryView.m; sourceTree = "<group>"; };
 		292242EC23AC7ED700FE93C3 /* RDBatteryView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RDBatteryView.h; sourceTree = "<group>"; };
 		29313C39236C298A00408AF8 /* RDShareModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDShareModel.h; sourceTree = "<group>"; };
@@ -347,6 +353,7 @@
 		54B97D62649234542E258935 /* RDControlWiringTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDControlWiringTests.m; sourceTree = "<group>"; };
 		5C0F3FC1EB92C59245CF6514 /* Pods-ReaderTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderTests.release.xcconfig"; path = "Target Support Files/Pods-ReaderTests/Pods-ReaderTests.release.xcconfig"; sourceTree = "<group>"; };
 		653EC34ED3A22EF4B2DDB4EA /* RDLocalBookParseResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDLocalBookParseResult.h; sourceTree = "<group>"; };
+		65E7DC53A98E8F0E216CF591 /* RDHttpTTSClient.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = RDHttpTTSClient.h; sourceTree = "<group>"; };
 		68F31C352B682E98E9009858 /* RDMobiBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDMobiBookParser.m; sourceTree = "<group>"; };
 		6B782DBADEC21A5296387B29 /* libPods-Reader.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Reader.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDZipArchive.m; sourceTree = "<group>"; };
@@ -430,6 +437,7 @@
 		B121F46A408A51E8A4910C9B /* RDBookTextUtil.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookTextUtil.m; sourceTree = "<group>"; };
 		B48A0DD5A1CCD411CFE4D5BC /* RDReadSpeechBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadSpeechBar.h; sourceTree = "<group>"; };
 		B6FA47667B44B3E371830F4C /* libPods-ReaderUITests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ReaderUITests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CBAF89D080CDF1ADB228F739 /* RDHttpTTS.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = RDHttpTTS.h; sourceTree = "<group>"; };
 		CC3C97052F262A26AF3E437A /* RDTestSupport.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDTestSupport.m; sourceTree = "<group>"; };
 		DEA4C7D96955184AEFFA23FF /* Pods-ReaderTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderTests.debug.xcconfig"; path = "Target Support Files/Pods-ReaderTests/Pods-ReaderTests.debug.xcconfig"; sourceTree = "<group>"; };
 		DED15520775A9726D3E87911 /* RDTxtBookParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDTxtBookParser.h; sourceTree = "<group>"; };
@@ -437,6 +445,7 @@
 		F0826961BDEEF3DC8922C77D /* RDPdfReadController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDPdfReadController.h; sourceTree = "<group>"; };
 		F16928315EBBE7274481B593 /* ReaderUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReaderUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F175AC3051EC4FB0B4C5C39E /* RDComicHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicHelper.h; sourceTree = "<group>"; };
+		F38F3AC3F4E4FAC9953AF893 /* RDPaperAlert.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDPaperAlert.m; sourceTree = "<group>"; };
 		F5B477A0C4321C6ACE1B2E98 /* RDEpubBookParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDEpubBookParser.m; sourceTree = "<group>"; };
 		F8373C3D565746EC7453F14F /* Pods-Reader.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Reader.debug.xcconfig"; path = "Target Support Files/Pods-Reader/Pods-Reader.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -480,6 +489,10 @@
 				9BF7B41B262EF57655B61B75 /* RDReadSpeechBar.m */,
 				A11B001TV01FILEREF0002 /* RDVoiceManager.h */,
 				A11B001TV01FILEREF0001 /* RDVoiceManager.m */,
+				CBAF89D080CDF1ADB228F739 /* RDHttpTTS.h */,
+				27407EB7EFC2100F010BE453 /* RDHttpTTS.m */,
+				65E7DC53A98E8F0E216CF591 /* RDHttpTTSClient.h */,
+				171905187CC84F9913627451 /* RDHttpTTSClient.m */,
 			);
 			path = Speech;
 			sourceTree = "<group>";
@@ -796,6 +809,8 @@
 				2998A7F92428DE1B00C4E07B /* RDWebView.m */,
 				2998A7FB2428E0A200C4E07B /* RDWebTopView.h */,
 				2998A7FC2428E0A200C4E07B /* RDWebTopView.m */,
+				0EDADEE715BEFC767E58CB3A /* RDPaperAlert.h */,
+				F38F3AC3F4E4FAC9953AF893 /* RDPaperAlert.m */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1661,6 +1676,9 @@
 				ABF5D50B23B8383E008E3163 /* RDCharpterManager.m in Sources */,
 				29406FE123B0DAE100E4495F /* RDConfigModel.m in Sources */,
 				ABC3450A2439DE1200061974 /* RDCommParamManager.m in Sources */,
+				2DAC736E7FC4D3A02C9EF67C /* RDPaperAlert.m in Sources */,
+				286255AB57ECFC4A7BDC827D /* RDHttpTTS.m in Sources */,
+				B7D025E8CB4DF8EF9B268A17 /* RDHttpTTSClient.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1867,7 +1885,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202607192124;
+				CURRENT_PROJECT_VERSION = 202607201251;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1878,7 +1896,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.9.3;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1897,7 +1915,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202607192124;
+				CURRENT_PROJECT_VERSION = 202607201251;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1908,7 +1926,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.9.3;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";

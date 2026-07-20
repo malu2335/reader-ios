@@ -15,6 +15,7 @@
 #import "RDBookshelfPrefetch.h"
 #ifdef DEBUG
 #import "RDLegalDocumentController.h"
+#import "RDVoicePickerController.h"
 #endif
 
 @interface SceneDelegate ()
@@ -89,7 +90,7 @@
         dispatch_async(dispatch_get_main_queue(), ^{
             [main preloadSettingIfNeeded];
 #ifdef DEBUG
-            // SIMCTL_CHILD_RD_SHOT=settings|privacy|opensource 用于 README 截图
+            // SIMCTL_CHILD_RD_SHOT=settings|privacy|opensource|voiceimport 用于截图/验收
             [self p_applyDebugScreenshotHookIfNeededWithMain:main navigation:nav];
 #endif
         });
@@ -99,7 +100,7 @@
 }
 
 #ifdef DEBUG
-/// 仅 Debug：由环境变量 RD_SHOT 跳到设置 / 隐私声明 / 开源声明，便于 simctl 截图。
+/// 仅 Debug：由环境变量 RD_SHOT 跳到设置 / 隐私声明 / 开源声明 / 朗读导入面板，便于 simctl 截图。
 - (void)p_applyDebugScreenshotHookIfNeededWithMain:(RDMainController *)main
                                         navigation:(UINavigationController *)nav
 {
@@ -133,6 +134,18 @@
         }
 
         if ([shot isEqualToString:@"settings"]) {
+            return;
+        }
+
+        if ([shot isEqualToString:@"voiceimport"]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                RDVoicePickerController *voice = [[RDVoicePickerController alloc] init];
+                [nav pushViewController:voice animated:NO];
+                // 等 push 落地后弹出「导入与管理」操作表
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    [voice showImportMenu];
+                });
+            });
             return;
         }
 

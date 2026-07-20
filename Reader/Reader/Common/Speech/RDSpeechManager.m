@@ -10,16 +10,29 @@
 #import "RDCharpterDataManager.h"
 #import "RDVoiceManager.h"
 #import "RDReplaceRule.h"
+#import "RDHttpTTS.h"
+#import "RDHttpTTSClient.h"
+#import "RDAIConfig.h"
+#import "RDAIClient.h"
 
-@interface RDSpeechManager ()<AVSpeechSynthesizerDelegate>
-@property (nonatomic,strong) AVSpeechSynthesizer *synthesizer;
-@property (nonatomic,strong) RDBookDetailModel *book;
-@property (nonatomic,strong) NSArray <RDCharpterModel *>*chapters;
-@property (nonatomic,assign) NSInteger chapterIndex;
-@property (nonatomic,assign) BOOL active;
-@property (nonatomic,assign) BOOL paused;
-@property (nonatomic,assign) CGFloat rateMultiplier;
-@property (nonatomic,assign) BOOL stopping;   //手动停止时不触发续播
+@interface RDSpeechManager () <AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate>
+@property (nonatomic, strong) AVSpeechSynthesizer *synthesizer;
+@property (nonatomic, strong) RDBookDetailModel *book;
+@property (nonatomic, strong) NSArray <RDCharpterModel *>*chapters;
+@property (nonatomic, assign) NSInteger chapterIndex;
+@property (nonatomic, assign) BOOL active;
+@property (nonatomic, assign) BOOL paused;
+@property (nonatomic, assign) CGFloat rateMultiplier;
+@property (nonatomic, assign) BOOL stopping;
+
+// 在线音频段落队列(HttpTTS 或 AI TTS)
+@property (nonatomic, copy) NSArray <NSString *>*httpChunks;
+@property (nonatomic, assign) NSInteger httpChunkIndex;
+@property (nonatomic, strong, nullable) RDHttpTTS *httpEngine;
+@property (nonatomic, strong, nullable) RDAIConfigProfile *aiTTSProfile;
+@property (nonatomic, strong, nullable) AVAudioPlayer *audioPlayer;
+@property (nonatomic, copy, nullable) NSString *httpTempPath;
+@property (nonatomic, assign) BOOL audioEngineMode; // HttpTTS 或 AI TTS
 @end
 
 @implementation RDSpeechManager
@@ -48,7 +61,7 @@ IMP_SINGLETON(RDSpeechManager)
 
 - (void)startWithBook:(RDBookDetailModel *)book chapters:(NSArray<RDCharpterModel *> *)chapters chapterIndex:(NSInteger)chapterIndex text:(NSString *)text
 {
-    [self stopSynthesizerOnly];
+    [self stopPlaybackOnly];
     self.book = book;
     self.chapters = chapters;
     self.chapterIndex = chapterIndex;
@@ -58,11 +71,27 @@ IMP_SINGLETON(RDSpeechManager)
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
     [[AVAudioSession sharedInstance] setActive:YES error:nil];
 
-    [self speakText:text];
+    NSString *pref = [RDVoiceManager sharedInstance].preferredVoiceIdentifier;
+    self.httpEngine = [[RDHttpTTSStore sharedInstance] engineWithVoiceIdentifier:pref];
+    self.aiTTSProfile = nil;
+    if (!self.httpEngine && [pref hasPrefix:RDAITtsVoiceIdentifierPrefix]) {
+        NSString *pid = [pref substringFromIndex:RDAITtsVoiceIdentifierPrefix.length];
+        RDAIConfigProfile *p = [[RDAIConfigStore sharedInstance] profileWithId:pid];
+        if (p.isTTSUsable) {
+            self.aiTTSProfile = p;
+        }
+    }
+    self.audioEngineMode = (self.httpEngine != nil || self.aiTTSProfile != nil);
+
+    if (self.audioEngineMode) {
+        [self p_startHttpSpeakText:text];
+    } else {
+        [self speakTextSystem:text];
+    }
     [self.delegate speechManagerStateChanged];
 }
 
-- (void)speakText:(NSString *)text
+- (void)speakTextSystem:(NSString *)text
 {
     if (text.length == 0) {
         [self advanceToNextChapter];
@@ -72,6 +101,155 @@ IMP_SINGLETON(RDSpeechManager)
     utterance.voice = [[RDVoiceManager sharedInstance] resolvedVoice];
     utterance.rate = [self currentRate];
     [self.synthesizer speakUtterance:utterance];
+}
+
+/// legado 风格:按行拆段,过滤空行
+- (NSArray <NSString *>*)p_chunksFromText:(NSString *)text
+{
+    NSString *src = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (src.length == 0) {
+        return @[];
+    }
+    NSArray *lines = [src componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    NSMutableArray *chunks = [NSMutableArray array];
+    for (NSString *line in lines) {
+        NSString *t = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (t.length == 0) {
+            continue;
+        }
+        // 超长行再按句号切
+        if (t.length > 280) {
+            NSArray *parts = [t componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"。！？；!?;"]];
+            NSMutableString *buf = [NSMutableString string];
+            for (NSString *p in parts) {
+                NSString *s = [p stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                if (s.length == 0) continue;
+                if (buf.length + s.length > 280 && buf.length > 0) {
+                    [chunks addObject:[buf copy]];
+                    [buf setString:@""];
+                }
+                if (buf.length) [buf appendString:@"。"];
+                [buf appendString:s];
+            }
+            if (buf.length) {
+                [chunks addObject:[buf copy]];
+            }
+        } else {
+            [chunks addObject:t];
+        }
+    }
+    if (chunks.count == 0 && src.length) {
+        [chunks addObject:src];
+    }
+    return chunks;
+}
+
+- (void)p_startHttpSpeakText:(NSString *)text
+{
+    self.httpChunks = [self p_chunksFromText:text];
+    self.httpChunkIndex = 0;
+    if (self.httpChunks.count == 0) {
+        [self advanceToNextChapter];
+        return;
+    }
+    [self p_fetchAndPlayCurrentHttpChunk];
+}
+
+- (NSInteger)p_httpSpeakSpeed
+{
+    // legado: speechRatePlay + 5, 约 5~15
+    NSInteger base = 10;
+    if (self.rateMultiplier < 0.9) base = 7;
+    else if (self.rateMultiplier < 1.1) base = 10;
+    else if (self.rateMultiplier < 1.4) base = 12;
+    else base = 15;
+    return base;
+}
+
+- (void)p_fetchAndPlayCurrentHttpChunk
+{
+    if (!self.active || self.stopping || (!self.httpEngine && !self.aiTTSProfile)) {
+        return;
+    }
+    if (self.httpChunkIndex >= (NSInteger)self.httpChunks.count) {
+        [self advanceToNextChapter];
+        return;
+    }
+    NSString *chunk = self.httpChunks[self.httpChunkIndex];
+    __weak typeof(self) weakSelf = self;
+    void (^handle)(NSData *, NSError *) = ^(NSData *audio, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.active || self.stopping) {
+            return;
+        }
+        if (!audio) {
+            NSLog(@"[OnlineTTS] chunk fail: %@", error.localizedDescription);
+            self.httpChunkIndex++;
+            [self p_fetchAndPlayCurrentHttpChunk];
+            return;
+        }
+        [self p_playAudioData:audio];
+    };
+    if (self.aiTTSProfile) {
+        [[RDAIClient sharedClient] synthesizeSpeechText:chunk profile:self.aiTTSProfile completion:handle];
+    } else {
+        [[RDHttpTTSClient sharedClient] fetchAudioForEngine:self.httpEngine
+                                                       text:chunk
+                                                 speakSpeed:[self p_httpSpeakSpeed]
+                                                 completion:handle];
+    }
+}
+
+- (void)p_playAudioData:(NSData *)data
+{
+    [self p_clearHttpPlayer];
+    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                      [NSString stringWithFormat:@"rd_http_tts_%u.mp3", arc4random()]];
+    if (![data writeToFile:path atomically:YES]) {
+        self.httpChunkIndex++;
+        [self p_fetchAndPlayCurrentHttpChunk];
+        return;
+    }
+    self.httpTempPath = path;
+    NSError *err = nil;
+    self.audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:path] error:&err];
+    if (!self.audioPlayer || err) {
+        self.httpChunkIndex++;
+        [self p_fetchAndPlayCurrentHttpChunk];
+        return;
+    }
+    self.audioPlayer.delegate = self;
+    self.audioPlayer.rate = 1.0;
+    self.audioPlayer.enableRate = YES;
+    // 轻微用 AVAudioPlayer rate 反映倍速
+    self.audioPlayer.rate = MAX(0.5, MIN(2.0, self.rateMultiplier));
+    [self.audioPlayer prepareToPlay];
+    if (self.paused) {
+        return;
+    }
+    [self.audioPlayer play];
+}
+
+- (void)p_clearHttpPlayer
+{
+    if (self.audioPlayer) {
+        self.audioPlayer.delegate = nil;
+        [self.audioPlayer stop];
+        self.audioPlayer = nil;
+    }
+    if (self.httpTempPath.length) {
+        [[NSFileManager defaultManager] removeItemAtPath:self.httpTempPath error:nil];
+        self.httpTempPath = nil;
+    }
+}
+
+- (void)audioPlayerDidFinishPlaying:(AVAudioPlayer *)player successfully:(BOOL)flag
+{
+    if (!self.active || self.stopping) {
+        return;
+    }
+    self.httpChunkIndex++;
+    [self p_fetchAndPlayCurrentHttpChunk];
 }
 
 - (float)currentRate
@@ -85,7 +263,11 @@ IMP_SINGLETON(RDSpeechManager)
     if (!self.active || self.paused) {
         return;
     }
-    [self.synthesizer pauseSpeakingAtBoundary:AVSpeechBoundaryWord];
+    if (self.audioEngineMode) {
+        [self.audioPlayer pause];
+    } else {
+        [self.synthesizer pauseSpeakingAtBoundary:AVSpeechBoundaryWord];
+    }
     self.paused = YES;
     [self.delegate speechManagerStateChanged];
 }
@@ -95,7 +277,15 @@ IMP_SINGLETON(RDSpeechManager)
     if (!self.active || !self.paused) {
         return;
     }
-    [self.synthesizer continueSpeaking];
+    if (self.audioEngineMode) {
+        if (self.audioPlayer) {
+            [self.audioPlayer play];
+        } else {
+            [self p_fetchAndPlayCurrentHttpChunk];
+        }
+    } else {
+        [self.synthesizer continueSpeaking];
+    }
     self.paused = NO;
     [self.delegate speechManagerStateChanged];
 }
@@ -105,20 +295,33 @@ IMP_SINGLETON(RDSpeechManager)
     if (!self.active) {
         return;
     }
-    [self stopSynthesizerOnly];
+    [self stopPlaybackOnly];
     self.active = NO;
     self.paused = NO;
     [[AVAudioSession sharedInstance] setActive:NO withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation error:nil];
     [self.delegate speechManagerDidStop];
 }
 
-- (void)stopSynthesizerOnly
+- (void)stopPlaybackOnly
 {
     self.stopping = YES;
+    [[RDHttpTTSClient sharedClient] cancel];
+    [[RDAIClient sharedClient] cancelInFlightSpeech];
+    [self p_clearHttpPlayer];
     if (_synthesizer.isSpeaking || _synthesizer.isPaused) {
         [_synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
     }
+    self.httpChunks = nil;
+    self.httpChunkIndex = 0;
+    self.httpEngine = nil;
+    self.aiTTSProfile = nil;
+    self.audioEngineMode = NO;
     self.stopping = NO;
+}
+
+- (void)stopSynthesizerOnly
+{
+    [self stopPlaybackOnly];
 }
 
 - (CGFloat)cycleRate
@@ -132,9 +335,10 @@ IMP_SINGLETON(RDSpeechManager)
         }
     }
     self.rateMultiplier = [rates[index] doubleValue];
-
-    //新语速对正在朗读的语句不生效,重启当前章剩余部分代价大;从下一章起生效,
-    //若处于暂停状态则保持暂停,仅更新倍速显示
+    if (self.audioEngineMode && self.audioPlayer) {
+        self.audioPlayer.enableRate = YES;
+        self.audioPlayer.rate = MAX(0.5, MIN(2.0, self.rateMultiplier));
+    }
     [self.delegate speechManagerStateChanged];
     return self.rateMultiplier;
 }
@@ -151,30 +355,43 @@ IMP_SINGLETON(RDSpeechManager)
     RDCharpterModel *brief = self.chapters[next];
     RDCharpterModel *chapter = [RDCharpterDataManager getCharpterWithBookId:self.book.bookId charpterId:brief.charpterId];
     if (chapter.content.length == 0) {
-        //内容缺失(在线书未缓存),结束朗读
         [self stop];
         return;
     }
     self.chapterIndex = next;
     [self.delegate speechManagerWillSpeakChapter:chapter];
-    // 与屏显一致:朗读净化后的正文
     NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:chapter.content ?: @""];
     NSString *text = [NSString stringWithFormat:@"%@\n%@", chapter.name ?: @"", cleaned];
-    [self speakText:text];
+    // 续播时重新解析引擎(用户可能中途改了语音)
+    NSString *pref = [RDVoiceManager sharedInstance].preferredVoiceIdentifier;
+    self.httpEngine = [[RDHttpTTSStore sharedInstance] engineWithVoiceIdentifier:pref];
+    self.aiTTSProfile = nil;
+    if (!self.httpEngine && [pref hasPrefix:RDAITtsVoiceIdentifierPrefix]) {
+        NSString *pid = [pref substringFromIndex:RDAITtsVoiceIdentifierPrefix.length];
+        RDAIConfigProfile *p = [[RDAIConfigStore sharedInstance] profileWithId:pid];
+        if (p.isTTSUsable) {
+            self.aiTTSProfile = p;
+        }
+    }
+    self.audioEngineMode = (self.httpEngine != nil || self.aiTTSProfile != nil);
+    if (self.audioEngineMode) {
+        [self p_startHttpSpeakText:text];
+    } else {
+        [self speakTextSystem:text];
+    }
 }
 
 #pragma mark - AVSpeechSynthesizerDelegate
 
 - (void)speechSynthesizer:(AVSpeechSynthesizer *)synthesizer didFinishSpeechUtterance:(AVSpeechUtterance *)utterance
 {
-    // 回调线程未有文档保证;续播涉及 DB 与 UI(delegate 刷阅读页),统一回主线程
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self speechSynthesizer:synthesizer didFinishSpeechUtterance:utterance];
         });
         return;
     }
-    if (!self.active || self.stopping) {
+    if (!self.active || self.stopping || self.audioEngineMode) {
         return;
     }
     [self advanceToNextChapter];

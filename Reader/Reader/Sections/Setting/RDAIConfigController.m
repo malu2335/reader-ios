@@ -5,12 +5,22 @@
 
 #import "RDAIConfigController.h"
 #import "RDAIConfig.h"
+#import "RDAIClient.h"
 #import "RDAIProfileEditController.h"
-#import "LEEAlert.h"
+#import "RDPaperAlert.h"
+#import "RDVoiceManager.h"
+
+typedef NS_ENUM(NSInteger, RDAIConfigSection) {
+    RDAIConfigSectionTranslate = 0,
+    RDAIConfigSectionTTS = 1,
+    RDAIConfigSectionCount,
+};
 
 @interface RDAIConfigController () <UITableViewDelegate, UITableViewDataSource>
 @property (nonatomic, strong) UITableView *tableView;
-@property (nonatomic, copy) NSArray <RDAIConfigProfile *>*profiles;
+@property (nonatomic, copy) NSArray <RDAIConfigProfile *>*translateProfiles;
+@property (nonatomic, copy) NSArray <RDAIConfigProfile *>*ttsProfiles;
+@property (nonatomic, assign) BOOL busy;
 @end
 
 @implementation RDAIConfigController
@@ -19,16 +29,6 @@
 {
     [super viewDidLoad];
     self.topView.titleLabel.text = @"AI 配置";
-    UIButton *addBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    [addBtn setTitle:@"添加" forState:UIControlStateNormal];
-    addBtn.titleLabel.font = RDFont16;
-    [addBtn addTarget:self action:@selector(p_add) forControlEvents:UIControlEventTouchUpInside];
-    [self.topView addSubview:addBtn];
-    addBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [addBtn.trailingAnchor constraintEqualToAnchor:self.topView.trailingAnchor constant:-16],
-        [addBtn.centerYAnchor constraintEqualToAnchor:self.topView.titleLabel.centerYAnchor],
-    ]];
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
 }
@@ -60,14 +60,42 @@
 
 - (void)p_reload
 {
-    self.profiles = [RDAIConfigStore sharedInstance].profiles;
+    NSArray <RDAIConfigProfile *>*all = [RDAIConfigStore sharedInstance].profiles;
+    NSMutableArray *translate = [NSMutableArray array];
+    NSMutableArray *tts = [NSMutableArray array];
+    for (RDAIConfigProfile *p in all) {
+        if (p.isTTSRole) {
+            [tts addObject:p];
+        } else {
+            [translate addObject:p];
+        }
+    }
+    self.translateProfiles = translate;
+    self.ttsProfiles = tts;
     [self.tableView reloadData];
 }
 
-- (void)p_add
+- (void)p_addTranslate
 {
     RDAIProfileEditController *edit = [[RDAIProfileEditController alloc] init];
     edit.profile = nil;
+    edit.editMode = RDAIProfileEditModeTranslate;
+    [self.navigationController pushViewController:edit animated:YES];
+}
+
+- (void)p_addTTS
+{
+    RDAIProfileEditController *edit = [[RDAIProfileEditController alloc] init];
+    edit.profile = nil;
+    edit.editMode = RDAIProfileEditModeTTS;
+    [self.navigationController pushViewController:edit animated:YES];
+}
+
+- (void)p_editProfile:(RDAIConfigProfile *)p mode:(RDAIProfileEditMode)mode
+{
+    RDAIProfileEditController *edit = [[RDAIProfileEditController alloc] init];
+    edit.profile = p;
+    edit.editMode = mode;
     [self.navigationController pushViewController:edit animated:YES];
 }
 
@@ -75,22 +103,31 @@
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-    return 1;
+    return RDAIConfigSectionCount;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return MAX(self.profiles.count, 1);
+    if (section == RDAIConfigSectionTranslate) {
+        return self.translateProfiles.count + 1;
+    }
+    return self.ttsProfiles.count + 1;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-    return @"翻译服务配置(OpenAI / Anthropic / Gemini 及兼容格式)";
+    if (section == RDAIConfigSectionTranslate) {
+        return @"翻译服务";
+    }
+    return @"AI 朗读（MiMo / OpenAI TTS）";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-    return @"在阅读页点击「翻译」将使用当前选中的配置。备份恢复的配置需手动「设为当前」确认后才可出站。兼容格式需填写自定义 Base URL(默认 HTTPS;本机/局域网 HTTP 仅用于 Ollama 等本地服务)。";
+    if (section == RDAIConfigSectionTranslate) {
+        return @"阅读页「译」使用「设为当前」的配置。可在编辑页「探测模型 / 测试连接」。朗读请用下方分区,二者互不混用。";
+    }
+    return @"专用于听书。小米 MiMo 走 chat 式 TTS;OpenAI 走 /v1/audio/speech。保存后「设为朗读引擎」或到「朗读语音」中选择。";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -107,31 +144,81 @@
         cell.detailTextLabel.numberOfLines = 0;
         cell.textLabel.numberOfLines = 2;
     }
-    if (self.profiles.count == 0) {
-        cell.textLabel.text = @"尚未配置,点击添加";
-        cell.detailTextLabel.text = @"支持 OpenAI、Anthropic、Gemini 及兼容格式";
+    cell.accessoryView = nil;
+    cell.accessoryType = UITableViewCellAccessoryNone;
+    cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+    cell.textLabel.textColor = RDBlackColor;
+
+    if (indexPath.section == RDAIConfigSectionTranslate) {
+        if (indexPath.row >= (NSInteger)self.translateProfiles.count) {
+            cell.textLabel.text = @"添加翻译配置";
+            cell.detailTextLabel.text = @"OpenAI / Anthropic / Gemini / MiMo 及兼容格式";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            cell.textLabel.textColor = [UIColor systemBlueColor];
+            return cell;
+        }
+        return [self p_configureProfileCell:cell profile:self.translateProfiles[indexPath.row] forTTS:NO];
+    }
+
+    if (indexPath.row >= (NSInteger)self.ttsProfiles.count) {
+        cell.textLabel.text = @"添加 AI 朗读（MiMo / OpenAI）";
+        cell.detailTextLabel.text = @"推荐:小米 MiMo mimo-v2.5-tts · 内置中文音色";
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-        cell.accessoryView = nil;
+        cell.textLabel.textColor = [UIColor systemBlueColor];
         return cell;
     }
-    RDAIConfigProfile *p = self.profiles[indexPath.row];
+    return [self p_configureProfileCell:cell profile:self.ttsProfiles[indexPath.row] forTTS:YES];
+}
+
+- (UITableViewCell *)p_configureProfileCell:(UITableViewCell *)cell
+                                    profile:(RDAIConfigProfile *)p
+                                     forTTS:(BOOL)forTTS
+{
     NSString *title = p.name.length > 0 ? p.name : p.type;
-    // 待确认状态进标题,避免仅依赖多行 subtitle 被裁切
     if (p.pendingConfirm) {
         title = [NSString stringWithFormat:@"%@ · 待确认", title];
     }
     cell.textLabel.text = title;
-    NSString *detail = [NSString stringWithFormat:@"%@ · %@", p.type, p.model.length > 0 ? p.model : @"未填模型"];
-    if (p.baseURL.length > 0) {
-        detail = [detail stringByAppendingFormat:@"\n%@", p.baseURL];
-    }
-    if (p.pendingConfirm) {
-        detail = [detail stringByAppendingString:@"\n备份导入 · 设为当前后可用"];
+
+    NSMutableString *detail = [NSMutableString string];
+    if (forTTS) {
+        NSString *tm = p.ttsModel.length ? p.ttsModel : ([RDAIClient isMiMoType:p.type] ? @"mimo-v2.5-tts" : @"tts-1");
+        NSString *tv = p.ttsVoice.length ? p.ttsVoice : ([RDAIClient isMiMoType:p.type] ? @"mimo_default" : @"alloy");
+        [detail appendFormat:@"%@ · %@ · %@", p.type, tm, tv];
+        if (p.isTTSUsable) {
+            [detail appendString:@"\n可朗读"];
+        } else if (p.pendingConfirm) {
+            [detail appendString:@"\n备份导入 · 设为当前后可用"];
+        } else if (p.apiKey.length == 0) {
+            [detail appendString:@"\n未填 API Key"];
+        } else {
+            [detail appendString:@"\n配置不完整"];
+        }
+        NSString *pref = [RDVoiceManager sharedInstance].preferredVoiceIdentifier;
+        if (pref.length && [pref isEqualToString:[p ttsVoiceIdentifier]]) {
+            [detail appendString:@" · 当前听书引擎"];
+        }
+    } else {
+        [detail appendFormat:@"%@ · %@", p.type, p.model.length > 0 ? p.model : @"未填模型"];
+        if (p.baseURL.length > 0) {
+            [detail appendFormat:@"\n%@", p.baseURL];
+        }
+        if (p.pendingConfirm) {
+            [detail appendString:@"\n备份导入 · 设为当前后可用"];
+        } else if (p.isUsable) {
+            [detail appendString:@"\n可翻译"];
+        }
     }
     cell.detailTextLabel.text = detail;
-    BOOL active = p.profileId.length > 0
+
+    BOOL activeTranslate = !forTTS
+        && p.profileId.length > 0
         && [[RDAIConfigStore sharedInstance].activeProfileId isEqualToString:p.profileId];
-    if (active) {
+    BOOL activeTTS = forTTS
+        && p.isTTSUsable
+        && [[[RDVoiceManager sharedInstance] preferredVoiceIdentifier] isEqualToString:[p ttsVoiceIdentifier]];
+
+    if (activeTranslate || activeTTS) {
         UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
         UIImage *check = [UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:cfg];
         UIImageView *iv = [[UIImageView alloc] initWithImage:[check imageWithTintColor:[UIColor systemGreenColor] renderingMode:UIImageRenderingModeAlwaysOriginal]];
@@ -151,43 +238,155 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (self.profiles.count == 0) {
-        [self p_add];
+    if (indexPath.section == RDAIConfigSectionTranslate) {
+        if (indexPath.row >= (NSInteger)self.translateProfiles.count) {
+            [self p_addTranslate];
+            return;
+        }
+        [self p_presentActionsForProfile:self.translateProfiles[indexPath.row] forTTS:NO];
         return;
     }
-    RDAIConfigProfile *p = self.profiles[indexPath.row];
+    if (indexPath.row >= (NSInteger)self.ttsProfiles.count) {
+        [self p_addTTS];
+        return;
+    }
+    [self p_presentActionsForProfile:self.ttsProfiles[indexPath.row] forTTS:YES];
+}
+
+- (void)p_testProfile:(RDAIConfigProfile *)p
+{
+    if (self.busy) {
+        return;
+    }
+    self.busy = YES;
+    [self showLoading:@"测试中…" cancel:^{
+        self.busy = NO;
+    }];
     __weak typeof(self) weakSelf = self;
-    [LEEAlert actionsheet].config
-    .LeeAddAction(^(LEEAction *action) {
-        action.title = @"设为当前";
-        action.clickBlock = ^{
+    [[RDAIClient sharedClient] testProfile:p completion:^(NSString *sample, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        self.busy = NO;
+        [self hideLoading];
+        if (error) {
+            [RDPaperAlert showAlertWithTitle:@"测试失败"
+                                     message:error.localizedDescription ?: @"未知错误"
+                                  symbolName:@"xmark.circle"
+                                     actions:@[[RDPaperAlertAction actionWithTitle:@"知道了" style:RDPaperAlertActionStylePrimary handler:nil]]];
+            return;
+        }
+        NSString *preview = sample.length > 120 ? [[sample substringToIndex:120] stringByAppendingString:@"…"] : sample;
+        [RDPaperAlert showAlertWithTitle:@"测试成功"
+                                 message:[NSString stringWithFormat:@"模型已响应:\n%@", preview]
+                              symbolName:@"checkmark.circle"
+                                 actions:@[[RDPaperAlertAction actionWithTitle:@"好的" style:RDPaperAlertActionStylePrimary handler:nil]]];
+    }];
+}
+
+- (void)p_probeModelsForProfile:(RDAIConfigProfile *)p
+{
+    if (self.busy) {
+        return;
+    }
+    self.busy = YES;
+    [self showLoading:@"探测模型中…" cancel:^{
+        self.busy = NO;
+    }];
+    __weak typeof(self) weakSelf = self;
+    [[RDAIClient sharedClient] listModelsForProfile:p completion:^(NSArray<NSString *> *models, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        self.busy = NO;
+        [self hideLoading];
+        if (error || models.count == 0) {
+            [self showText:error.localizedDescription ?: @"未获取到模型"];
+            return;
+        }
+        NSMutableArray *actions = [NSMutableArray array];
+        NSInteger limit = MIN((NSInteger)models.count, 40);
+        for (NSInteger i = 0; i < limit; i++) {
+            NSString *mid = models[i];
+            [actions addObject:[RDPaperAlertAction actionWithTitle:mid style:RDPaperAlertActionStyleDefault handler:^{
+                RDAIConfigProfile *copy = [p copy];
+                copy.model = mid;
+                if (![[RDAIConfigStore sharedInstance] upsertProfile:copy]) {
+                    [self showText:@"写入模型失败"];
+                    return;
+                }
+                [self showText:[NSString stringWithFormat:@"已设为 %@", mid]];
+                [self p_reload];
+            }]];
+        }
+        [RDPaperAlert showActionSheetWithTitle:[NSString stringWithFormat:@"可用模型(%ld)", (long)models.count]
+                                       message:@"点选将写入该配置的翻译模型"
+                                       actions:actions];
+    }];
+}
+
+- (void)p_presentActionsForProfile:(RDAIConfigProfile *)p forTTS:(BOOL)forTTS
+{
+    __weak typeof(self) weakSelf = self;
+    NSMutableArray *actions = [NSMutableArray array];
+
+    if (!forTTS) {
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"设为当前(翻译)" style:RDPaperAlertActionStyleDefault handler:^{
             if (![[RDAIConfigStore sharedInstance] activateProfileId:p.profileId]) {
                 [weakSelf showText:@"设置失败,请重试"];
             }
             [weakSelf p_reload];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.title = @"编辑";
-        action.clickBlock = ^{
-            RDAIProfileEditController *edit = [[RDAIProfileEditController alloc] init];
-            edit.profile = p;
-            [weakSelf.navigationController pushViewController:edit animated:YES];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDestructive;
-        action.title = @"删除";
-        action.clickBlock = ^{
-            [[RDAIConfigStore sharedInstance] removeProfileId:p.profileId];
+        }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"测试连接"
+                                                      subtitle:@"发送短句验证 Key 与模型"
+                                                         style:RDPaperAlertActionStyleDefault
+                                                       handler:^{
+            [weakSelf p_testProfile:p];
+        }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"探测模型"
+                                                      subtitle:@"从 API 拉取可用模型列表"
+                                                         style:RDPaperAlertActionStyleDefault
+                                                       handler:^{
+            [weakSelf p_probeModelsForProfile:p];
+        }]];
+    } else {
+        // 仅朗读分区:设为听书引擎
+        [actions addObject:[RDPaperAlertAction actionWithTitle:p.isTTSUsable ? @"设为朗读引擎" : @"设为朗读引擎(需补全)"
+                                                      subtitle:p.isTTSUsable ? @"听书使用此 AI TTS" : @"请先编辑并填写 API Key"
+                                                         style:RDPaperAlertActionStyleDefault
+                                                       handler:^{
+            if (!p.isTTSUsable) {
+                [weakSelf showText:p.pendingConfirm ? @"请先确认备份配置" : @"请先补全 API Key 等 TTS 字段"];
+                return;
+            }
+            [[RDVoiceManager sharedInstance] setPreferredIdentifier:[p ttsVoiceIdentifier]];
+            [[NSNotificationCenter defaultCenter] postNotificationName:RDVoiceListChangedNotification object:nil];
+            [weakSelf showText:@"已设为听书引擎"];
             [weakSelf p_reload];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeCancel;
-        action.title = @"取消";
-    })
-    .LeeShow();
+        }]];
+    }
+
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"编辑" style:RDPaperAlertActionStyleDefault handler:^{
+        RDAIProfileEditMode mode = forTTS ? RDAIProfileEditModeTTS : RDAIProfileEditModeTranslate;
+        [weakSelf p_editProfile:p mode:mode];
+    }]];
+
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"删除" style:RDPaperAlertActionStyleDestructive handler:^{
+        NSString *ttsId = [p ttsVoiceIdentifier];
+        if ([[[RDVoiceManager sharedInstance] preferredVoiceIdentifier] isEqualToString:ttsId]) {
+            [[RDVoiceManager sharedInstance] setPreferredIdentifier:nil];
+        }
+        [[RDAIConfigStore sharedInstance] removeProfileId:p.profileId];
+        [weakSelf p_reload];
+    }]];
+
+    NSString *title = p.name.length ? p.name : @"AI 配置";
+    NSString *msg = forTTS
+        ? [NSString stringWithFormat:@"%@ · TTS %@ · %@", p.type, p.ttsModel ?: @"—", p.ttsVoice ?: @"—"]
+        : [NSString stringWithFormat:@"%@ · %@", p.type, p.model ?: @"—"];
+    [RDPaperAlert showActionSheetWithTitle:title message:msg actions:actions];
 }
 
 @end

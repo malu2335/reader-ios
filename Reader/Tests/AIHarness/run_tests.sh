@@ -29,7 +29,8 @@ checks = [
     ("RDReadTranslateHelper calls shipped RDAIClient",
      "[[RDAIClient sharedClient] translateText" in (src/"Common/AI/RDReadTranslateHelper.m").read_text()),
     ("empty-config path directs to AI settings",
-     "未配置 AI" in (src/"Common/AI/RDReadTranslateHelper.m").read_text() and "RDAIConfigController" in (src/"Common/AI/RDReadTranslateHelper.m").read_text()),
+     ("未配置 AI" in (src/"Common/AI/RDReadTranslateHelper.m").read_text() or "未配置可用 AI" in (src/"Common/AI/RDReadTranslateHelper.m").read_text())
+     and "RDAIConfigController" in (src/"Common/AI/RDReadTranslateHelper.m").read_text()),
     ("Settings exposes AI 配置 entry",
      "RDSettingRowAIConfig" in setting and "AI 配置" in setting),
     ("Online search cell removed from the tree entirely (Phase E)",

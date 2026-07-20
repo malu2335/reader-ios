@@ -11,7 +11,7 @@
 #import "RDCharpterDataManager.h"
 #import "RDHistoryRecordManager.h"
 #import "RDBookmarkManager.h"
-#import "LEEAlert.h"
+#import "RDPaperAlert.h"
 #import "RDFontManager.h"
 #import "RDBackupManager.h"
 #import "RDAIConfigController.h"
@@ -501,23 +501,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)p_confirmClear
 {
     __weak typeof(self) weakSelf = self;
-    [LEEAlert alert].config
-    .LeeTitle(@"清空书架")
-    .LeeContent(@"将删除全部书籍、章节缓存与阅读进度,且无法恢复。")
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeCancel;
-        action.title = @"取消";
-        action.titleColor = RDGrayColor;
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDestructive;
-        action.title = @"清空";
-        action.titleColor = [UIColor systemRedColor];
-        [action setClickBlock:^{
-            [weakSelf p_clearAll];
-        }];
-    })
-    .LeeShow();
+    [RDPaperAlert showConfirmWithTitle:@"清空书架"
+                               message:@"将删除全部书籍、章节缓存与阅读进度,且无法恢复。"
+                           cancelTitle:@"取消"
+                          confirmTitle:@"清空"
+                           destructive:YES
+                               confirm:^{
+        [weakSelf p_clearAll];
+    }];
 }
 
 - (void)p_clearAll

@@ -5,6 +5,8 @@
 
 #import "RDVoicePickerController.h"
 #import "RDVoiceManager.h"
+#import "RDHttpTTS.h"
+#import "RDPaperAlert.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 @interface RDVoicePickerController () <UITableViewDelegate, UITableViewDataSource, UIDocumentPickerDelegate>
@@ -47,7 +49,7 @@
     UIButton *more = [UIButton buttonWithType:UIButtonTypeSystem];
     [more setTitle:@"导入" forState:UIControlStateNormal];
     more.titleLabel.font = RDFont16;
-    [more addTarget:self action:@selector(p_showImportMenu) forControlEvents:UIControlEventTouchUpInside];
+    [more addTarget:self action:@selector(showImportMenu) forControlEvents:UIControlEventTouchUpInside];
     more.translatesAutoresizingMaskIntoConstraints = NO;
     [self.topView addSubview:more];
     [NSLayoutConstraint activateConstraints:@[
@@ -104,61 +106,52 @@
 
 #pragma mark - Import menu
 
-- (void)p_showImportMenu
+- (void)showImportMenu
 {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"导入 TTS 语音"
-                                                                   message:@"可导入个人声音、语音配置,或引导下载系统增强音"
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    // 说明区(非按钮) + 选项副标题;点选后直接进入对应界面,不再叠第二层废话弹窗
     __weak typeof(self) weakSelf = self;
-    [sheet addAction:[UIAlertAction actionWithTitle:@"导入个人声音(系统)" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        [weakSelf p_importPersonalVoice];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"导入语音配置(JSON)" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        [weakSelf p_pickConfig];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"导出当前配置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        [weakSelf p_exportConfig];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"去系统设置下载增强语音" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        [weakSelf p_helpDownload];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"刷新语音列表" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        [weakSelf p_reload];
-        [weakSelf showText:@"已刷新"];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.sourceView = self.view;
-    sheet.popoverPresentationController.sourceRect = CGRectMake(self.view.width - 40, self.topView.bottom, 1, 1);
-    [self presentViewController:sheet animated:YES completion:nil];
-}
-
-- (void)p_importPersonalVoice
-{
-    __weak typeof(self) weakSelf = self;
-    [[RDVoiceManager sharedInstance] requestPersonalVoiceAccess:^(BOOL granted, NSString *message) {
-        [weakSelf showText:message ?: (granted ? @"已授权" : @"授权失败")];
-        [weakSelf p_reload];
-        if (granted) {
-            // 引导用户创建
-            UIAlertController *tip = [UIAlertController alertControllerWithTitle:@"个人声音"
-                                                                         message:@"若列表为空,请先到系统「设置 → 辅助功能 → 个人声音」创建,再返回本页刷新。"
-                                                                  preferredStyle:UIAlertControllerStyleAlert];
-            [tip addAction:[UIAlertAction actionWithTitle:@"打开设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-                [[RDVoiceManager sharedInstance] openSystemVoiceDownloadHelp];
-            }]];
-            [tip addAction:[UIAlertAction actionWithTitle:@"好的" style:UIAlertActionStyleCancel handler:nil]];
-            [weakSelf presentViewController:tip animated:YES completion:nil];
-        }
-    }];
+    [RDPaperAlert showActionSheetWithTitle:@"导入与管理"
+                                   message:@"点选后直接进入对应流程。支持:本机语音收藏配置、阅读/legado 在线朗读引擎(HttpTTS) JSON,或跳转系统下载增强语音。"
+                                   actions:@[
+        [RDPaperAlertAction actionWithTitle:@"导入配置 / HttpTTS"
+                                   subtitle:@"JSON · 本机收藏配置或阅读在线引擎"
+                                      style:RDPaperAlertActionStyleDefault
+                                    handler:^{
+            [weakSelf p_pickConfig];
+        }],
+        [RDPaperAlertAction actionWithTitle:@"下载系统增强语音"
+                                   subtitle:@"跳转系统「朗读内容 → 声音」"
+                                      style:RDPaperAlertActionStyleDefault
+                                    handler:^{
+            [[RDVoiceManager sharedInstance] openSystemVoiceDownloadHelp];
+        }],
+        [RDPaperAlertAction actionWithTitle:@"导出当前配置"
+                                   subtitle:@"生成 JSON 并用系统分享面板发出"
+                                      style:RDPaperAlertActionStyleDefault
+                                    handler:^{
+            [weakSelf p_exportConfig];
+        }],
+        [RDPaperAlertAction actionWithTitle:@"刷新语音列表"
+                                   subtitle:@"重新扫描本机可用 TTS 语音"
+                                      style:RDPaperAlertActionStyleDefault
+                                    handler:^{
+            [weakSelf p_reload];
+            [weakSelf showText:@"已刷新"];
+        }],
+    ]];
 }
 
 - (void)p_pickConfig
 {
+    // 关表后下一 runloop 再 present 文件选择器,避免与纸感遮罩叠层抢 present
     UTType *json = [UTType typeWithFilenameExtension:@"json"] ?: UTTypeJSON;
     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[json] asCopy:YES];
     picker.delegate = self;
     picker.allowsMultipleSelection = NO;
-    [self presentViewController:picker animated:YES completion:nil];
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [weakSelf presentViewController:picker animated:YES completion:nil];
+    });
 }
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
@@ -168,6 +161,19 @@
         return;
     }
     NSError *err = nil;
+    // 优先 HttpTTS;再本机收藏配置
+    NSData *data = nil;
+    BOOL access = [url startAccessingSecurityScopedResource];
+    data = [NSData dataWithContentsOfURL:url];
+    if (access) {
+        [url stopAccessingSecurityScopedResource];
+    }
+    NSInteger ttsN = data.length ? [[RDHttpTTSStore sharedInstance] importJSONData:data error:&err] : 0;
+    if (ttsN > 0) {
+        [self showText:[NSString stringWithFormat:@"已导入 %ld 个在线朗读引擎", (long)ttsN]];
+        [self p_reload];
+        return;
+    }
     if ([[RDVoiceManager sharedInstance] importConfigFromURL:url error:&err]) {
         [self showText:@"语音配置已导入"];
         [self p_reload];
@@ -187,18 +193,6 @@
     UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:@[url] applicationActivities:nil];
     avc.popoverPresentationController.sourceView = self.view;
     [self presentViewController:avc animated:YES completion:nil];
-}
-
-- (void)p_helpDownload
-{
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"下载系统 TTS 语音"
-                                                                   message:@"路径:设置 → 辅助功能 → 朗读内容 → 声音\n下载「中文(普通话)」增强/高级语音后返回本页刷新即可使用。\n\n个人声音:设置 → 辅助功能 → 个人声音"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"打开系统设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        [[RDVoiceManager sharedInstance] openSystemVoiceDownloadHelp];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleCancel handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - Table
@@ -222,7 +216,7 @@
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
     if (section == 0) {
-        return @"点选设为默认;侧滑可收藏/试听。右上角「导入」可添加个人声音或配置文件。";
+        return @"点选设为默认;侧滑可收藏/试听。右上角「导入」可导入配置文件或下载系统增强语音。";
     }
     return nil;
 }

@@ -74,9 +74,48 @@ typedef void (^RDAITransportCompletion)(NSData * _Nullable data, NSHTTPURLRespon
 + (BOOL)isOpenAIFamily:(NSString *)type;
 + (BOOL)isAnthropicFamily:(NSString *)type;
 + (BOOL)isGeminiFamily:(NSString *)type;
++ (BOOL)isMiMoType:(NSString *)type;
 
 /// Base URL 安全策略:默认仅 HTTPS;HTTP 仅允许 loopback / 局域网(本地 Ollama 等)。拒绝其它 scheme。
 + (BOOL)validateBaseURLString:(NSString *)baseURL error:(NSError * _Nullable * _Nullable)error;
+
+#pragma mark - 探测模型 / 测试连接
+
+/// GET /v1/models(OpenAI/MiMo)、Anthropic models、Gemini models 列表
++ (nullable NSURLRequest *)listModelsRequestForProfile:(RDAIConfigProfile *)profile
+                                                 error:(NSError * _Nullable * _Nullable)error;
+
+/// 从 list models 响应解析模型 id 列表(已排序)
++ (nullable NSArray <NSString *>*)modelIdsFromListResponseData:(NSData *)data
+                                                      profile:(RDAIConfigProfile *)profile
+                                                        error:(NSError * _Nullable * _Nullable)error;
+
+/// 异步探测供应商可用模型
+- (void)listModelsForProfile:(RDAIConfigProfile *)profile
+                  completion:(void (^)(NSArray <NSString *> * _Nullable models, NSError * _Nullable error))completion;
+
+/// 用短句翻译测试当前配置是否可用(不依赖 pending 以外的 isUsable 字段齐全——须 key+model)
+- (void)testProfile:(RDAIConfigProfile *)profile
+         completion:(void (^)(NSString * _Nullable sample, NSError * _Nullable error))completion;
+
+#pragma mark - AI TTS (OpenAI /v1/audio/speech 或 MiMo chat/completions)
+
+/// 构建语音合成请求;profile 须 isTTSUsable
+/// OpenAI 族 → POST /v1/audio/speech;MiMo → POST /v1/chat/completions + audio
++ (nullable NSURLRequest *)speechRequestForProfile:(RDAIConfigProfile *)profile
+                                              text:(NSString *)text
+                                             error:(NSError * _Nullable * _Nullable)error;
+
+/// 从 MiMo/OpenAI 音频 chat 响应中解析 base64 音频;失败返回 nil
++ (nullable NSData *)audioDataFromChatSpeechResponse:(NSData *)data error:(NSError * _Nullable * _Nullable)error;
+
+/// 异步合成语音,成功返回音频 data(OpenAI 多为 mp3;MiMo 默认 wav)
+- (void)synthesizeSpeechText:(NSString *)text
+                     profile:(RDAIConfigProfile *)profile
+                  completion:(void (^)(NSData * _Nullable audio, NSError * _Nullable error))completion;
+
+/// 取消进行中的 TTS 请求
+- (void)cancelInFlightSpeech;
 
 @end
 

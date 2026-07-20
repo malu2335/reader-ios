@@ -14,8 +14,12 @@ NSString * const RDAIProviderTypeOpenAICompat = @"openai格式";
 NSString * const RDAIProviderTypeAnthropicCompat = @"anthropic格式";
 NSString * const RDAIProviderTypeGemini = @"Gemini";
 NSString * const RDAIProviderTypeGeminiCompat = @"gemini格式";
+NSString * const RDAIProviderTypeMiMo = @"MiMo";
 
 NSString * const RDAIConfigBackupEntryName = @"ai_config.json";
+NSString * const RDAITtsVoiceIdentifierPrefix = @"aiTts:";
+NSString * const RDAIProfileRoleTranslate = @"translate";
+NSString * const RDAIProfileRoleTTS = @"tts";
 
 static NSString * const kStoreFileName = @"ai_config.json";
 static NSString * const kStoreDirName = @"AIConfig";
@@ -162,6 +166,9 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
         _model = @"";
         _baseURL = @"";
         _pendingConfirm = NO;
+        _role = RDAIProfileRoleTranslate;
+        _ttsModel = @"tts-1";
+        _ttsVoice = @"alloy";
     }
     return self;
 }
@@ -176,11 +183,23 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
     p.model = self.model;
     p.baseURL = self.baseURL;
     p.pendingConfirm = self.pendingConfirm;
+    p.role = self.role.length ? self.role : RDAIProfileRoleTranslate;
+    p.ttsModel = self.ttsModel;
+    p.ttsVoice = self.ttsVoice;
     return p;
+}
+
+- (BOOL)isTTSRole
+{
+    return [self.role isEqualToString:RDAIProfileRoleTTS];
 }
 
 - (BOOL)isUsable
 {
+    // 朗读专用配置不参与翻译
+    if (self.isTTSRole) {
+        return NO;
+    }
     if (self.pendingConfirm) {
         return NO;
     }
@@ -196,6 +215,69 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
     return YES;
 }
 
+- (BOOL)isTTSUsable
+{
+    // 仅朗读分区配置;不要求 chat model / isUsable
+    if (!self.isTTSRole) {
+        return NO;
+    }
+    if (self.pendingConfirm) {
+        return NO;
+    }
+    if (self.apiKey.length == 0) {
+        return NO;
+    }
+    BOOL openaiFamily = [self.type isEqualToString:RDAIProviderTypeOpenAI]
+        || [self.type isEqualToString:RDAIProviderTypeOpenAICompat];
+    BOOL mimo = [self.type isEqualToString:RDAIProviderTypeMiMo];
+    if (!openaiFamily && !mimo) {
+        return NO;
+    }
+    if ([self.type isEqualToString:RDAIProviderTypeOpenAICompat] && self.baseURL.length == 0) {
+        return NO;
+    }
+    return YES;
+}
+
+- (BOOL)usesMiMoSpeechAPI
+{
+    if ([self.type isEqualToString:RDAIProviderTypeMiMo]) {
+        return YES;
+    }
+    // 原生 OpenAI 一律走 /v1/audio/speech,不看模型名
+    if ([self.type isEqualToString:RDAIProviderTypeOpenAI]) {
+        return NO;
+    }
+    // openai 格式:指向小米域名,或用户明确填了 mimo TTS 模型
+    NSString *base = (self.baseURL ?: @"").lowercaseString;
+    if ([base containsString:@"xiaomimimo.com"]) {
+        return YES;
+    }
+    if ([self.type isEqualToString:RDAIProviderTypeOpenAICompat]) {
+        NSString *tm = (self.ttsModel ?: @"").lowercaseString;
+        if ([tm hasPrefix:@"mimo"] || [tm containsString:@"mimo-"]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (NSString *)ttsVoiceIdentifier
+{
+    return [NSString stringWithFormat:@"%@%@", RDAITtsVoiceIdentifierPrefix, self.profileId ?: @""];
+}
+
++ (NSArray<NSString *> *)commonTTSVoices
+{
+    return @[@"alloy", @"echo", @"fable", @"onyx", @"nova", @"shimmer", @"ash", @"coral", @"sage"];
+}
+
++ (NSArray<NSString *> *)commonMiMoTTSVoices
+{
+    // 官方内置:mimo_default / 中文 冰糖·茉莉·苏打·白桦 / 英文 Mia·Chloe·Milo·Dean
+    return @[@"mimo_default", @"冰糖", @"茉莉", @"苏打", @"白桦", @"Mia", @"Chloe", @"Milo", @"Dean"];
+}
+
 /// 磁盘/备份序列化:不含 apiKey 明文
 - (NSDictionary *)toDictionary
 {
@@ -208,6 +290,9 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
         @"baseURL": self.baseURL ?: @"",
         @"hasKeychainKey": @(self.apiKey.length > 0),
         @"pendingConfirm": @(self.pendingConfirm),
+        @"role": self.role.length ? self.role : RDAIProfileRoleTranslate,
+        @"ttsModel": self.ttsModel.length ? self.ttsModel : ([self.type isEqualToString:RDAIProviderTypeMiMo] ? @"mimo-v2.5-tts" : @"tts-1"),
+        @"ttsVoice": self.ttsVoice.length ? self.ttsVoice : ([self.type isEqualToString:RDAIProviderTypeMiMo] ? @"mimo_default" : @"alloy"),
     };
 }
 
@@ -240,6 +325,33 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
         p.pendingConfirm = [(NSNumber *)pending boolValue];
     } else {
         p.pendingConfirm = NO;
+    }
+    BOOL isMiMo = [p.type isEqualToString:RDAIProviderTypeMiMo];
+    NSString *role = [dict[@"role"] isKindOfClass:NSString.class] ? dict[@"role"] : @"";
+    if ([role isEqualToString:RDAIProfileRoleTTS]) {
+        p.role = RDAIProfileRoleTTS;
+    } else if ([role isEqualToString:RDAIProfileRoleTranslate]) {
+        p.role = RDAIProfileRoleTranslate;
+    } else {
+        // 旧数据无 role:按名称识别朗读引擎,其余归翻译
+        if ([p.name isEqualToString:@"MiMo 朗读"]
+            || [p.name isEqualToString:@"OpenAI 朗读"]
+            || [p.name isEqualToString:@"OpenAI 兼容朗读"]
+            || [p.name isEqualToString:@"AI 朗读"]) {
+            p.role = RDAIProfileRoleTTS;
+        } else {
+            p.role = RDAIProfileRoleTranslate;
+        }
+    }
+    if ([dict[@"ttsModel"] isKindOfClass:NSString.class] && [dict[@"ttsModel"] length] > 0) {
+        p.ttsModel = dict[@"ttsModel"];
+    } else {
+        p.ttsModel = isMiMo ? @"mimo-v2.5-tts" : @"tts-1";
+    }
+    if ([dict[@"ttsVoice"] isKindOfClass:NSString.class] && [dict[@"ttsVoice"] length] > 0) {
+        p.ttsVoice = dict[@"ttsVoice"];
+    } else {
+        p.ttsVoice = isMiMo ? @"mimo_default" : @"alloy";
     }
     return p;
 }
@@ -282,6 +394,7 @@ static NSString *RDAINormalizedOrigin(NSString *baseURL) {
         RDAIProviderTypeAnthropicCompat,
         RDAIProviderTypeGemini,
         RDAIProviderTypeGeminiCompat,
+        RDAIProviderTypeMiMo,
     ];
 }
 

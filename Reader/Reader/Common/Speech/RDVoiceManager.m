@@ -4,6 +4,12 @@
 //
 
 #import "RDVoiceManager.h"
+#import "RDHttpTTS.h"
+#import "RDHttpTTSClient.h"
+#import "RDAIConfig.h"
+#import "RDAIClient.h"
+#import <objc/runtime.h>
+#import <AVFoundation/AVFoundation.h>
 
 NSString * const RDVoiceListChangedNotification = @"RDVoiceListChangedNotification";
 NSString * const RDPreferredVoiceChangedNotification = @"RDPreferredVoiceChangedNotification";
@@ -94,6 +100,19 @@ IMP_SINGLETON(RDVoiceManager)
     if (self.preferredVoiceIdentifier.length == 0) {
         self.cachedDisplayName = @"自动(中文)";
         return self.cachedDisplayName;
+    }
+    RDHttpTTS *http = [[RDHttpTTSStore sharedInstance] engineWithVoiceIdentifier:self.preferredVoiceIdentifier];
+    if (http) {
+        self.cachedDisplayName = [NSString stringWithFormat:@"%@ · 在线", http.name ?: @"HttpTTS"];
+        return self.cachedDisplayName;
+    }
+    if ([self.preferredVoiceIdentifier hasPrefix:RDAITtsVoiceIdentifierPrefix]) {
+        NSString *pid = [self.preferredVoiceIdentifier substringFromIndex:RDAITtsVoiceIdentifierPrefix.length];
+        RDAIConfigProfile *p = [[RDAIConfigStore sharedInstance] profileWithId:pid];
+        if (p) {
+            self.cachedDisplayName = [NSString stringWithFormat:@"%@ · AI", p.name.length ? p.name : @"AI TTS"];
+            return self.cachedDisplayName;
+        }
     }
     AVSpeechSynthesisVoice *v = [AVSpeechSynthesisVoice voiceWithIdentifier:self.preferredVoiceIdentifier];
     if (v) {
@@ -315,8 +334,56 @@ IMP_SINGLETON(RDVoiceManager)
     if (favorites.count) {
         [groups addObject:@{@"title": @"已导入/收藏", @"items": favorites}];
     }
+    // 在线 HttpTTS(legado 兼容)
+    NSMutableArray *online = [NSMutableArray array];
+    for (RDHttpTTS *engine in [RDHttpTTSStore sharedInstance].engines) {
+        RDVoiceOption *opt = [[RDVoiceOption alloc] init];
+        opt.identifier = [engine voiceIdentifier];
+        opt.displayName = engine.name.length ? engine.name : @"在线引擎";
+        opt.language = @"online";
+        opt.detail = @"HttpTTS · 阅读兼容 · 文本将发送到引擎服务器";
+        opt.kind = RDVoiceKindHttpTTS;
+        opt.isPreferred = [opt.identifier isEqualToString:self.preferredVoiceIdentifier];
+        [online addObject:opt];
+        if ([favSet containsObject:opt.identifier]) {
+            RDVoiceOption *fav = [[RDVoiceOption alloc] init];
+            fav.identifier = opt.identifier;
+            fav.displayName = opt.displayName;
+            fav.language = opt.language;
+            fav.detail = opt.detail;
+            fav.kind = RDVoiceKindFavorite;
+            fav.isPreferred = opt.isPreferred;
+            [favorites addObject:fav];
+        }
+    }
+
     if (personal.count) {
         [groups addObject:@{@"title": @"个人声音", @"items": personal}];
+    }
+    // AI 模型 TTS(OpenAI /v1/audio/speech 或小米 MiMo chat TTS)
+    NSMutableArray *aiTTS = [NSMutableArray array];
+    for (RDAIConfigProfile *p in [RDAIConfigStore sharedInstance].profiles) {
+        if (!p.isTTSUsable) {
+            continue;
+        }
+        RDVoiceOption *opt = [[RDVoiceOption alloc] init];
+        opt.identifier = [p ttsVoiceIdentifier];
+        opt.displayName = p.name.length ? p.name : @"AI 朗读";
+        opt.language = @"ai";
+        BOOL mimo = p.usesMiMoSpeechAPI;
+        NSString *tm = p.ttsModel.length ? p.ttsModel : (mimo ? @"mimo-v2.5-tts" : @"tts-1");
+        NSString *tv = p.ttsVoice.length ? p.ttsVoice : (mimo ? @"mimo_default" : @"alloy");
+        opt.detail = [NSString stringWithFormat:@"%@ · %@ · %@", mimo ? @"MiMo TTS" : @"AI TTS", tm, tv];
+        opt.kind = RDVoiceKindAITTS;
+        opt.isPreferred = [opt.identifier isEqualToString:self.preferredVoiceIdentifier];
+        [aiTTS addObject:opt];
+    }
+
+    if (online.count) {
+        [groups addObject:@{@"title": @"在线朗读(HttpTTS)", @"items": online}];
+    }
+    if (aiTTS.count) {
+        [groups addObject:@{@"title": @"AI 模型朗读", @"items": aiTTS}];
     }
     if (chinese.count) {
         [groups addObject:@{@"title": @"中文语音", @"items": chinese}];
@@ -416,6 +483,45 @@ IMP_SINGLETON(RDVoiceManager)
 - (void)previewIdentifier:(NSString *)identifier
 {
     [self stopPreview];
+    void (^playAudio)(NSData *) = ^(NSData *audio) {
+        if (!audio) {
+            return;
+        }
+        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"rd_tts_preview.mp3"];
+        [audio writeToFile:path atomically:YES];
+        NSError *err = nil;
+        AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:path] error:&err];
+        if (player) {
+            objc_setAssociatedObject(self, "rd_preview_player", player, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            [player play];
+        }
+    };
+    RDHttpTTS *engine = [[RDHttpTTSStore sharedInstance] engineWithVoiceIdentifier:identifier];
+    if (engine) {
+        [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+        [[AVAudioSession sharedInstance] setActive:YES error:nil];
+        [[RDHttpTTSClient sharedClient] fetchAudioForEngine:engine
+                                                       text:@"你好,这是在线朗读引擎试听。"
+                                                 speakSpeed:10
+                                                 completion:^(NSData *audio, NSError *error) {
+            playAudio(audio);
+        }];
+        return;
+    }
+    if ([identifier hasPrefix:RDAITtsVoiceIdentifierPrefix]) {
+        NSString *pid = [identifier substringFromIndex:RDAITtsVoiceIdentifierPrefix.length];
+        RDAIConfigProfile *p = [[RDAIConfigStore sharedInstance] profileWithId:pid];
+        if (p.isTTSUsable) {
+            [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+            [[AVAudioSession sharedInstance] setActive:YES error:nil];
+            [[RDAIClient sharedClient] synthesizeSpeechText:@"你好,这是 AI 朗读试听。"
+                                                    profile:p
+                                                 completion:^(NSData *audio, NSError *error) {
+                playAudio(audio);
+            }];
+            return;
+        }
+    }
     AVSpeechSynthesisVoice *voice = nil;
     if (identifier.length) {
         voice = [AVSpeechSynthesisVoice voiceWithIdentifier:identifier];
@@ -442,6 +548,10 @@ IMP_SINGLETON(RDVoiceManager)
     if (_previewSynthesizer.isSpeaking) {
         [_previewSynthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
     }
+    AVAudioPlayer *player = objc_getAssociatedObject(self, "rd_preview_player");
+    [player stop];
+    objc_setAssociatedObject(self, "rd_preview_player", nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [[RDHttpTTSClient sharedClient] cancel];
 }
 
 #pragma mark - Import / Export config
@@ -456,17 +566,33 @@ IMP_SINGLETON(RDVoiceManager)
     if (!data) {
         return NO;
     }
+
+    // 1) 优先尝试阅读/legado HttpTTS(单条或数组,含 name+url)
+    NSError *ttsErr = nil;
+    NSInteger ttsCount = [[RDHttpTTSStore sharedInstance] importJSONData:data error:&ttsErr];
+    if (ttsCount > 0) {
+        self.cachedGroups = nil;
+        [[NSNotificationCenter defaultCenter] postNotificationName:RDVoiceListChangedNotification object:nil];
+        return YES;
+    }
+
     id json = [NSJSONSerialization JSONObjectWithData:data options:0 error:error];
     if (![json isKindOfClass:[NSDictionary class]]) {
         if (error) {
-            *error = [NSError errorWithDomain:@"RDVoice" code:1 userInfo:@{NSLocalizedDescriptionKey: @"无效的语音配置文件"}];
+            *error = ttsErr ?: [NSError errorWithDomain:@"RDVoice" code:1 userInfo:@{NSLocalizedDescriptionKey: @"无效的语音配置(支持本机收藏配置或阅读 HttpTTS JSON)"}];
         }
         return NO;
     }
     NSDictionary *dict = (NSDictionary *)json;
+    // 2) 本机收藏/默认语音配置
+    if (![dict[@"preferredVoiceIdentifier"] isKindOfClass:NSString.class] && ![dict[@"favoriteIdentifiers"] isKindOfClass:NSArray.class]) {
+        if (error) {
+            *error = ttsErr ?: [NSError errorWithDomain:@"RDVoice" code:1 userInfo:@{NSLocalizedDescriptionKey: @"无效的语音配置文件"}];
+        }
+        return NO;
+    }
     NSString *pref = dict[@"preferredVoiceIdentifier"];
     if ([pref isKindOfClass:[NSString class]]) {
-        // 若 identifier 在本机不存在,仍写入,resolved 时会回退
         self.preferredVoiceIdentifier = pref.length ? pref : nil;
     }
     NSArray *favs = dict[@"favoriteIdentifiers"];
@@ -480,6 +606,7 @@ IMP_SINGLETON(RDVoiceManager)
         self.favoriteIdentifiers = clean;
         [self p_saveFavorites];
     }
+    self.cachedGroups = nil;
     [[NSNotificationCenter defaultCenter] postNotificationName:RDVoiceListChangedNotification object:nil];
     return YES;
 }

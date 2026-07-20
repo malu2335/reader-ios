@@ -76,7 +76,7 @@ static RDAIConfigProfile *makeProfile(NSString *type, NSString *baseURL) {
 static void test_provider_types(void) {
     logline(@"\n== Provider type set ==");
     NSArray *types = [RDAIConfigStore allProviderTypes];
-    assert_true(types.count == 6, @"exactly 6 provider types");
+    assert_true(types.count == 7, @"exactly 7 provider types");
     NSArray *expected = @[
         RDAIProviderTypeOpenAI,
         RDAIProviderTypeAnthropic,
@@ -84,8 +84,9 @@ static void test_provider_types(void) {
         RDAIProviderTypeAnthropicCompat,
         RDAIProviderTypeGemini,
         RDAIProviderTypeGeminiCompat,
+        RDAIProviderTypeMiMo,
     ];
-    assert_true([types isEqualToArray:expected], @"types match OpenAI/Anthropic/openai格式/anthropic格式/Gemini/gemini格式");
+    assert_true([types isEqualToArray:expected], @"types match OpenAI/Anthropic/openai格式/anthropic格式/Gemini/gemini格式/MiMo");
 }
 
 static void test_config_persistence(NSString *dir) {
@@ -114,7 +115,7 @@ static void test_config_persistence(NSString *dir) {
 }
 
 static void test_six_providers(void) {
-    logline(@"\n== Six-provider request build + parse + translate ==");
+    logline(@"\n== Multi-provider request build + parse + translate ==");
     NSString *source = @"Hello, world!";
     // Fixture translations differ per type so we don't hardcode a single expected string as sole success criterion
     NSDictionary *fixtures = @{
@@ -124,6 +125,7 @@ static void test_six_providers(void) {
         RDAIProviderTypeAnthropicCompat: fixtureAnthropic(@"你好，世界！(anthropic格式)"),
         RDAIProviderTypeGemini: fixtureGemini(@"你好，世界！(gemini)"),
         RDAIProviderTypeGeminiCompat: fixtureGemini(@"你好，世界！(gemini格式)"),
+        RDAIProviderTypeMiMo: fixtureOpenAI(@"你好，世界！(mimo)"),
     };
     NSDictionary *bases = @{
         RDAIProviderTypeOpenAI: @"",
@@ -132,6 +134,7 @@ static void test_six_providers(void) {
         RDAIProviderTypeOpenAICompat: @"https://oa-compat.example.com",
         RDAIProviderTypeAnthropicCompat: @"https://ant-compat.example.com",
         RDAIProviderTypeGeminiCompat: @"https://gem-compat.example.com",
+        RDAIProviderTypeMiMo: @"",
     };
 
     for (NSString *type in [RDAIConfigStore allProviderTypes]) {
@@ -147,6 +150,7 @@ static void test_six_providers(void) {
         NSString *url = req.URL.absoluteString;
         NSString *auth = [req valueForHTTPHeaderField:@"Authorization"];
         NSString *xKey = [req valueForHTTPHeaderField:@"x-api-key"];
+        NSString *apiKeyHeader = [req valueForHTTPHeaderField:@"api-key"];
         NSString *bodyStr = [[NSString alloc] initWithData:req.HTTPBody encoding:NSUTF8StringEncoding] ?: @"";
 
         if ([RDAIClient isOpenAIFamily:type]) {
@@ -155,6 +159,9 @@ static void test_six_providers(void) {
             assert_true([bodyStr containsString:@"messages"], [NSString stringWithFormat:@"%@ body has messages", type]);
             if ([type isEqualToString:RDAIProviderTypeOpenAICompat]) {
                 assert_true([url hasPrefix:@"https://oa-compat.example.com"], @"openai格式 honors custom base URL");
+            } else if ([RDAIClient isMiMoType:type]) {
+                assert_true([url hasPrefix:@"https://api.xiaomimimo.com"], @"MiMo uses default host");
+                assert_true([apiKeyHeader isEqualToString:@"test-key-abc"], @"MiMo also sets api-key header");
             } else {
                 assert_true([url hasPrefix:@"https://api.openai.com"], @"OpenAI uses default host");
             }
@@ -410,6 +417,80 @@ static void test_base_url_policy(void) {
     assert_true(![RDAIClient validateBaseURLString:@"api.openai.com" error:&err], @"missing scheme rejected");
 }
 
+static void test_mimo_and_openai_tts(void) {
+    logline(@"\n== AI TTS request build (OpenAI + MiMo) ==");
+    // OpenAI /v1/audio/speech
+    RDAIConfigProfile *oa = makeProfile(RDAIProviderTypeOpenAI, @"");
+    oa.role = RDAIProfileRoleTTS;
+    oa.ttsModel = @"tts-1";
+    oa.ttsVoice = @"alloy";
+    assert_true(oa.isTTSUsable, @"OpenAI isTTSUsable");
+    assert_true(!oa.isUsable, @"TTS role not usable for translate");
+    assert_true(!oa.usesMiMoSpeechAPI, @"OpenAI not MiMo speech");
+    NSError *err = nil;
+    NSURLRequest *oaReq = [RDAIClient speechRequestForProfile:oa text:@"Hello" error:&err];
+    assert_true(oaReq != nil, @"OpenAI speech request");
+    assert_true([oaReq.URL.absoluteString containsString:@"/v1/audio/speech"], @"OpenAI uses /v1/audio/speech");
+    NSString *oaBody = [[NSString alloc] initWithData:oaReq.HTTPBody encoding:NSUTF8StringEncoding] ?: @"";
+    assert_true([oaBody containsString:@"\"input\""], @"OpenAI body has input");
+    assert_true([oaBody containsString:@"alloy"], @"OpenAI body has voice");
+
+    // MiMo chat completions TTS
+    RDAIConfigProfile *mimo = makeProfile(RDAIProviderTypeMiMo, @"");
+    mimo.role = RDAIProfileRoleTTS;
+    mimo.model = @"mimo-v2.5-pro";
+    mimo.ttsModel = @"mimo-v2.5-tts";
+    mimo.ttsVoice = @"冰糖";
+    assert_true(!mimo.isUsable, @"TTS role MiMo not for translate");
+    assert_true(mimo.isTTSUsable, @"MiMo isTTSUsable");
+    assert_true(mimo.usesMiMoSpeechAPI, @"MiMo usesMiMoSpeechAPI");
+    err = nil;
+    NSURLRequest *mReq = [RDAIClient speechRequestForProfile:mimo text:@"你好，世界" error:&err];
+    assert_true(mReq != nil, @"MiMo speech request");
+    assert_true([mReq.URL.absoluteString containsString:@"/v1/chat/completions"], @"MiMo TTS uses chat/completions");
+    assert_true(![mReq.URL.absoluteString containsString:@"/audio/speech"], @"MiMo not /audio/speech");
+    assert_true([[mReq valueForHTTPHeaderField:@"api-key"] isEqualToString:@"test-key-abc"], @"MiMo TTS api-key header");
+    assert_true([[mReq valueForHTTPHeaderField:@"Authorization"] hasPrefix:@"Bearer "], @"MiMo TTS Bearer");
+    NSString *mBody = [[NSString alloc] initWithData:mReq.HTTPBody encoding:NSUTF8StringEncoding] ?: @"";
+    assert_true([mBody containsString:@"mimo-v2.5-tts"], @"MiMo body has tts model");
+    assert_true([mBody containsString:@"assistant"], @"MiMo body has assistant role for speak text");
+    assert_true([mBody containsString:@"你好，世界"], @"MiMo body has speak text");
+    assert_true([mBody containsString:@"冰糖"] || [mBody containsString:@"\\u51b0\\u7cd6"], @"MiMo body has voice");
+
+    // base64 audio parse
+    NSString *raw = @"HelloMiMoTTSAudioPayloadXXXXXXXXXXXXXXXX";
+    NSData *rawData = [raw dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *b64 = [rawData base64EncodedStringWithOptions:0];
+    NSDictionary *resp = @{
+        @"choices": @[
+            @{
+                @"message": @{
+                    @"role": @"assistant",
+                    @"content": @"",
+                    @"audio": @{ @"data": b64, @"id": @"a1" },
+                },
+            },
+        ],
+    };
+    NSData *respData = [NSJSONSerialization dataWithJSONObject:resp options:0 error:nil];
+    err = nil;
+    NSData *decoded = [RDAIClient audioDataFromChatSpeechResponse:respData error:&err];
+    assert_true(decoded.length == rawData.length, @"MiMo audio base64 decoded length");
+    assert_true([decoded isEqualToData:rawData], @"MiMo audio base64 matches");
+
+    // openai 格式 + xiaomimimo base → MiMo speech path
+    RDAIConfigProfile *proxy = makeProfile(RDAIProviderTypeOpenAICompat, @"https://api.xiaomimimo.com/v1");
+    proxy.role = RDAIProfileRoleTTS;
+    proxy.ttsModel = @"mimo-v2.5-tts";
+    proxy.ttsVoice = @"mimo_default";
+    assert_true(proxy.usesMiMoSpeechAPI, @"xiaomimimo base triggers MiMo speech");
+    assert_true(proxy.isTTSUsable, @"compat MiMo TTS usable");
+    err = nil;
+    NSURLRequest *pReq = [RDAIClient speechRequestForProfile:proxy text:@"test" error:&err];
+    assert_true(pReq != nil && [pReq.URL.absoluteString containsString:@"chat/completions"], @"compat MiMo path chat/completions");
+    logline(@"  OpenAI + MiMo TTS builders OK");
+}
+
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
         g_log = [NSMutableString string];
@@ -426,6 +507,7 @@ int main(int argc, const char * argv[]) {
         test_backup_ai_roundtrip(storeDir, scratch);
         test_backup_ai_hijack_rejected(storeDir);
         test_base_url_policy();
+        test_mimo_and_openai_tts();
 
         logline(@"\n== Summary ==");
         if (g_failures == 0) {

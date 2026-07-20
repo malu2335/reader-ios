@@ -5,7 +5,7 @@
 
 #import "RDReplaceRulesController.h"
 #import "RDReplaceRule.h"
-#import "LEEAlert.h"
+#import "RDPaperAlert.h"
 
 @interface RDReplaceRulesController () <UITableViewDelegate, UITableViewDataSource>
 @property (nonatomic, strong) UITableView *tableView;
@@ -75,36 +75,26 @@
         editing.isRegex = YES;
         editing.isEnabled = YES;
     }
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:rule ? @"编辑规则" : @"添加规则"
-                                                                   message:@"支持正则;替换为空即删除匹配内容"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
-        tf.placeholder = @"名称";
-        tf.text = editing.name;
-    }];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
-        tf.placeholder = @"匹配(正则或原文)";
-        tf.text = editing.pattern;
-        tf.autocapitalizationType = UITextAutocapitalizationTypeNone;
-    }];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
-        tf.placeholder = @"替换为(可空)";
-        tf.text = editing.replacement;
-        tf.autocapitalizationType = UITextAutocapitalizationTypeNone;
-    }];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-        editing.name = alert.textFields[0].text ?: @"";
-        editing.pattern = alert.textFields[1].text ?: @"";
-        editing.replacement = alert.textFields[2].text ?: @"";
+    [RDPaperAlert showTextFieldsWithTitle:rule ? @"编辑规则" : @"添加规则"
+                                  message:@"支持正则;替换为空即删除匹配内容"
+                               fieldSpecs:@[
+        @{@"placeholder": @"名称", @"text": editing.name ?: @""},
+        @{@"placeholder": @"匹配(正则或原文)", @"text": editing.pattern ?: @""},
+        @{@"placeholder": @"替换为(可空)", @"text": editing.replacement ?: @""},
+    ]
+                              cancelTitle:@"取消"
+                             confirmTitle:@"保存"
+                                  confirm:^(NSArray<NSString *> *values) {
+        editing.name = values[0] ?: @"";
+        editing.pattern = values[1] ?: @"";
+        editing.replacement = values[2] ?: @"";
         if (editing.pattern.length == 0) {
             return;
         }
         [[RDReplaceRuleStore sharedInstance] upsertRule:editing];
         [weakSelf p_reload];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    }];
 }
 
 #pragma mark - Table
@@ -158,24 +148,15 @@
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     RDReplaceRule *r = self.rules[indexPath.row];
     __weak typeof(self) weakSelf = self;
-    [LEEAlert actionsheet].config
-    .LeeAddAction(^(LEEAction *action) {
-        action.title = @"编辑";
-        action.clickBlock = ^{ [weakSelf p_editRule:r]; };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDestructive;
-        action.title = @"删除";
-        action.clickBlock = ^{
+    [RDPaperAlert showActionSheetWithTitle:nil message:nil actions:@[
+        [RDPaperAlertAction actionWithTitle:@"编辑" style:RDPaperAlertActionStyleDefault handler:^{
+            [weakSelf p_editRule:r];
+        }],
+        [RDPaperAlertAction actionWithTitle:@"删除" style:RDPaperAlertActionStyleDestructive handler:^{
             [[RDReplaceRuleStore sharedInstance] removeRuleId:r.ruleId];
             [weakSelf p_reload];
-        };
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeCancel;
-        action.title = @"取消";
-    })
-    .LeeShow();
+        }],
+    ]];
 }
 
 @end

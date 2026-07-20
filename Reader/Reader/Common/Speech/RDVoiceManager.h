@@ -18,6 +18,8 @@ typedef NS_ENUM(NSInteger, RDVoiceKind) {
     RDVoiceKindEnhanced,   // 增强/高级(已下载)
     RDVoiceKindPersonal,   // 个人声音 iOS 17+
     RDVoiceKindFavorite,   // 用户收藏/导入
+    RDVoiceKindHttpTTS,    // 在线朗读引擎(legado HttpTTS)
+    RDVoiceKindAITTS,      // AI 配置驱动的 OpenAI 兼容 TTS
 };
 
 @interface RDVoiceOption : NSObject

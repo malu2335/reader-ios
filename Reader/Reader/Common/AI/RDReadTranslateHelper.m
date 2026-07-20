@@ -12,10 +12,7 @@
 #import "RDMainController.h"
 #import "RDReadConfigManager.h"
 #import "RDFontManager.h"
-#import <objc/runtime.h>
-
-/// 纸感翻译配置引导遮罩(与设置/空书架同一套令牌,不走系统蓝 LEEAlert)
-static const NSInteger kRDTranslateConfigGuideTag = 0x52444347; // 'RDCG'
+#import "RDPaperAlert.h"
 
 @implementation RDTranslatePair
 @end
@@ -123,244 +120,23 @@ static const NSInteger kRDTranslateConfigGuideTag = 0x52444347; // 'RDCG'
     *outSymbol = @"list.bullet.rectangle";
 }
 
-+ (void)p_dismissConfigGuideAnimated:(BOOL)animated completion:(void (^)(void))completion
-{
-    UIWindow *window = [RDUtilities applicationKeyWindow];
-    UIView *scrim = [window viewWithTag:kRDTranslateConfigGuideTag];
-    if (!scrim) {
-        if (completion) {
-            completion();
-        }
-        return;
-    }
-    UIView *card = scrim.subviews.firstObject;
-    void (^finish)(void) = ^{
-        [scrim removeFromSuperview];
-        if (completion) {
-            completion();
-        }
-    };
-    if (!animated) {
-        finish();
-        return;
-    }
-    [UIView animateWithDuration:0.2
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseIn
-                     animations:^{
-        scrim.alpha = 0;
-        card.transform = CGAffineTransformMakeScale(0.94, 0.94);
-        card.alpha = 0;
-    } completion:^(BOOL finished) {
-        finish();
-    }];
-}
-
-+ (void)p_guideSecondaryTapped
-{
-    [self p_dismissConfigGuideAnimated:YES completion:nil];
-}
-
-+ (void)p_guidePrimaryTapped:(UIButton *)sender
-{
-    UIViewController *host = objc_getAssociatedObject(sender, @selector(p_guidePrimaryTapped:));
-    [self p_dismissConfigGuideAnimated:YES completion:^{
-        [RDReadTranslateHelper p_openAISettingsFrom:host];
-    }];
-}
-
-+ (void)p_guideScrimTapped:(UITapGestureRecognizer *)gr
-{
-    // 只点遮罩空白处关闭,点卡片不关
-    CGPoint p = [gr locationInView:gr.view];
-    UIView *card = gr.view.subviews.firstObject;
-    if (card && CGRectContainsPoint(card.frame, p)) {
-        return;
-    }
-    [self p_dismissConfigGuideAnimated:YES completion:nil];
-}
-
-/// 纸感引导卡:表面色 + 衬线标题 + 赭褐主按钮,与空书架/分享页同系
-+ (UIView *)p_buildGuideCardWidth:(CGFloat)width
-                            title:(NSString *)title
-                          content:(NSString *)content
-                      actionTitle:(NSString *)actionTitle
-                       symbolName:(NSString *)symbolName
-                             host:(UIViewController *)host
-{
-    UIView *card = [[UIView alloc] init];
-    card.backgroundColor = RDSurfaceColor;
-    card.layer.cornerRadius = 18;
-    card.layer.masksToBounds = NO;
-    card.layer.shadowColor = [UIColor colorWithHexValue:0x2C2620].CGColor;
-    card.layer.shadowOpacity = 0.14;
-    card.layer.shadowRadius = 22;
-    card.layer.shadowOffset = CGSizeMake(0, 10);
-
-    // 轻微内描边,接近设置页卡片边缘
-    UIView *border = [[UIView alloc] init];
-    border.userInteractionEnabled = NO;
-    border.layer.cornerRadius = 18;
-    border.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    border.layer.borderColor = RDSeparatorColor.CGColor;
-    border.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:border];
-
-    UIView *iconWell = [[UIView alloc] init];
-    iconWell.backgroundColor = RDAccentSoftColor;
-    iconWell.layer.cornerRadius = 28;
-    iconWell.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:iconWell];
-
-    UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:24 weight:UIImageSymbolWeightMedium];
-    UIImage *sym = [[UIImage systemImageNamed:symbolName ?: @"globe" withConfiguration:symCfg]
-                    imageWithTintColor:RDAccentColor renderingMode:UIImageRenderingModeAlwaysOriginal];
-    UIImageView *iconView = [[UIImageView alloc] initWithImage:sym];
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    [iconWell addSubview:iconView];
-
-    UILabel *titleLabel = [[UILabel alloc] init];
-    titleLabel.text = title;
-    titleLabel.font = RDTitleFont19;
-    titleLabel.textColor = RDBlackColor;
-    titleLabel.textAlignment = NSTextAlignmentCenter;
-    titleLabel.numberOfLines = 0;
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:titleLabel];
-
-    UILabel *bodyLabel = [[UILabel alloc] init];
-    NSMutableParagraphStyle *ps = [[NSMutableParagraphStyle alloc] init];
-    ps.lineSpacing = 5;
-    ps.alignment = NSTextAlignmentCenter;
-    bodyLabel.attributedText = [[NSAttributedString alloc] initWithString:content ?: @""
-                                                               attributes:@{
-        NSFontAttributeName: RDFont14,
-        NSForegroundColorAttributeName: RDGrayColor,
-        NSParagraphStyleAttributeName: ps,
-    }];
-    bodyLabel.numberOfLines = 0;
-    bodyLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:bodyLabel];
-
-    UIButton *primary = [UIButton buttonWithType:UIButtonTypeSystem];
-    [primary setTitle:actionTitle forState:UIControlStateNormal];
-    [primary setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    primary.titleLabel.font = RDBoldFont16;
-    primary.backgroundColor = RDAccentColor;
-    primary.layer.cornerRadius = 23;
-    primary.translatesAutoresizingMaskIntoConstraints = NO;
-    [primary addTarget:self action:@selector(p_guidePrimaryTapped:) forControlEvents:UIControlEventTouchUpInside];
-    objc_setAssociatedObject(primary, @selector(p_guidePrimaryTapped:), host, OBJC_ASSOCIATION_ASSIGN);
-    [card addSubview:primary];
-
-    UIButton *secondary = [UIButton buttonWithType:UIButtonTypeSystem];
-    [secondary setTitle:@"稍后再说" forState:UIControlStateNormal];
-    [secondary setTitleColor:RDLightGrayColor forState:UIControlStateNormal];
-    secondary.titleLabel.font = RDFont15;
-    secondary.translatesAutoresizingMaskIntoConstraints = NO;
-    [secondary addTarget:self action:@selector(p_guideSecondaryTapped) forControlEvents:UIControlEventTouchUpInside];
-    [card addSubview:secondary];
-
-    CGFloat side = 24;
-    [NSLayoutConstraint activateConstraints:@[
-        [border.topAnchor constraintEqualToAnchor:card.topAnchor],
-        [border.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
-        [border.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-        [border.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
-
-        [iconWell.topAnchor constraintEqualToAnchor:card.topAnchor constant:28],
-        [iconWell.centerXAnchor constraintEqualToAnchor:card.centerXAnchor],
-        [iconWell.widthAnchor constraintEqualToConstant:56],
-        [iconWell.heightAnchor constraintEqualToConstant:56],
-
-        [iconView.centerXAnchor constraintEqualToAnchor:iconWell.centerXAnchor],
-        [iconView.centerYAnchor constraintEqualToAnchor:iconWell.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:28],
-        [iconView.heightAnchor constraintEqualToConstant:28],
-
-        [titleLabel.topAnchor constraintEqualToAnchor:iconWell.bottomAnchor constant:18],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:side],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-side],
-
-        [bodyLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:10],
-        [bodyLabel.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:side],
-        [bodyLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-side],
-
-        [primary.topAnchor constraintEqualToAnchor:bodyLabel.bottomAnchor constant:24],
-        [primary.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:side],
-        [primary.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-side],
-        [primary.heightAnchor constraintEqualToConstant:46],
-
-        [secondary.topAnchor constraintEqualToAnchor:primary.bottomAnchor constant:6],
-        [secondary.centerXAnchor constraintEqualToAnchor:card.centerXAnchor],
-        [secondary.heightAnchor constraintEqualToConstant:40],
-        [secondary.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-16],
-        [secondary.leadingAnchor constraintGreaterThanOrEqualToAnchor:card.leadingAnchor constant:side],
-        [secondary.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-side],
-
-        [card.widthAnchor constraintEqualToConstant:width],
-    ]];
-
-    // 先布局再量高,供外层居中
-    CGSize fitted = [card systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
-                        withHorizontalFittingPriority:UILayoutPriorityRequired
-                              verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    card.bounds = CGRectMake(0, 0, width, ceil(fitted.height));
-    return card;
-}
-
 + (void)p_presentConfigGuideFrom:(UIViewController *)host
 {
-    UIWindow *window = host.view.window ?: [RDUtilities applicationKeyWindow];
-    if (!window) {
-        return;
-    }
-    // 防重复叠两层
-    [self p_dismissConfigGuideAnimated:NO completion:nil];
-
     NSString *title = nil;
     NSString *content = nil;
     NSString *actionTitle = nil;
     NSString *symbol = nil;
     [self p_configGuideCopyWithTitle:&title content:&content actionTitle:&actionTitle symbolName:&symbol];
-
-    CGFloat cardW = MIN(312, window.bounds.size.width - 48);
-    UIView *card = [self p_buildGuideCardWidth:cardW
-                                         title:title
-                                       content:content
-                                   actionTitle:actionTitle
-                                    symbolName:symbol
-                                          host:host];
-
-    UIView *scrim = [[UIView alloc] initWithFrame:window.bounds];
-    scrim.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    scrim.backgroundColor = [[UIColor colorWithHexValue:0x2C2620] colorWithAlphaComponent:0.40];
-    scrim.tag = kRDTranslateConfigGuideTag;
-    scrim.alpha = 0;
-    scrim.accessibilityViewIsModal = YES;
-
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(p_guideScrimTapped:)];
-    [scrim addGestureRecognizer:tap];
-
-    card.center = CGPointMake(CGRectGetMidX(scrim.bounds), CGRectGetMidY(scrim.bounds));
-    card.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin
-        | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
-    card.transform = CGAffineTransformMakeScale(0.92, 0.92);
-    card.alpha = 0;
-    [scrim addSubview:card];
-    [window addSubview:scrim];
-
-    [UIView animateWithDuration:0.32
-                          delay:0
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.4
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        scrim.alpha = 1;
-        card.transform = CGAffineTransformIdentity;
-        card.alpha = 1;
-    } completion:nil];
+    __weak UIViewController *weakHost = host;
+    [RDPaperAlert showAlertWithTitle:title
+                             message:content
+                          symbolName:symbol
+                             actions:@[
+        [RDPaperAlertAction actionWithTitle:@"稍后再说" style:RDPaperAlertActionStyleCancel handler:nil],
+        [RDPaperAlertAction actionWithTitle:actionTitle ?: @"去设置" style:RDPaperAlertActionStylePrimary handler:^{
+            [RDReadTranslateHelper p_openAISettingsFrom:weakHost];
+        }],
+    ]];
 }
 
 + (BOOL)ensureUsableAIConfigFromHost:(UIViewController *)host quiet:(BOOL)quiet
