@@ -13,6 +13,7 @@ static NSString * const kRDAppDarkModeEnabledKey = @"RDAppDarkModeEnabled";
 @interface RDAppAppearance ()
 @property (nonatomic, assign) BOOL lastAppliedDark;
 @property (nonatomic, assign) BOOL hasAppliedOnce;
+@property (nonatomic, assign) BOOL applying;
 @end
 
 @implementation RDAppAppearance
@@ -79,6 +80,12 @@ static NSString * const kRDAppDarkModeEnabledKey = @"RDAppDarkModeEnabled";
 
 - (void)applyToWindows
 {
+    // 防重入:主题通知链里可能再次 apply
+    if (self.applying) {
+        return;
+    }
+    self.applying = YES;
+
     BOOL dark = [self isEffectiveDark];
     UIUserInterfaceStyle style = dark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
 
@@ -112,6 +119,7 @@ static NSString * const kRDAppDarkModeEnabledKey = @"RDAppDarkModeEnabled";
     BOOL changed = !self.hasAppliedOnce || (self.lastAppliedDark != dark);
     self.hasAppliedOnce = YES;
     self.lastAppliedDark = dark;
+    self.applying = NO;
     if (changed) {
         [[NSNotificationCenter defaultCenter] postNotificationName:RDAppAppearanceDidChangeNotification object:self];
     }

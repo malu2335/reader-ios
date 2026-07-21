@@ -160,7 +160,8 @@ static UIImage *RDMakeSelectionRing(UIColor *stroke, CGFloat diameter)
             sharedInstance.lineSpace = sharedInstance.fontSize-6;
             sharedInstance.brightness = kConfigMaxBrightnessValue;
             // 默认旧书页:最接近实体书纸
-            sharedInstance.theme = RDYellowTheme;
+            // 初始化期禁止走 setTheme: 同步发通知,否则会 reenter dispatch_once(见 RDAppAppearance)
+            [sharedInstance p_applyThemePalette:RDYellowTheme];
             sharedInstance.pageType = [RDDisplayBoost preferredPageTypeForDisplay];
         } else if ([RDDisplayBoost isHighRefreshDisplay]
                    && sharedInstance.pageType == RDRealTypePage
@@ -169,9 +170,8 @@ static UIImage *RDMakeSelectionRing(UIColor *stroke, CGFloat diameter)
             [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kPromotedSliderPageOnProMotionKey];
             [sharedInstance archive];
         }
-        // 归档后重新应用主题,确保纸纹与新色板生效
-        RDThemeType t = sharedInstance.theme;
-        sharedInstance.theme = t;
+        // 归档后静默重刷纸纹/色板,不在 once 内发通知
+        [sharedInstance p_applyThemePalette:sharedInstance.theme];
     });
 
     return sharedInstance;
@@ -253,7 +253,8 @@ static UIImage *RDMakeSelectionRing(UIColor *stroke, CGFloat diameter)
     return stretch;
 }
 
--(void)setTheme:(RDThemeType)theme
+/// 只刷色板/纸纹,不发通知。供 sharedInstance 的 once 块使用,避免通知链回入 sharedInstance 导致 dispatch_once 重入崩溃。
+- (void)p_applyThemePalette:(RDThemeType)theme
 {
     RDPaperPalette p = RDPaperPaletteForTheme(theme);
     self.fontColor = RDUIColorHex(p.ink);
@@ -266,6 +267,11 @@ static UIImage *RDMakeSelectionRing(UIColor *stroke, CGFloat diameter)
         self.background = [UIImage imageWithColor:RDUIColorHex(p.base)];
     }
     _theme = theme;
+}
+
+-(void)setTheme:(RDThemeType)theme
+{
+    [self p_applyThemePalette:theme];
     [[NSNotificationCenter defaultCenter] postNotificationName:RDReadThemeDidChangeNotification object:self];
 }
 
