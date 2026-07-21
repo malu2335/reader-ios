@@ -110,7 +110,18 @@
 
 + (NSString *)buildPicUrlWithPath:(NSString *)path
 {
-    return [NSString stringWithFormat:@"%@%@",[RDGlobalModel sharedInstance].picBaseUrl,path];
+    // 本地优先:已是绝对 URL 则原样返回;否则不再拼接已废弃的在线 pic 域名
+    if (path.length == 0) {
+        return @"";
+    }
+    if ([path hasPrefix:@"http://"] || [path hasPrefix:@"https://"] || [path hasPrefix:@"file://"]) {
+        return path;
+    }
+    NSString *base = [RDGlobalModel sharedInstance].picBaseUrl;
+    if (base.length == 0) {
+        return path;
+    }
+    return [NSString stringWithFormat:@"%@%@", base, path];
 }
 
 + (BOOL)iPad
