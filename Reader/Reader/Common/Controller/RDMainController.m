@@ -69,17 +69,27 @@
 - (void)p_onAppAppearanceChanged
 {
     [self p_applyTabBarChrome];
-    self.tabSeparator.backgroundColor = RDSeparatorColor;
     self.view.backgroundColor = RDBackgroudColor;
+}
+
+/// 用「有效深色」解析令牌,避免 window.overrideUserInterfaceStyle 已切深色
+/// 但 self.traitCollection 尚未同步时 resolvedColor 仍吐出浅色(看起来像颜色反了)。
+- (UITraitCollection *)p_appearanceTrait
+{
+    BOOL dark = [RDAppAppearance sharedInstance].isEffectiveDark;
+    UIUserInterfaceStyle style = dark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    return [UITraitCollection traitCollectionWithUserInterfaceStyle:style];
 }
 
 - (void)p_applyTabBarChrome
 {
-    // 图标 tint 会烘焙进图片,需解析当前 trait 下的具体色
-    UITraitCollection *trait = self.traitCollection;
+    UITraitCollection *trait = [self p_appearanceTrait];
+    // surface=面板(比页面底略抬起); 深色应为暖炭而非浅纸
     UIColor *surface = [RDSurfaceColor resolvedColorWithTraitCollection:trait];
     UIColor *accent = [RDAccentColor resolvedColorWithTraitCollection:trait];
-    UIColor *muted = [RDLightGrayColor resolvedColorWithTraitCollection:trait];
+    // 未选中用 secondary(深色下偏浅灰), tertiary 在深底上对比太弱
+    UIColor *muted = [RDGrayColor resolvedColorWithTraitCollection:trait];
+    UIColor *sep = [RDSeparatorColor resolvedColorWithTraitCollection:trait];
 
     UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
     UIImage *gear = [UIImage systemImageNamed:@"gearshape" withConfiguration:symbolConfig];
@@ -87,10 +97,16 @@
     NSArray *normalIcons = @[[UIImage imageNamed:@"tabbar_unselect"], gear];
     NSArray *selectedIcons = @[[UIImage imageNamed:@"tabbar_select"], gearFill];
     NSArray *titleArray = @[@"书架", @"设置"];
+
+    // RDVTabBar 真正铺满底栏的是 backgroundView(默认写死 RGB 245 浅灰),
+    // 只设 tabBar.backgroundColor / item.backgroundColor 挡不住它。
     self.tabBar.backgroundColor = surface;
+    self.tabBar.backgroundView.backgroundColor = surface;
+    self.tabSeparator.backgroundColor = sep;
+
     for (int i = 0; i < self.tabBar.items.count; ++i) {
         RDVTabBarItem *item = self.tabBar.items[i];
-        item.backgroundColor = surface;
+        item.backgroundColor = [UIColor clearColor];
         item.title = [titleArray objectAtIndexSafely:i];
         item.titlePositionAdjustment = UIOffsetMake(0, 4);
         item.selectedTitleAttributes = @{NSForegroundColorAttributeName: accent, NSFontAttributeName: [UIFont systemFontOfSize:11]};
@@ -100,6 +116,7 @@
         [item setFinishedSelectedImage:selectedImage withFinishedUnselectedImage:normalImage];
         [item removeTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchDown];
         [item addTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchUpInside];
+        [item setNeedsDisplay];
     }
 }
 
