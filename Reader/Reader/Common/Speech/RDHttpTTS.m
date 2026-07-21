@@ -4,10 +4,158 @@
 //
 
 #import "RDHttpTTS.h"
+#import <Security/Security.h>
 
 NSString * const RDHttpTTSIdentifierPrefix = @"httpTts:";
 
 static NSString * const kRDHttpTTSFileName = @"http_tts_engines.json";
+static NSString * const kRDHttpTTSKeychainService = @"reader.ios.httptts.header";
+
+/// 敏感 Header 名(大小写不敏感比较)
+static BOOL RDHttpTTSIsSensitiveHeaderKey(NSString *key)
+{
+    if (key.length == 0) {
+        return NO;
+    }
+    static NSSet *s;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        s = [NSSet setWithArray:@[
+            @"authorization", @"proxy-authorization", @"cookie",
+            @"x-api-key", @"x-auth-token", @"api-key", @"apikey",
+        ]];
+    });
+    return [s containsObject:key.lowercaseString];
+}
+
+static NSString *RDHttpTTSKeychainAccount(long long engineId)
+{
+    return [NSString stringWithFormat:@"engine.%lld", engineId];
+}
+
+static BOOL RDHttpTTSSaveSecrets(long long engineId, NSDictionary *secrets)
+{
+    NSString *account = RDHttpTTSKeychainAccount(engineId);
+    NSDictionary *query = @{
+        (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService: kRDHttpTTSKeychainService,
+        (__bridge id)kSecAttrAccount: account,
+    };
+    if (secrets.count == 0) {
+        OSStatus del = SecItemDelete((__bridge CFDictionaryRef)query);
+        return (del == errSecSuccess || del == errSecItemNotFound);
+    }
+    NSData *data = [NSJSONSerialization dataWithJSONObject:secrets options:0 error:nil];
+    if (!data) {
+        return NO;
+    }
+    NSDictionary *attrs = @{
+        (__bridge id)kSecValueData: data,
+        (__bridge id)kSecAttrAccessible: (__bridge id)kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+    };
+    OSStatus status = SecItemUpdate((__bridge CFDictionaryRef)query, (__bridge CFDictionaryRef)attrs);
+    if (status == errSecSuccess) {
+        return YES;
+    }
+    if (status == errSecItemNotFound) {
+        NSMutableDictionary *add = [query mutableCopy];
+        [add addEntriesFromDictionary:attrs];
+        status = SecItemAdd((__bridge CFDictionaryRef)add, NULL);
+        return status == errSecSuccess;
+    }
+    return NO;
+}
+
+static NSDictionary *RDHttpTTSLoadSecrets(long long engineId)
+{
+    NSDictionary *query = @{
+        (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService: kRDHttpTTSKeychainService,
+        (__bridge id)kSecAttrAccount: RDHttpTTSKeychainAccount(engineId),
+        (__bridge id)kSecReturnData: @YES,
+        (__bridge id)kSecMatchLimit: (__bridge id)kSecMatchLimitOne,
+    };
+    CFTypeRef result = NULL;
+    OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
+    if (status != errSecSuccess || !result) {
+        return @{};
+    }
+    NSData *data = CFBridgingRelease(result);
+    id json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    return [json isKindOfClass:NSDictionary.class] ? json : @{};
+}
+
+/// 拆分公开 Header 与敏感 Header;sensitive 写入 Keychain,返回仅公开字段的 JSON 字符串
+static NSString *RDHttpTTSSplitAndStoreHeader(long long engineId, NSString *headerJSON, BOOL *outOk)
+{
+    if (outOk) {
+        *outOk = YES;
+    }
+    if (headerJSON.length == 0) {
+        RDHttpTTSSaveSecrets(engineId, @{});
+        return nil;
+    }
+    NSData *data = [headerJSON dataUsingEncoding:NSUTF8StringEncoding];
+    id json = data.length ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+    if (![json isKindOfClass:NSDictionary.class]) {
+        // 非 JSON 头:整体当敏感块存 Keychain,磁盘不留
+        if (outOk) {
+            *outOk = RDHttpTTSSaveSecrets(engineId, @{@"_raw": headerJSON});
+        } else {
+            RDHttpTTSSaveSecrets(engineId, @{@"_raw": headerJSON});
+        }
+        return nil;
+    }
+    NSMutableDictionary *pub = [NSMutableDictionary dictionary];
+    NSMutableDictionary *sec = [NSMutableDictionary dictionary];
+    [(NSDictionary *)json enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+        if (![key isKindOfClass:NSString.class]) {
+            return;
+        }
+        NSString *val = [obj isKindOfClass:NSString.class] ? obj : [NSString stringWithFormat:@"%@", obj];
+        if (RDHttpTTSIsSensitiveHeaderKey(key)) {
+            sec[key] = val;
+        } else {
+            pub[key] = val;
+        }
+    }];
+    BOOL ok = RDHttpTTSSaveSecrets(engineId, sec);
+    if (outOk) {
+        *outOk = ok;
+    }
+    if (pub.count == 0) {
+        return nil;
+    }
+    NSData *out = [NSJSONSerialization dataWithJSONObject:pub options:0 error:nil];
+    return out ? [[NSString alloc] initWithData:out encoding:NSUTF8StringEncoding] : nil;
+}
+
+static NSString *RDHttpTTSMergeHeaderForUse(long long engineId, NSString *publicHeaderJSON)
+{
+    NSMutableDictionary *merged = [NSMutableDictionary dictionary];
+    if (publicHeaderJSON.length) {
+        NSData *data = [publicHeaderJSON dataUsingEncoding:NSUTF8StringEncoding];
+        id json = data.length ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+        if ([json isKindOfClass:NSDictionary.class]) {
+            [merged addEntriesFromDictionary:json];
+        }
+    }
+    NSDictionary *sec = RDHttpTTSLoadSecrets(engineId);
+    if ([sec[@"_raw"] isKindOfClass:NSString.class] && merged.count == 0) {
+        return sec[@"_raw"];
+    }
+    [sec enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+        if ([key isEqual:@"_raw"]) {
+            return;
+        }
+        merged[key] = obj;
+    }];
+    if (merged.count == 0) {
+        return publicHeaderJSON;
+    }
+    NSData *out = [NSJSONSerialization dataWithJSONObject:merged options:0 error:nil];
+    return out ? [[NSString alloc] initWithData:out encoding:NSUTF8StringEncoding] : publicHeaderJSON;
+}
 
 @implementation RDHttpTTS
 
@@ -234,11 +382,45 @@ static NSString * const kRDHttpTTSFileName = @"http_tts_engines.json";
         } else if ([json isKindOfClass:NSDictionary.class] && [json[@"engines"] isKindOfClass:NSArray.class]) {
             list = json[@"engines"];
         }
+        BOOL needRewrite = NO;
         for (id item in list) {
             RDHttpTTS *e = [RDHttpTTS engineFromDictionary:item];
-            if (e) {
-                [self.mutableEngines addObject:e];
+            if (!e) {
+                continue;
             }
+            // 迁移:磁盘上若仍含敏感 Header,拆入 Keychain 并标记重写
+            if (e.header.length) {
+                NSData *hd = [e.header dataUsingEncoding:NSUTF8StringEncoding];
+                id hj = hd.length ? [NSJSONSerialization JSONObjectWithData:hd options:0 error:nil] : nil;
+                BOOL hasSensitive = NO;
+                if ([hj isKindOfClass:NSDictionary.class]) {
+                    for (NSString *k in [(NSDictionary *)hj allKeys]) {
+                        if (RDHttpTTSIsSensitiveHeaderKey(k)) {
+                            hasSensitive = YES;
+                            break;
+                        }
+                    }
+                } else {
+                    // 非 JSON 头也当敏感迁移
+                    hasSensitive = YES;
+                }
+                if (hasSensitive) {
+                    BOOL ok = YES;
+                    NSString *pub = RDHttpTTSSplitAndStoreHeader(e.engineId, e.header, &ok);
+                    if (ok) {
+                        e.header = RDHttpTTSMergeHeaderForUse(e.engineId, pub);
+                        needRewrite = YES;
+                    }
+                } else {
+                    e.header = RDHttpTTSMergeHeaderForUse(e.engineId, e.header);
+                }
+            } else {
+                e.header = RDHttpTTSMergeHeaderForUse(e.engineId, nil);
+            }
+            [self.mutableEngines addObject:e];
+        }
+        if (needRewrite) {
+            [self p_saveUnlocked];
         }
     });
 }
@@ -247,13 +429,30 @@ static NSString * const kRDHttpTTSFileName = @"http_tts_engines.json";
 {
     NSMutableArray *arr = [NSMutableArray array];
     for (RDHttpTTS *e in self.mutableEngines) {
-        [arr addObject:[e toDictionary]];
+        NSMutableDictionary *d = [[e toDictionary] mutableCopy];
+        // 磁盘只存非敏感 Header;敏感值已进 Keychain
+        BOOL ok = YES;
+        NSString *pub = RDHttpTTSSplitAndStoreHeader(e.engineId, e.header, &ok);
+        if (!ok) {
+            return NO;
+        }
+        if (pub.length) {
+            d[@"header"] = pub;
+        } else {
+            [d removeObjectForKey:@"header"];
+        }
+        [arr addObject:d];
     }
     NSData *data = [NSJSONSerialization dataWithJSONObject:@{@"engines": arr} options:NSJSONWritingPrettyPrinted error:nil];
     if (!data) {
         return NO;
     }
-    return [data writeToFile:[self p_path] atomically:YES];
+    BOOL wrote = [data writeToFile:[self p_path] atomically:YES];
+    if (wrote) {
+        // 排除 iCloud/系统备份
+        [[NSURL fileURLWithPath:[self p_path]] setResourceValue:@(YES) forKey:NSURLIsExcludedFromBackupKey error:nil];
+    }
+    return wrote;
 }
 
 - (BOOL)upsertEngine:(RDHttpTTS *)engine
@@ -292,6 +491,7 @@ static NSString * const kRDHttpTTSFileName = @"http_tts_engines.json";
             }
         }
         self.mutableEngines = keep;
+        RDHttpTTSSaveSecrets(engineId, @{});
         [self p_saveUnlocked];
     });
 }

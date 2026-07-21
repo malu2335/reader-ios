@@ -11,8 +11,17 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
 
 - (id)sendRequest:(NSURLRequest *)request completion:(RDAITransportCompletion)completion
 {
+    // 统一响应体预算(P1-05):翻译 JSON / TTS 音频均不应无限缓冲
+    static const NSUInteger kMaxAIResponseBytes = 12u * 1024u * 1024u;
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class] ? (NSHTTPURLResponse *)response : nil;
+        if (!error) {
+            long long expected = http.expectedContentLength;
+            if ((expected > 0 && expected > (long long)kMaxAIResponseBytes) || data.length > kMaxAIResponseBytes) {
+                error = [NSError errorWithDomain:kRDAIErrorDomain code:46 userInfo:@{NSLocalizedDescriptionKey: @"AI 响应过大,已拒绝处理"}];
+                data = nil;
+            }
+        }
         if (completion) {
             completion(data, http, error);
         }
@@ -1171,6 +1180,14 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     if (data.length == 0) {
         if (error) {
             *error = [NSError errorWithDomain:kRDAIErrorDomain code:45 userInfo:@{NSLocalizedDescriptionKey: @"TTS 响应为空"}];
+        }
+        return nil;
+    }
+    // base64 音频 JSON 体积上限(解码前)
+    static const NSUInteger kMaxChatSpeechJSONBytes = 10u * 1024u * 1024u;
+    if (data.length > kMaxChatSpeechJSONBytes) {
+        if (error) {
+            *error = [NSError errorWithDomain:kRDAIErrorDomain code:46 userInfo:@{NSLocalizedDescriptionKey: @"TTS JSON 过大"}];
         }
         return nil;
     }
