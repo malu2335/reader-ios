@@ -935,6 +935,8 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
         }
         return;
     }
+    // 同一 mutation 串行块内完成:读记录 / 文件 / 书签 / 历史 / 章节,再 completion。
+    // 不再把章节删拆到后一个 async,避免失败时序与「部分清理」语义不清(Phase 3)。
     [self p_performSyncOnImportQueue:^{
         // 先删记录，迟到的相册任务会在保存前校验失败；整个文件生命周期与 PDF 回填串行。
         [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
@@ -957,16 +959,11 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
         [self removeCustomCoverForBook:book];
         [RDBookmarkManager deleteAllForBookId:book.bookId];
         [RDHistoryRecordManager deleteHistoryWithBookId:book.bookId];
-    }];
-    // 章节表体积大、删除较慢，异步执行；但必须留在变更串行队列内，
-    // 否则"删除后立即重导"时,迟到的删除会跑到新导入之后,把刚插入的新章节清空。
-    // completion 定义为"所有文件与表都清理完成"之后才触发(P2-17)。
-    dispatch_async([self importQueue], ^{
         [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
         if (completion) {
             completion();
         }
-    });
+    }];
 }
 
 @end

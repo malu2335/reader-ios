@@ -117,17 +117,20 @@ static NSUInteger s_generation = 0;
     [self commitBooks:books columns:columns generation:generation];
 }
 
-+ (void)runWithComplete:(void (^)(void))complete
+/// 统一 single-flight:run / refresh 共用 s_running + waiters(P2-01)
+/// forceReload=YES 时即使 s_ready 也会再读库;NO 时 ready 可直接回调
++ (void)p_startLoadForce:(BOOL)forceReload
+                complete:(void (^)(void))complete
+           splashMinShow:(BOOL)splashMinShow
 {
-    if (s_ready) {
-        if (complete) {
-            dispatch_async(dispatch_get_main_queue(), complete);
-        }
-        return;
-    }
     @synchronized (self) {
+        if (!forceReload && s_ready) {
+            if (complete) {
+                dispatch_async(dispatch_get_main_queue(), complete);
+            }
+            return;
+        }
         if (s_running) {
-            // 已有任务在跑:登记回调,完成时统一在主线程触发,不轮询
             if (complete) {
                 if (!s_waiters) {
                     s_waiters = [NSMutableArray array];
@@ -138,26 +141,29 @@ static NSUInteger s_generation = 0;
         }
         s_running = YES;
     }
+
     NSInteger columns = [RDUtilities iPad] ? 5 : 3;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSTimeInterval t0 = CACurrentMediaTime();
         [self p_loadIntoCacheColumns:columns];
-        // 并行暖一下:缓存模型 / 字体 / AI 配置(Keychain) / 语音名,减少首次点设置卡顿
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-            (void)[RDCacheModel sharedInstance];
-            [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
-            (void)[[RDAIConfigStore sharedInstance] activeProfile];
-            (void)[[RDVoiceManager sharedInstance] preferredDisplayName];
-        });
-        // 启动页至少展示一小段,避免闪一下
-        NSTimeInterval elapsed = CACurrentMediaTime() - t0;
-        NSTimeInterval minShow = 0.35;
-        if (elapsed < minShow) {
-            usleep((useconds_t)((minShow - elapsed) * 1e6));
+        if (splashMinShow) {
+            // 并行暖一下:缓存模型 / 字体 / AI 配置(Keychain) / 语音名,减少首次点设置卡顿
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                (void)[RDCacheModel sharedInstance];
+                [[RDFontManager sharedInstance] registerCustomFontsAtLaunch];
+                (void)[[RDAIConfigStore sharedInstance] activeProfile];
+                (void)[[RDVoiceManager sharedInstance] preferredDisplayName];
+            });
+            // 启动页至少展示一小段,避免闪一下
+            NSTimeInterval elapsed = CACurrentMediaTime() - t0;
+            NSTimeInterval minShow = 0.35;
+            if (elapsed < minShow) {
+                usleep((useconds_t)((minShow - elapsed) * 1e6));
+            }
         }
-        s_running = NO;
         NSArray <dispatch_block_t>*waiters = nil;
         @synchronized (self) {
+            s_running = NO;
             waiters = s_waiters.copy;
             [s_waiters removeAllObjects];
         }
@@ -173,18 +179,15 @@ static NSUInteger s_generation = 0;
     });
 }
 
++ (void)runWithComplete:(void (^)(void))complete
+{
+    [self p_startLoadForce:NO complete:complete splashMinShow:YES];
+}
+
 + (void)refreshAsync:(void (^)(void))complete
 {
-    NSInteger columns = [RDUtilities iPad] ? 5 : 3;
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        [self p_loadIntoCacheColumns:columns];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [[NSNotificationCenter defaultCenter] postNotificationName:RDBookshelfPrefetchDidFinishNotification object:nil];
-            if (complete) {
-                complete();
-            }
-        });
-    });
+    // 与 run 同一 single-flight,避免并行多路读库写缓存(P2-01)
+    [self p_startLoadForce:YES complete:complete splashMinShow:NO];
 }
 
 @end

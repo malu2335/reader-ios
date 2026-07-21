@@ -77,5 +77,11 @@ if [ "$missing" -ne 0 ]; then
     exit 1
 fi
 
+# Optional: static harness gate (set CI_RUN_HARNESSES=1 on Xcode Cloud custom step)
+if [ "${CI_RUN_HARNESSES:-0}" = "1" ]; then
+    echo "=== CI_RUN_HARNESSES: run_all_harnesses ==="
+    bash "$READER_DIR/Tests/run_all_harnesses.sh"
+fi
+
 echo "=== ci_post_clone: done ==="
 exit 0
