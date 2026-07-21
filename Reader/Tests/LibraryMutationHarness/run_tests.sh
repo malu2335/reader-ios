@@ -35,9 +35,25 @@ check("RDLibraryTransaction 在一次事务内写章节和读记录",
       and "db_replaceChaptersForBookId" in txn
       and "db_insertOrReplaceModel" in txn)
 
-check("章节替换是同事务内的 delete + insert,任一失败返回 NO",
-      re.search(r"db_replaceChaptersForBookId.*?deleteObjectsFromTable.*?return NO;.*?insertOrReplaceObjects",
-                chapter, re.S) is not None)
+# 只抽 db_replaceChaptersForBookId: 方法体,避免注释里的 "insertOrReplaceObjects" 造成假阳性
+m = re.search(
+    r"\+ \(BOOL\)db_replaceChaptersForBookId:.*?\{(.*?)\n\+(?:\(|BOOL|NS)",
+    chapter, re.S)
+body = m.group(1) if m else ""
+# 更稳妥:从方法签名到下一 method 的 block
+if not body:
+    m = re.search(
+        r"\+\(BOOL\)db_replaceChaptersForBookId:[^{]*\{(.*?)\n\+\(BOOL\)replaceChaptersForBookId:",
+        chapter, re.S)
+    body = m.group(1) if m else chapter
+check("章节替换方法体内 delete + 逐条 insertOrReplaceObject(非批量 Objects)",
+      "deleteObjectsFromTable" in body
+      and "insertOrReplaceObject:" in body
+      and "insertOrReplaceObjects:" not in body
+      and "return NO" in body)
+check("生产路径禁止残留事务内批量 insertObjectsWithCharpters 实现",
+      "insertOrReplaceObjects:" not in chapter
+      or "insertObjectsWithCharpters" not in chapter)
 
 check("performTransactionSync 用 WCTTransaction 取回错误并输出 NSError",
       "getTransaction" in dbm and "RDDatabaseErrorDomain" in dbm)
