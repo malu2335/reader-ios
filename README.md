@@ -5,7 +5,7 @@
 | 项 | 说明 |
 |----|------|
 | 应用名 | **纸羽轻阅**（`CFBundleDisplayName`） |
-| 版本 | 1.13.1 |
+| 版本 | 1.13.2 |
 | Bundle ID | `xyz.malu2335.reader` |
 | 语言 | Objective-C |
 | 最低系统 | iOS 15.0 |

@@ -92,42 +92,6 @@
     return success;
 }
 
-+(BOOL)insertObjectsWithCharpters:(NSArray *)charpters
-{
-    if (charpters.count == 0) {
-        return YES;
-    }
-    NSInteger bookId = [charpters.firstObject bookId];
-    __block BOOL success = NO;
-    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        NSArray *existing = [db getObjectsOnResults:{RDCharpterModel.charpterId, RDCharpterModel.primaryId} fromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)];
-        NSMutableSet *existingIds = [NSMutableSet set];
-        for (RDCharpterModel *m in existing) {
-            [existingIds addObject:@(m.charpterId)];
-        }
-        success = [db runTransaction:^BOOL{
-            NSMutableArray *toInsert = [NSMutableArray array];
-            for (RDCharpterModel *charpterModel in charpters) {
-                charpterModel.primaryId = [NSString stringWithFormat:@"%@_%@", @(charpterModel.bookId), @(charpterModel.charpterId)];
-                if ([existingIds containsObject:@(charpterModel.charpterId)]) {
-                    if (charpterModel.content.length > 0 &&
-                        ![db updateRowsInTable:kCharpterTable onProperty:RDCharpterModel.content withObject:charpterModel where:RDCharpterModel.bookId.is(charpterModel.bookId)&&RDCharpterModel.charpterId.is(charpterModel.charpterId)]) {
-                        return NO;
-                    }
-                } else {
-                    [toInsert addObject:charpterModel];
-                    [existingIds addObject:@(charpterModel.charpterId)];
-                }
-            }
-            if (toInsert.count > 0 && ![db insertOrReplaceObjects:toInsert into:kCharpterTable]) {
-                return NO;
-            }
-            return YES;
-        }];
-    }];
-    return success;
-}
-
 +(BOOL)db_replaceChaptersForBookId:(NSInteger)bookId
                           chapters:(NSArray *)chapters
                         inDatabase:(WCTInterface *)db
@@ -138,7 +102,7 @@
     if (chapters.count == 0) {
         return YES;
     }
-    // 必须逐条插入,不能用 insertOrReplaceObjects: 批量版本。
+    // 必须逐条 insertOrReplaceObject。禁止事务内 plural 批量 insert:
     // WCDB 1.0.7 的 WCTInsert 在 objects.count > 1 时会走 runEmbeddedTransaction,
     // 而 WCDB::Transaction::runEmbeddedTransaction 持有 m_mutex 的同时执行 block,
     // block 内的 prepare() 又要锁同一个非递归 mutex —— 在已开启的事务句柄上必然自死锁。
