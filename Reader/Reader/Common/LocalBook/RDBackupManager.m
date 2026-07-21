@@ -105,7 +105,8 @@ static NSString * const kBackupFontsDir = @"fonts";
             }
         });
     };
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+    // 与导入/删除/恢复同队列,避免备份快照与并发写库交叉(Phase 3)
+    [RDLibraryMutationCoordinator performAsync:^{
         NSArray <RDBookDetailModel *>*books = [RDReadRecordManager getAllOnBookshelf];
         NSMutableArray *localBooks = [NSMutableArray array];
         // 源文件缺失的书不写入清单:避免 bookshelf.json 里出现一本 zip 里根本没有对应文件的"幽灵书",
@@ -287,7 +288,7 @@ static NSString * const kBackupFontsDir = @"fonts";
         // zip 本身生成成功,但存在可选内容缺失/写入失败时,不能只报"备份成功"——
         // 让调用方在展示分享面板的同时,把这些警告也展示给用户看见(P1-06)。
         finish(zipPath, warnings.count > 0 ? [warnings componentsJoinedByString:@";"] : nil);
-    });
+    }];
 }
 
 #pragma mark - 恢复

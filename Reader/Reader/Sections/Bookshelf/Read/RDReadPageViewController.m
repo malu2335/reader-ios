@@ -109,7 +109,9 @@
     [RDCacheModel sharedInstance].book = self.bookDetail;
     [[RDCacheModel sharedInstance] archive];
     self.fd_interactivePopDisabled = YES;
+    // 正确 containment: addChild → 触达 view 装入 → didMove(Phase 3 / P2-02)
     [self addChildViewController:self.pageViewController];
+    [self.pageViewController didMoveToParentViewController:self];
     self.charpters = [RDCharpterDataManager getBriefCharptersWithBookId:self.bookDetail.bookId];
     [self initSteup];
     
@@ -1171,11 +1173,13 @@ static NSUInteger RDReadTranslateTextHash(NSString *text) {
     NSAttributedString *charpterContent = currentController.charpterContent;    //当前章节内容
     NSArray *pages = currentController.pages;       //分页信息数组
     
-    
+    // 完整 containment 拆除:willMove → remove view → removeFromParent(P2-02)
+    [_pageViewController willMoveToParentViewController:nil];
     [_pageViewController.view removeFromSuperview];
     [_pageViewController removeFromParentViewController];
     _pageViewController = nil;
     [self addChildViewController:self.pageViewController];
+    [self.pageViewController didMoveToParentViewController:self];
     
     [self.pageViewController setViewControllers:@[[self p_creatReadController:self.bookDetail.charpterModel.name content:[self p_getCurPageContentWithContent:charpterContent page:self.bookDetail.page pages:pages] page:[self p_safePage:self.bookDetail.page totalPages:pages.count] totalPage:pages.count charpterIndex:charpter totalCharpter:self.charpters.count charpterModel:self.bookDetail.charpterModel charpterContent:charpterContent pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
     

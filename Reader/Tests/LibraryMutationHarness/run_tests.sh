@@ -76,6 +76,10 @@ check("导入不再在解析后立刻单独插章节",
 check("恢复跑在书库变更串行队列上",
       "RDLibraryMutationCoordinator performAsync" in backup)
 
+check("备份创建也跑在书库变更串行队列上(与恢复对称)",
+      backup.count("RDLibraryMutationCoordinator performAsync") >= 2
+      and "createBackupWithComplete" in backup)
+
 check("恢复先写 staging 目录,不直接覆盖正式路径",
       "p_createRestoreStagingDirectory" in backup
       and "RestoreStaging" in backup
