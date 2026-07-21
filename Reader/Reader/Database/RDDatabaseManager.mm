@@ -69,7 +69,6 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
             [sharedInstance p_migratePrimaryIdsIfNeeded];
             [sharedInstance p_checkpointWAL];
             [sharedInstance p_applyDataProtectionToPath:[PATH_DOCUMENT stringByAppendingPathComponent:@"LocalBooks"]];
-            [sharedInstance p_applyDataProtectionToPath:[PATH_DOCUMENT stringByAppendingPathComponent:@"AIConfig"]];
         });
     });
 

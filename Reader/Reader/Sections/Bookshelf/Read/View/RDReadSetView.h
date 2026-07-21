@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 @interface RDReadSetView : UIView
 @property (nonatomic,weak) id<RDReadSetViewDelegate>delegate;
+- (void)applyChromeTheme;
 @end
 
 NS_ASSUME_NONNULL_END

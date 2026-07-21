@@ -88,17 +88,68 @@
     if (html.length == 0) {
         return nil;
     }
+    // 优先 h1-h4 / <title>
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"<(h1|h2|h3|h4|title)[^>]*>(.*?)</\\1>"
                                                                            options:NSRegularExpressionCaseInsensitive | NSRegularExpressionDotMatchesLineSeparators
                                                                              error:nil];
-    NSTextCheckingResult *match = [regex firstMatchInString:html options:0 range:NSMakeRange(0, html.length)];
-    if (!match) {
+    NSArray <NSTextCheckingResult *>*matches = [regex matchesInString:html options:0 range:NSMakeRange(0, html.length)];
+    for (NSTextCheckingResult *match in matches) {
+        NSString *tag = [[html substringWithRange:[match rangeAtIndex:1]] lowercaseString];
+        NSString *inner = [html substringWithRange:[match rangeAtIndex:2]];
+        NSString *stripped = [self plainTextFromHTML:inner];
+        NSString *trimmed = [stripped stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        // 跳过无意义 title(如 "cover" / 文件名)
+        if (trimmed.length == 0) {
+            continue;
+        }
+        if ([tag isEqualToString:@"title"] && trimmed.length < 3) {
+            continue;
+        }
+        if (trimmed.length > 80) {
+            trimmed = [[trimmed substringToIndex:80] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        }
+        return trimmed;
+    }
+    // 无标题标签:用正文首行(许多英文 epub 扉页只有 p/div)
+    return [self titleCandidateFromPlainText:[self plainTextFromHTML:html]];
+}
+
++ (NSString *)titleCandidateFromPlainText:(NSString *)text
+{
+    if (text.length == 0) {
         return nil;
     }
-    NSString *inner = [html substringWithRange:[match rangeAtIndex:2]];
-    NSString *stripped = [self plainTextFromHTML:inner];
-    NSString *trimmed = [stripped stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    return trimmed.length > 0 ? trimmed : nil;
+    NSArray <NSString *>*lines = [text componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    for (NSString *raw in lines) {
+        NSString *line = [raw stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (line.length < 2) {
+            continue;
+        }
+        // 跳过纯标点 / 过长(像正文段落)
+        if (line.length > 80) {
+            // 长句不像标题,取前 60 字并尽量在空格处截断
+            NSString *cut = [line substringToIndex:60];
+            NSRange sp = [cut rangeOfString:@" " options:NSBackwardsSearch];
+            if (sp.location != NSNotFound && sp.location > 20) {
+                cut = [cut substringToIndex:sp.location];
+            }
+            line = cut;
+        }
+        // 纯数字 / 仅符号
+        NSCharacterSet *alnum = [NSCharacterSet alphanumericCharacterSet];
+        BOOL hasLetter = NO;
+        for (NSUInteger i = 0; i < line.length; i++) {
+            if ([alnum characterIsMember:[line characterAtIndex:i]]) {
+                hasLetter = YES;
+                break;
+            }
+        }
+        if (!hasLetter) {
+            continue;
+        }
+        return line;
+    }
+    return nil;
 }
 
 + (NSString *)decodeHTMLEntities:(NSString *)string

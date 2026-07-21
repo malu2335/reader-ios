@@ -11,7 +11,7 @@
 #import "RDCharpterDataManager.h"
 #import "RDHistoryRecordManager.h"
 #import "RDBookmarkManager.h"
-#import "LEEAlert.h"
+#import "RDPaperAlert.h"
 #import "RDFontManager.h"
 #import "RDBackupManager.h"
 #import "RDReplaceRulesController.h"
@@ -21,12 +21,14 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "AppDelegate.h"
 #import "RDMainController.h"
+#import "RDAppAppearance.h"
 
 typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowImport = 0,
     RDSettingRowImportFont,
     RDSettingRowStorage,
     RDSettingRowClear,
+    RDSettingRowDarkMode,
     RDSettingRowPurify,
     RDSettingRowTTSVoice,
     RDSettingRowBackup,
@@ -51,8 +53,9 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    // 书籍 / 阅读增强 / 备份 / 关于（隐私声明 · 开源声明 · 版本）
+    // 书籍 / 显示 / 阅读增强 / 备份 / 关于
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
+                      @[@(RDSettingRowDarkMode)],
                       @[@(RDSettingRowPurify), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowPrivacy), @(RDSettingRowOpenSource), @(RDSettingRowVersion)]];
@@ -60,20 +63,41 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     self.voiceDetailText = @"自动(中文)";
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(p_applyAppearanceChrome)
+                                                 name:RDAppAppearanceDidChangeNotification
+                                               object:nil];
     // 首屏只用占位文案出表;重活放到 view 出现后的下一帧,避免卡 Tab
     dispatch_async(dispatch_get_main_queue(), ^{
         [self p_refreshDetailsAsync];
     });
 }
 
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    // 从阅读返回时夜读可能已变,同步开关与界面色
+    [self p_applyAppearanceChrome];
     // 首次已在 viewDidLoad 排队刷新;之后返回再刷
     if (!self.detailsLoadedOnce) {
         return;
     }
     [self p_refreshDetailsAsync];
+}
+
+- (void)p_applyAppearanceChrome
+{
+    self.view.backgroundColor = RDBackgroudColor;
+    self.tableView.backgroundColor = RDBackgroudColor;
+    self.tableView.separatorColor = RDLightSeparatorColor;
+    self.topView.backgroundColor = RDBackgroudColor;
+    self.topView.titleLabel.textColor = RDBlackColor;
+    [self.tableView reloadData];
 }
 
 - (RDTopView *)topView
@@ -97,6 +121,8 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         _tableView.rowHeight = 54;
         _tableView.sectionHeaderHeight = 12;
         _tableView.sectionFooterHeight = 12;
+        // Frame is below custom topView; never auto-adjust safe-area (replaces old VC insets flag).
+        _tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     }
     return _tableView;
 }
@@ -113,7 +139,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 {
     self.detailsLoadedOnce = YES;
     // 语音 / 存储统计全部后台,主线程只更新文案。
-    // 扫描期间再次请求不能直接丢弃(清空/恢复都会触发),
+    // 扫描期间再次请求不能直接丢弃(清空/恢复/恢复都会触发),
     // 记 pending,本轮结束后补跑一次,否则页面一直停在旧数字(P2-04)。
     if (self.storageRefreshing) {
         self.storageRefreshPending = YES;
@@ -256,9 +282,12 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         cell.detailTextLabel.textColor = RDLightGrayColor;
     }
     cell.accessoryType = UITableViewCellAccessoryNone;
+    cell.accessoryView = nil;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     cell.detailTextLabel.text = nil;
     cell.textLabel.textColor = RDBlackColor;
+    cell.backgroundColor = RDSurfaceColor;
+    cell.detailTextLabel.textColor = RDLightGrayColor;
 
     RDSettingRow row = self.sections[indexPath.section][indexPath.row].integerValue;
     switch (row) {
@@ -281,6 +310,17 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.textLabel.text = @"清空书架";
             cell.textLabel.textColor = [UIColor systemRedColor];
             break;
+        case RDSettingRowDarkMode: {
+            cell.textLabel.text = @"黑暗模式";
+            cell.detailTextLabel.text = @"全局界面变深色";
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            UISwitch *sw = [[UISwitch alloc] init];
+            // 开关反映「设置偏好」;夜读也会让外层变黑,但开关本身只记用户手动偏好
+            sw.on = [RDAppAppearance sharedInstance].darkModeEnabled;
+            [sw addTarget:self action:@selector(p_darkModeSwitch:) forControlEvents:UIControlEventValueChanged];
+            cell.accessoryView = sw;
+            break;
+        }
         case RDSettingRowPurify:
             cell.textLabel.text = @"正文净化";
             cell.detailTextLabel.text = @"替换规则 · legado";
@@ -369,6 +409,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [self.navigationController pushViewController:vc animated:YES];
         });
     }
+}
+
+#pragma mark - 黑暗模式
+
+- (void)p_darkModeSwitch:(UISwitch *)sender
+{
+    [RDAppAppearance sharedInstance].darkModeEnabled = sender.isOn;
+    [self p_applyAppearanceChrome];
 }
 
 #pragma mark - 备份与恢复
@@ -466,23 +514,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)p_confirmClear
 {
     __weak typeof(self) weakSelf = self;
-    [LEEAlert alert].config
-    .LeeTitle(@"清空书架")
-    .LeeContent(@"将删除全部书籍、章节缓存与阅读进度,且无法恢复。")
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeCancel;
-        action.title = @"取消";
-        action.titleColor = RDGrayColor;
-    })
-    .LeeAddAction(^(LEEAction *action) {
-        action.type = LEEActionTypeDestructive;
-        action.title = @"清空";
-        action.titleColor = [UIColor systemRedColor];
-        [action setClickBlock:^{
-            [weakSelf p_clearAll];
-        }];
-    })
-    .LeeShow();
+    [RDPaperAlert showConfirmWithTitle:@"清空书架"
+                               message:@"将删除全部书籍、章节缓存与阅读进度,且无法恢复。"
+                           cancelTitle:@"取消"
+                          confirmTitle:@"清空"
+                           destructive:YES
+                               confirm:^{
+        [weakSelf p_clearAll];
+    }];
 }
 
 - (void)p_clearAll

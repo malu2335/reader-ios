@@ -31,9 +31,16 @@
 
 - (NSString *)urlEncodeUsingEncoding:(NSStringEncoding)encoding
 {
-    return (__bridge_transfer NSString *) CFURLCreateStringByAddingPercentEscapes(NULL,
-            (__bridge CFStringRef) self, NULL, (CFStringRef) @"!*'\"();:@&=+$,/?%#[]% ",
-            CFStringConvertNSStringEncodingToEncoding(encoding));
+    // Modern UTF-8 percent-encoding; `encoding` retained for API compatibility (call sites use UTF-8).
+    (void)encoding;
+    static NSCharacterSet *allowed = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // RFC 3986 unreserved; matches prior CFURLCreateStringByAddingPercentEscapes intent.
+        allowed = [NSCharacterSet characterSetWithCharactersInString:
+                   @"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"];
+    });
+    return [self stringByAddingPercentEncodingWithAllowedCharacters:allowed] ?: @"";
 }
 
 - (NSString *)urlDecode
@@ -43,8 +50,9 @@
 
 - (NSString *)urlDecodeUsingEncoding:(NSStringEncoding)encoding
 {
-    return (__bridge_transfer NSString *) CFURLCreateStringByReplacingPercentEscapesUsingEncoding(NULL,
-            (__bridge CFStringRef) self, CFSTR(""), CFStringConvertNSStringEncodingToEncoding(encoding));
+    (void)encoding;
+    // Match prior CFURLCreateStringByReplacingPercentEscapesUsingEncoding: nil on illegal sequences.
+    return [self stringByRemovingPercentEncoding];
 }
 
 - (NSDictionary *)urlParameters
@@ -55,7 +63,9 @@
         NSArray *kv = [pair componentsSeparatedByString:@"="];
 
         NSString *key = [kv objectAtIndexSafely:0];
-        NSString *val = [[kv objectAtIndexSafely:1] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        NSString *raw = [kv objectAtIndexSafely:1];
+        // Prior API: failed percent-decode → nil → store empty string.
+        NSString *val = [raw stringByRemovingPercentEncoding];
 
         if (key.length > 0) {
             params[key] = (val ?: @"");

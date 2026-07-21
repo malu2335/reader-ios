@@ -32,17 +32,16 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param bookId 书籍Id
 +(NSInteger)getFirstCharpterIdWirhBookId:(NSInteger)bookId;
 
-+(BOOL)insertObjectsWithCharpters:(NSArray *)charpters;
-
 /// 原子替换整本书的章节:同一事务内先删旧再插新。
 /// 任一写失败即整体回滚,旧章节保持不变(P1-02)。
+/// 注意:事务内必须逐条 insertOrReplaceObject:,禁止 insertOrReplaceObjects: 批量接口(WCDB 1.0.7 自死锁)。
 +(BOOL)replaceChaptersForBookId:(NSInteger)bookId
                        chapters:(NSArray *)chapters
                           error:(NSError **)error;
 
 
 /// 获取书籍的最后一章
-/// @param bookId <#bookId description#>
+/// @param bookId 书籍Id
 +(RDCharpterModel *)getLastChapterWithBookId:(NSInteger)bookId;
 
 
@@ -52,7 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 /// 删除本地记录书籍
-/// @param bookid
+/// @param bookid 书籍Id
 +(BOOL)deleteAllCharpterWithBookId:(NSInteger)bookid;
 @end
 

@@ -398,6 +398,10 @@ static uint32_t readBE32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((u
         }
         NSString *name = [RDBookTextUtil headingFromHTML:piece];
         if (name.length == 0) {
+            NSString *plain = [RDBookTextUtil plainTextFromHTML:piece];
+            name = [RDBookTextUtil titleCandidateFromPlainText:plain];
+        }
+        if (name.length == 0) {
             name = [NSString stringWithFormat:@"第%@节", @(chapters.count + 1)];
         }
         RDCharpterModel *model = [[RDCharpterModel alloc] init];

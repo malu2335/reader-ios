@@ -8,6 +8,7 @@
 
 #import "RDReadToolPageView.h"
 #import "RDDisplayBoost.h"
+#import "RDReadConfigManager.h"
 
 @interface RDReadToolPageView ()
 @property (nonatomic,strong) UIButton *realBtn;
@@ -24,8 +25,18 @@
         [self addSubview:self.realBtn];
         [self addSubview:self.sliderBtn];
         [self addSubview:self.noneBtn];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    UIColor *fg = [[RDReadConfigManager sharedInstance] chromeForegroundColor];
+    for (UIButton *btn in @[self.realBtn, self.sliderBtn, self.noneBtn]) {
+        [btn setTitleColor:fg forState:UIControlStateNormal];
+        [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
+    }
 }
 
 -(UIButton *)realBtn

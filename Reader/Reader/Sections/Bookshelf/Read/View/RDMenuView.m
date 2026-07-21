@@ -15,6 +15,7 @@
 #import "RDReadBookmarkView.h"
 #import "RDBookmarkModel.h"
 #import "RDDisplayBoost.h"
+#import "RDReadConfigManager.h"
 
 #define kToolBarHeight (50+[UIView safeBottomBar])
 #define kSetViewHeight 180
@@ -45,8 +46,36 @@
         
         
         [self setBackgroundColor:[UIColor clearColor]];
+        // 夜读/换纸色时同步顶底栏与功能面板,避免正文已黑面板仍是浅色
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(p_onReadThemeDidChange)
+                                                     name:RDReadThemeDidChangeNotification
+                                                   object:nil];
+        [self p_applyChromeThemeToAll];
     }
     return self;
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+/// 刷新菜单体系所有 chrome(顶栏/底栏/亮度/设置/进度/书签/目录)
+- (void)p_applyChromeThemeToAll
+{
+    [self.toolBar applyChromeTheme];
+    [self.topBar applyChromeTheme];
+    [self.lightView applyChromeTheme];
+    [self.setView applyChromeTheme];
+    [self.progressView applyChromeTheme];
+    [self.bookmarkView applyChromeTheme];
+    [self.catalogView applyChromeTheme];
+}
+
+- (void)p_onReadThemeDidChange
+{
+    [self p_applyChromeThemeToAll];
 }
 
 -(void)setCharpters:(NSArray<RDCharpterModel *> *)charpters
@@ -101,7 +130,6 @@
 {
     if (!_setView) {
         _setView = [[RDReadSetView alloc] initWithFrame:CGRectMake(0, ScreenSize.height, ScreenSize.width, kSetViewHeight)];
-        _setView.backgroundColor = RDReadBg;
         _setView.delegate = self;
     }
     return _setView;
@@ -110,7 +138,6 @@
 {
     if (!_lightView) {
         _lightView = [[RDReadLightView alloc] initWithFrame:CGRectMake(0, ScreenSize.height, ScreenSize.width, 120)];
-        _lightView.backgroundColor = RDReadBg;
     }
     return _lightView;
 }
@@ -119,7 +146,6 @@
 {
     if (!_progressView) {
         _progressView = [[RDReadProgressView alloc] initWithFrame:CGRectMake(0, ScreenSize.height, ScreenSize.width, 120)];
-        _progressView.backgroundColor = RDReadBg;
         _progressView.delegate = self;
     }
     return _progressView;
@@ -154,6 +180,7 @@
 -(void)showInView:(UIView *)view
 {
     self.frame = view.bounds;
+    [self p_applyChromeThemeToAll];
     [view addSubview:self];
     [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
         self.toolBar.frame = CGRectMake(0, self.height-kToolBarHeight, self.width, kToolBarHeight);
@@ -176,6 +203,7 @@
 -(void)showInView:(UIView *)view complete:(void(^)(void))complete
 {
     self.frame = view.bounds;
+    [self p_applyChromeThemeToAll];
     [view addSubview:self];
     [UIView animateWithDuration:[RDDisplayBoost panelAnimationDuration] animations:^{
         self.toolBar.frame = CGRectMake(0, self.height-kToolBarHeight, self.width, kToolBarHeight);

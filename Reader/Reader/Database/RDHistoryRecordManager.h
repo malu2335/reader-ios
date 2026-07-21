@@ -20,7 +20,7 @@
 
 
 /// 删除某一个阅读记录
-/// @param bookId
+/// @param bookId 书籍Id
 +(void)deleteHistoryWithBookId:(NSInteger )bookId;
 
 /// 获取阅读记录数量

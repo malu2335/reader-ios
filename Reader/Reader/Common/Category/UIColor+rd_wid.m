@@ -105,4 +105,78 @@
     return [UIColor colorWithPatternImage:image];
 }
 
+#pragma mark - App tokens (light paper / dark night)
+
++ (UIColor *)rd_dynamicLight:(NSInteger)lightHex dark:(NSInteger)darkHex
+{
+    return [self rd_dynamicLight:lightHex lightAlpha:1 dark:darkHex darkAlpha:1];
+}
+
++ (UIColor *)rd_dynamicLight:(NSInteger)lightHex lightAlpha:(CGFloat)la dark:(NSInteger)darkHex darkAlpha:(CGFloat)da
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull trait) {
+        if (trait.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithHexValue:darkHex alpha:da];
+        }
+        return [UIColor colorWithHexValue:lightHex alpha:la];
+    }];
+}
+
+// 浅色:暖纸;深色:夜读暖炭(与 RDReadConfigManager 夜读色板对齐)
++ (UIColor *)rd_paperBackgroundColor
+{
+    return [self rd_dynamicLight:0xF7F3EA dark:0x141210];
+}
+
++ (UIColor *)rd_paperSurfaceColor
+{
+    return [self rd_dynamicLight:0xFDFBF5 dark:0x1C1A18];
+}
+
++ (UIColor *)rd_paperReadBackgroundColor
+{
+    return [self rd_dynamicLight:0xF5EFE2 dark:0x1C1A18];
+}
+
++ (UIColor *)rd_inkColor
+{
+    return [self rd_dynamicLight:0x2C2620 dark:0xE8E0D4];
+}
+
++ (UIColor *)rd_inkSecondaryColor
+{
+    return [self rd_dynamicLight:0x6E6459 dark:0x9A9084];
+}
+
++ (UIColor *)rd_inkTertiaryColor
+{
+    return [self rd_dynamicLight:0x9A8F81 dark:0x6A6258];
+}
+
++ (UIColor *)rd_inkPlaceholderColor
+{
+    return [self rd_dynamicLight:0xB9AE9C dark:0x5A534A];
+}
+
++ (UIColor *)rd_accentColor
+{
+    // 深色略提亮,保证按钮/选中态可读
+    return [self rd_dynamicLight:0x8F5B3B dark:0xC4895E];
+}
+
++ (UIColor *)rd_accentSoftColor
+{
+    return [self rd_dynamicLight:0x8F5B3B lightAlpha:0.10 dark:0xC4895E darkAlpha:0.18];
+}
+
++ (UIColor *)rd_separatorColor
+{
+    return [self rd_dynamicLight:0xDCD3C3 dark:0x3A3530];
+}
+
++ (UIColor *)rd_lightSeparatorColor
+{
+    return [self rd_dynamicLight:0xEDE7D9 dark:0x2E2A26];
+}
+
 @end

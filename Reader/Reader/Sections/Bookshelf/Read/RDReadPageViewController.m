@@ -40,7 +40,6 @@
  
 @end
 
-
 @interface RDReadPageView : UIView
 @property (nonatomic,strong) UIView *brightnessView;
 @end
@@ -73,6 +72,8 @@
 @property (nonatomic,assign) BOOL isShowStatusBar;
 @property (nonatomic,strong) RDMenuView *menuView;
 
+/// 后台分页代次:快速改字号时丢弃过期结果
+@property (nonatomic,assign) NSUInteger paginateGeneration;
 @end
 
 @implementation RDReadPageViewController
@@ -88,7 +89,9 @@
     [RDCacheModel sharedInstance].book = self.bookDetail;
     [[RDCacheModel sharedInstance] archive];
     self.fd_interactivePopDisabled = YES;
+    // 正确 containment: addChild → 触达 view 装入 → didMove(Phase 3 / P2-02)
     [self addChildViewController:self.pageViewController];
+    [self.pageViewController didMoveToParentViewController:self];
     self.charpters = [RDCharpterDataManager getBriefCharptersWithBookId:self.bookDetail.bookId];
     [self initSteup];
     
@@ -108,7 +111,11 @@
     //字体(字号与字体名变化都重新分页) — 用 charOffset 记忆位置,避免页码漂移
     [self.KVOController observe:[RDReadConfigManager sharedInstance] keyPaths:@[@"fontSize",@"fontName"] options:NSKeyValueObservingOptionNew block:^(RDReadPageViewController*  observer, RDReadConfigManager  * object, NSDictionary<NSString *,id> * _Nonnull change) {
         [observer p_saveRecord];
-        [RDReadParser paginateWithContent:observer.bookDetail.charpterModel.content charpter:observer.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
+        NSUInteger gen = ++observer.paginateGeneration;
+        [RDReadParser paginateWithContent:observer.bookDetail.charpterModel.content charpter:observer.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) preferBackground:YES complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
+            if (gen != observer.paginateGeneration) {
+                return;
+            }
             NSInteger page = [observer p_pageForOffset:observer.bookDetail.charOffset pages:pages];
             observer.bookDetail.page = page;
             [observer.pageViewController setViewControllers:@[[observer p_creatReadController:observer.bookDetail.charpterModel.name content:[observer p_getCurPageContentWithContent:content page:page pages:pages] page:page totalPage:pages.count charpterIndex:[observer p_getCurCharpter] totalCharpter:observer.charpters.count charpterModel:observer.bookDetail.charpterModel charpterContent:content pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
@@ -125,7 +132,6 @@
     [self p_saveRecord];
 }
 
-
 -(UIView *)brightnessView
 {
     if (!_brightnessView) {
@@ -140,8 +146,6 @@
 {
     return !_isShowStatusBar;
 }
-
-
 
 -(void)nextPage:(RDReadController *)controller
 {
@@ -185,7 +189,12 @@
 
 -(void)initSteup{
     // 优先用 charOffset 恢复(字体变化后仍准),否则用 page
-    [RDReadParser paginateWithContent:self.bookDetail.charpterModel.content charpter:self.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
+    // 后台分页:不截断正文,避免主线程 watchdog(P1-03)
+    NSUInteger gen = ++self.paginateGeneration;
+    [RDReadParser paginateWithContent:self.bookDetail.charpterModel.content charpter:self.bookDetail.charpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) preferBackground:YES complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
+        if (gen != self.paginateGeneration) {
+            return;
+        }
         NSInteger page = self.bookDetail.charOffset > 0
             ? [self p_pageForOffset:self.bookDetail.charOffset pages:pages]
             : [self p_safePage:self.bookDetail.page totalPages:pages.count];
@@ -298,7 +307,6 @@
     return readController;
 }
 
-
 -(NSInteger)p_safePage:(NSInteger)page totalPages:(NSInteger)pages
 {
     if (page<0) {
@@ -350,8 +358,6 @@
     return [conetnt attributedSubstringFromRange:NSMakeRange(loc, len)];
 
 }
-
-
 
 //当前章节索引
 -(NSInteger)p_getCurCharpter
@@ -541,140 +547,43 @@
 
 -(void)p_setAfterOrBeforeViewControllerWithBefore:(BOOL)before
 {
-    
     [self p_setAfterOrBeforeViewControllerWithBefore:before mirror:NO];
 }
 
+/// 菜单/手势主动翻页:复用 dataSource 的 p_afterOrBefore 建页,再 setViewControllers。
+/// 仿真卷页 mirror 对仍保留 curl 双页布局(Phase 3 双胞胎收敛)。
 -(void)p_setAfterOrBeforeViewControllerWithBefore:(BOOL)before mirror:(BOOL)mirror
 {
     RDReadController *currentController = (RDReadController *)_pageViewController.viewControllers.firstObject;
-    NSInteger page = currentController.page;   //当前页数
-    NSInteger charpter = currentController.charpterIndex; //当前章节
-    RDCharpterModel *charpterModel = currentController.charpterModel;   //当前章节信息
-    NSAttributedString *charpterContent = currentController.charpterContent;    //当前章节内容
-    NSArray *pages = currentController.pages;       //分页信息数组
-    
-    UIPageViewControllerNavigationDirection direction;
-    if (before) {
-        direction = UIPageViewControllerNavigationDirectionReverse;
+    if (!currentController) {
+        return;
     }
-    else{
-        direction = UIPageViewControllerNavigationDirectionForward;
-    }
-    
-    BOOL animate;
-    if ([RDReadConfigManager sharedInstance].pageType == RDNoneTypePage) {
-        animate = NO;
-    }
-    else{
-        animate = YES;
-    }
-    
-    if (before) {
-        if (page == 0 && charpter == 0) {
-           //第一章，第一页，不用做任何处理
-            return;
-        }
-    }
-    else{
-        if (page == pages.count-1 && charpter == self.charpters.count-1) {
-            //最后一张最后一页，不用做任何处理
-            return;
-        }
-    }
-    if ((before && (page == 0)) || (!before && (page == pages.count-1) )) {
-        //上一章的数据 或者下一章的数据
-        NSInteger charpterId;
-        if (before) {
-            charpterId = self.charpters[charpter-1].charpterId;
-        }
-        else{
-            charpterId = self.charpters[charpter+1].charpterId;
-        }
-        
-        RDCharpterModel *otherCharpterModel = [RDCharpterDataManager getCharpterWithBookId:self.bookDetail.bookId charpterId:charpterId];
-        if (otherCharpterModel.content.length == 0) {
-            //内容不存在
-            [RDCharpterManager getCharpterWithBookId:self.bookDetail.bookId charpterId:charpterId complete:^(BOOL success,RDCharpterModel * _Nonnull model) {
-                if (success) {
-                    
-                    [RDReadParser paginateWithContent:model.content charpter:model.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
-                        
-                        if (mirror) {
-                            if (before) {
-                                //上一章
-                                
-                                RDReadController * readController = [self p_creatReadController:model.name content:[self p_getCurPageContentWithContent:content page:pages.count-1 pages:pages] page:pages.count-1 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:model] totalCharpter:self.charpters.count charpterModel:model charpterContent:content pages:pages];
-                                RDReadController * mirror_readController = [self p_creatReadController:model.name content:[self p_getCurPageContentWithContent:content page:pages.count-1 pages:pages] page:pages.count-1 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:model] totalCharpter:self.charpters.count charpterModel:model charpterContent:content pages:pages mirror:YES];
-                                [self.pageViewController setViewControllers:@[readController,mirror_readController] direction:direction animated:animate completion:nil];
-                            }
-                            else{
-                                //下一章
-                               RDReadController * mirror_readController = [self p_creatReadController:currentController.charpter content:currentController.content page:currentController.page totalPage:currentController.totalPage charpterIndex:currentController.charpterIndex totalCharpter:currentController.totalCharpter charpterModel:currentController.charpterModel charpterContent:currentController.charpterContent pages:currentController.pages mirror:YES];
-                                //后一页
-                                RDReadController * readController = [self p_creatReadController:model.name content:[self p_getCurPageContentWithContent:content page:0 pages:pages] page:0 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:model] totalCharpter:self.charpters.count charpterModel:model charpterContent:content pages:pages];
-                                [self.pageViewController setViewControllers:@[readController,mirror_readController] direction:direction animated:animate completion:nil];
-                                
-                            }
-                            
-                        }
-                        else{
-                            RDReadController * readController = [self p_creatReadController:model.name content:[self p_getCurPageContentWithContent:content page:before?pages.count-1:0 pages:pages] page:before?pages.count-1:0 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:model] totalCharpter:self.charpters.count charpterModel:model charpterContent:content pages:pages];
-                            [self.pageViewController setViewControllers:@[readController] direction:direction animated:animate completion:nil];
-                        }
-                        
-                         [self p_saveRecord];
-                        
-                    }];
-                }
-            }];
-        }
-        else{
-            //需要重新分页
-            __block RDReadController *readController = nil;
-            [RDReadParser paginateWithContent:otherCharpterModel.content charpter:otherCharpterModel.name bounds:CGRectMake(0, 0, ScreenWidth-kLeftMargin-kRightMargin, ScreenHeight-kTopMargin-kBottomMargin) complete:^(NSAttributedString * _Nonnull content, NSArray * _Nonnull pages) {
-                
-                if (mirror) {
-                    if (before) {
-                        RDReadController * readController = [self p_creatReadController:otherCharpterModel.name content:[self p_getCurPageContentWithContent:content page:pages.count-1 pages:pages] page:pages.count-1 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:otherCharpterModel] totalCharpter:self.charpters.count charpterModel:otherCharpterModel charpterContent:content pages:pages];
-                        RDReadController * mirror_readController = [self p_creatReadController:otherCharpterModel.name content:[self p_getCurPageContentWithContent:content page:pages.count-1 pages:pages] page:pages.count-1 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:otherCharpterModel] totalCharpter:self.charpters.count charpterModel:otherCharpterModel charpterContent:content pages:pages mirror:YES];
-                        [self.pageViewController setViewControllers:@[readController,mirror_readController] direction:direction animated:animate completion:nil];
-                    }
-                    else{
-                        RDReadController * mirror_readController = [self p_creatReadController:currentController.charpter content:currentController.content page:currentController.page totalPage:currentController.totalPage charpterIndex:currentController.charpterIndex totalCharpter:currentController.totalCharpter charpterModel:currentController.charpterModel charpterContent:currentController.charpterContent pages:currentController.pages mirror:YES];
-                        //后一页
-                        RDReadController * readController = [self p_creatReadController:otherCharpterModel.name content:[self p_getCurPageContentWithContent:content page:0 pages:pages] page:0 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:otherCharpterModel] totalCharpter:self.charpters.count charpterModel:otherCharpterModel charpterContent:content pages:pages];
-                        [self.pageViewController setViewControllers:@[readController,mirror_readController] direction:direction animated:animate completion:nil];
-                    }
-                }
-                else{
-                    readController = [self p_creatReadController:otherCharpterModel.name content:[self p_getCurPageContentWithContent:content page:before?pages.count-1:0 pages:pages] page:before?pages.count-1:0 totalPage:pages.count charpterIndex:[self.charpters indexOfObject:otherCharpterModel] totalCharpter:self.charpters.count charpterModel:otherCharpterModel charpterContent:content pages:pages];
-                    [self.pageViewController setViewControllers:@[readController] direction:direction animated:animate completion:nil];
-                }
-                
-            }];
-        }
+    UIPageViewControllerNavigationDirection direction = before
+        ? UIPageViewControllerNavigationDirectionReverse
+        : UIPageViewControllerNavigationDirectionForward;
+    BOOL animate = [RDReadConfigManager sharedInstance].pageType != RDNoneTypePage;
+    BOOL realCurl = ([RDReadConfigManager sharedInstance].pageType == RDRealTypePage) && mirror;
 
+    // 章内翻页 / 已有正文的邻章:afterOrBefore 同步建页
+    // 正文缺失的邻章:afterOrBefore 内部异步拉取并自行 setViewControllers
+    UIViewController *next = [self p_afterOrBeforeWithViewController:currentController before:before mirror:NO];
+    if (!next) {
+        // 边界或异步加载中
+        return;
     }
-    else{
-        
-        if (mirror) {
-            if (before) {
-                RDReadController *readController = [self p_creatReadController:charpterModel.name content:[self p_getCurPageContentWithContent:charpterContent page:page-1 pages:pages] page:page-1 totalPage:pages.count charpterIndex:charpter totalCharpter:self.charpters.count charpterModel:charpterModel charpterContent:charpterContent pages:pages];
-                RDReadController *mirror_readController = [self p_creatReadController:charpterModel.name content:[self p_getCurPageContentWithContent:charpterContent page:page-1 pages:pages] page:page-1 totalPage:pages.count charpterIndex:charpter totalCharpter:self.charpters.count charpterModel:charpterModel charpterContent:charpterContent pages:pages mirror:YES];
-                [self.pageViewController setViewControllers:@[readController,mirror_readController] direction:direction animated:animate completion:nil];
-            }
-            else{
-                RDReadController * mirror_readController = [self p_creatReadController:currentController.charpter content:currentController.content page:currentController.page totalPage:currentController.totalPage charpterIndex:currentController.charpterIndex totalCharpter:currentController.totalCharpter charpterModel:currentController.charpterModel charpterContent:currentController.charpterContent pages:currentController.pages mirror:YES];
-                RDReadController *readController = [self p_creatReadController:charpterModel.name content:[self p_getCurPageContentWithContent:charpterContent page:page+1 pages:pages] page:page+1 totalPage:pages.count charpterIndex:charpter totalCharpter:self.charpters.count charpterModel:charpterModel charpterContent:charpterContent pages:pages];
-                [self.pageViewController setViewControllers:@[readController,mirror_readController] direction:direction animated:animate completion:nil];
-            }
+    RDReadController *primary = (RDReadController *)next;
+    if (realCurl) {
+        if (before) {
+            RDReadController *mirrorCtrl = [self p_creatReadController:primary.charpter content:primary.content page:primary.page totalPage:primary.totalPage charpterIndex:primary.charpterIndex totalCharpter:primary.totalCharpter charpterModel:primary.charpterModel charpterContent:primary.charpterContent pages:primary.pages mirror:YES];
+            [self.pageViewController setViewControllers:@[primary, mirrorCtrl] direction:direction animated:animate completion:nil];
+        } else {
+            RDReadController *mirrorCtrl = [self p_creatReadController:currentController.charpter content:currentController.content page:currentController.page totalPage:currentController.totalPage charpterIndex:currentController.charpterIndex totalCharpter:currentController.totalCharpter charpterModel:currentController.charpterModel charpterContent:currentController.charpterContent pages:currentController.pages mirror:YES];
+            [self.pageViewController setViewControllers:@[primary, mirrorCtrl] direction:direction animated:animate completion:nil];
         }
-        else{
-            RDReadController *readController = [self p_creatReadController:charpterModel.name content:[self p_getCurPageContentWithContent:charpterContent page:before?page-1:page+1 pages:pages] page:before?page-1:page+1 totalPage:pages.count charpterIndex:charpter totalCharpter:self.charpters.count charpterModel:charpterModel charpterContent:charpterContent pages:pages];
-            [self.pageViewController setViewControllers:@[readController] direction:direction animated:animate completion:nil];
-        }
+    } else {
+        [self.pageViewController setViewControllers:@[primary] direction:direction animated:animate completion:nil];
     }
+    [self p_saveRecord];
 }
 -(void)reload{
     
@@ -732,10 +641,6 @@
     [self.navigationController popViewControllerAnimated:YES];
 }
 
-#pragma mark - 分享金句
-
-/// 取当前正在展示的阅读页(跳过翻页镜像页)。原先定义在已移除的翻译区段里,
-/// 但它与翻译无关,分享/听书等都要用。
 - (RDReadController *)p_currentReadController
 {
     RDReadController *current = (RDReadController *)self.pageViewController.viewControllers.firstObject;
@@ -750,6 +655,7 @@
     return [current isKindOfClass:RDReadController.class] ? current : nil;
 }
 
+#pragma mark - 分享金句
 
 -(void)shareQuoteAction
 {
@@ -867,16 +773,17 @@
     NSAttributedString *charpterContent = currentController.charpterContent;    //当前章节内容
     NSArray *pages = currentController.pages;       //分页信息数组
     
-    
+    // 完整 containment 拆除:willMove → remove view → removeFromParent(P2-02)
+    [_pageViewController willMoveToParentViewController:nil];
     [_pageViewController.view removeFromSuperview];
     [_pageViewController removeFromParentViewController];
     _pageViewController = nil;
     [self addChildViewController:self.pageViewController];
+    [self.pageViewController didMoveToParentViewController:self];
     
     [self.pageViewController setViewControllers:@[[self p_creatReadController:self.bookDetail.charpterModel.name content:[self p_getCurPageContentWithContent:charpterContent page:self.bookDetail.page pages:pages] page:[self p_safePage:self.bookDetail.page totalPages:pages.count] totalPage:pages.count charpterIndex:charpter totalCharpter:self.charpters.count charpterModel:self.bookDetail.charpterModel charpterContent:charpterContent pages:pages]] direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
     
 }
-
 
 -(void)cancelShowMenu:(RDMenuView *)menu
 {

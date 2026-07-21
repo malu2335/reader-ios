@@ -80,9 +80,14 @@ void_writes = re.findall(r"^\+\(void\)(?:insertOrReplaceModel|updateProgressWith
                          record_m, re.M)
 check("读记录写 API 不再返回 void(asyncUpdatePage 除外)", not void_writes)
 
-check("章节写 API 返回 BOOL",
-      "+(BOOL)insertObjectsWithCharpters:" in chap_h
-      and "+(BOOL)deleteAllCharpterWithBookId:" in chap_h)
+check("章节写 API 返回 BOOL 且无危险批量 insertObjectsWithCharpters",
+      "+(BOOL)deleteAllCharpterWithBookId:" in chap_h
+      and "+(BOOL)replaceChaptersForBookId:" in chap_h
+      and "+(BOOL)insertObjectsWithCharpters:" not in chap_h)
+chap_m = (src/"Database/RDCharpterDataManager.mm").read_text()
+check("章节 mm 不含 insertObjectsWithCharpters 批量实现",
+      "insertObjectsWithCharpters" not in chap_m
+      and "insertOrReplaceObjects:" not in chap_m)
 
 check("getBookshelfDisplayList 查询失败返回 nil,不再兜成空数组",
       "return result ?: @[]" not in record_m)

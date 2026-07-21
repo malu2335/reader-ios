@@ -23,40 +23,39 @@ NSString * const RDBookmarkChangedNotification = @"RDBookmarkChangedNotification
     if (!book || !chapter) {
         return nil;
     }
-    if ([self hasBookmarkNearBookId:book.bookId charpterId:chapter.charpterId charOffset:charOffset]) {
-        // 返回已有
-        __block RDBookmarkModel *existing = nil;
-        [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-            NSArray *list = [db getObjectsOfClass:RDBookmarkModel.class
-                                        fromTable:kBookmarkTable
-                                            where:RDBookmarkModel.bookId.is(book.bookId) && RDBookmarkModel.charpterId.is(chapter.charpterId)
-                                          orderBy:RDBookmarkModel.createTime.order(WCTOrderedDescending)];
-            for (RDBookmarkModel *m in list) {
-                if (llabs(m.charOffset - charOffset) <= 40) {
-                    existing = m;
-                    break;
-                }
-            }
-        }];
-        return existing;
-    }
-
-    RDBookmarkModel *bm = [[RDBookmarkModel alloc] init];
-    bm.bookmarkId = [[NSUUID UUID] UUIDString];
-    bm.bookId = book.bookId;
-    bm.bookTitle = book.title;
-    bm.charpterId = chapter.charpterId;
-    bm.charpterName = chapter.name;
-    bm.page = page;
-    bm.charOffset = MAX(0, charOffset);
-    bm.snippet = snippet.length > 120 ? [[snippet substringToIndex:120] stringByAppendingString:@"…"] : snippet;
-    bm.createTime = [NSDate date].timeIntervalSince1970;
-
+    // 查重 + 插入同一 performSync 块,避免 check-then-act 竞态(P2-03 / Phase 3)
+    __block RDBookmarkModel *result = nil;
+    __block BOOL inserted = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db insertOrReplaceObject:bm into:kBookmarkTable];
+        NSArray *list = [db getObjectsOfClass:RDBookmarkModel.class
+                                    fromTable:kBookmarkTable
+                                        where:RDBookmarkModel.bookId.is(book.bookId) && RDBookmarkModel.charpterId.is(chapter.charpterId)
+                                      orderBy:RDBookmarkModel.createTime.order(WCTOrderedDescending)];
+        for (RDBookmarkModel *m in list) {
+            if (llabs(m.charOffset - charOffset) <= 40) {
+                result = m;
+                return;
+            }
+        }
+        RDBookmarkModel *bm = [[RDBookmarkModel alloc] init];
+        bm.bookmarkId = [[NSUUID UUID] UUIDString];
+        bm.bookId = book.bookId;
+        bm.bookTitle = book.title;
+        bm.charpterId = chapter.charpterId;
+        bm.charpterName = chapter.name;
+        bm.page = page;
+        bm.charOffset = MAX(0, charOffset);
+        bm.snippet = snippet.length > 120 ? [[snippet substringToIndex:120] stringByAppendingString:@"…"] : snippet;
+        bm.createTime = [NSDate date].timeIntervalSince1970;
+        if ([db insertOrReplaceObject:bm into:kBookmarkTable]) {
+            result = bm;
+            inserted = YES;
+        }
     }];
-    [[NSNotificationCenter defaultCenter] postNotificationName:RDBookmarkChangedNotification object:@(book.bookId)];
-    return bm;
+    if (inserted && result) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:RDBookmarkChangedNotification object:@(book.bookId)];
+    }
+    return result;
 }
 
 + (void)insertOrReplaceBookmark:(RDBookmarkModel *)bookmark

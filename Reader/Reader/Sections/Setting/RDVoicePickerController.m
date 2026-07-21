@@ -104,6 +104,11 @@
 
 #pragma mark - Import menu
 
+- (void)showImportMenu
+{
+    [self p_showImportMenu];
+}
+
 - (void)p_showImportMenu
 {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"导入 TTS 语音"

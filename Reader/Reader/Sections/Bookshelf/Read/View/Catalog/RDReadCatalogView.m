@@ -15,6 +15,7 @@
 #import "RDReadCatalogView.h"
 #import "RDBookDetailModel.h"
 #import "RDNotifications.h"
+#import "RDReadConfigManager.h"
 
 @interface RDReadCatalogView () <UITableViewDelegate,UITableViewDataSource,RDReadCatalogHeaderDelegate,RDReadCatalogCellDelegate>
 @property (nonatomic,strong) UITableView *tableView;
@@ -35,8 +36,20 @@
         [self.contentView addSubview:self.header];
         [self.contentView addSubview:self.tableView];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downloadSuccess:) name:kDownloadSuccess object:nil];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    UIColor *bg = [cfg chromeBackgroundColor];
+    self.contentView.backgroundColor = bg;
+    self.header.backgroundColor = bg;
+    self.tableView.backgroundColor = bg;
+    [self.header applyChromeTheme];
+    [self.tableView reloadData];
 }
 
 -(void)dealloc
@@ -79,7 +92,7 @@
         _tableView.delegate = self;
         _tableView.dataSource = self;
         _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-        _tableView.backgroundColor = RDSurfaceColor;
+        _tableView.backgroundColor = [[RDReadConfigManager sharedInstance] chromeBackgroundColor];
     }
     return _tableView;
 }
@@ -89,7 +102,7 @@
     if (!_header) {
         _header = [[RDReadCatalogHeader alloc] initWithFrame:CGRectMake(0, 0, self.contentView.width, 50)];
         _header.delegate = self;
-        _header.backgroundColor = RDSurfaceColor;
+        _header.backgroundColor = [[RDReadConfigManager sharedInstance] chromeBackgroundColor];
     }
     return _header;
 }

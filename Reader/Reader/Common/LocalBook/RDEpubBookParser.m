@@ -25,7 +25,7 @@
 @property (nonatomic,strong) NSMutableArray <NSString *>*spine;      //idref 顺序
 @property (nonatomic,copy) NSString *title;
 @property (nonatomic,copy) NSString *author;
-@property (nonatomic,copy) NSString *coverId;    //<meta name="cover" content="...">
+@property (nonatomic,copy) NSString *coverId;    // <meta name="cover" content="...">
 @property (nonatomic,strong) NSMutableString *characters;
 @property (nonatomic,copy) NSString *currentElement;
 @end
@@ -272,7 +272,15 @@
             name = [RDBookTextUtil headingFromHTML:html];
         }
         if (name.length == 0) {
-            name = [NSString stringWithFormat:@"第%@节", @(chapters.count + 1)];
+            name = [RDBookTextUtil titleCandidateFromPlainText:content];
+        }
+        // 仍无标题:首页用书名,其余用「第 N 节」
+        if (name.length == 0) {
+            if (chapters.count == 0 && opf.title.length > 0) {
+                name = opf.title;
+            } else {
+                name = [NSString stringWithFormat:@"第%@节", @(chapters.count + 1)];
+            }
         }
         RDCharpterModel *model = [[RDCharpterModel alloc] init];
         model.charpterId = chapters.count + 1;

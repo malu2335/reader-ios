@@ -13,6 +13,7 @@
 #import "RDCharpterDataManager.h"
 #import "RDLocalBookManager.h"
 #import "RDBookshelfPrefetch.h"
+#import "RDAppAppearance.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <PhotosUI/PhotosUI.h>
 #import <ImageIO/ImageIO.h>
@@ -46,6 +47,8 @@
                                                  name:RDLocalBookImportedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(importAction)
                                                  name:RDLocalBookImportRequestNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_onAppearanceChanged)
+                                                 name:RDAppAppearanceDidChangeNotification object:nil];
 
     // 启动页已预加载:立刻灌入缓存,首帧不空白
     if ([RDBookshelfPrefetch ready]) {
@@ -65,6 +68,15 @@
 -(void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)p_onAppearanceChanged
+{
+    self.view.backgroundColor = RDBackgroudColor;
+    self.tableView.backgroundColor = RDBackgroudColor;
+    self.topView.backgroundColor = RDBackgroudColor;
+    self.topView.titleLabel.textColor = RDBlackColor;
+    [self.tableView reloadData];
 }
 
 #pragma mark - 本地导入
@@ -187,6 +199,8 @@
         _tableView.estimatedRowHeight = 0;
         _tableView.estimatedSectionHeaderHeight = 0;
         _tableView.estimatedSectionFooterHeight = 0;
+        // Frame is below custom topView; never auto-adjust safe-area (replaces old VC insets flag).
+        _tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
         // 书架顶部留白:第一行封面不要贴顶栏
         _tableView.contentInset = UIEdgeInsetsMake(18, 0, 24, 0);
         _tableView.scrollIndicatorInsets = _tableView.contentInset;

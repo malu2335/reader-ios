@@ -12,12 +12,13 @@ typedef NS_ENUM(NSInteger,RDPageType) {
     RDSliderPage,
 };
 
+/// 阅读页主题(模拟真实纸张;序数写入归档,勿改数值)
 typedef NS_ENUM(NSInteger,RDThemeType) {
-    RDWhiteTheme,
-    RDYellowTheme,
-    RDBlueTheme,
-    RDGreenTheme,
-    RDBlackTheme,
+    RDWhiteTheme = 0,  // 素笺 — 冷白宣纸
+    RDYellowTheme,     // 旧书页 — 米黄书页(默认)
+    RDBlueTheme,       // 青灰笺 — 淡青灰信纸
+    RDGreenTheme,      // 竹纸 — 微绿护眼
+    RDBlackTheme,      // 夜读 — 暖炭底米黄字
 };
 
 typedef NS_ENUM(NSUInteger, RDRequestState) {

@@ -10,6 +10,7 @@
 #import "RDBookDetailModel.h"
 #import "RDCharpterModel.h"
 #import "RDLayoutButton.h"
+#import "RDReadConfigManager.h"
 /// 图标视觉尺寸,与阅读工具栏的图标保持一致(RDReadToolBar 也是 24)
 static const CGFloat kRDProgressArrowIconSize = 24;
 /// 点击区域,满足 HIG 的 44pt 最小可点目标
@@ -31,8 +32,25 @@ static const CGFloat kRDProgressArrowHitSize = 44;
         [self addSubview:self.slider];
         [self addSubview:self.left];
         [self addSubview:self.right];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    UIColor *bg = [cfg chromeBackgroundColor];
+    UIColor *fg = [cfg chromeForegroundColor];
+    UIColor *sec = [cfg chromeSecondaryColor];
+    self.backgroundColor = bg;
+    self.chapterLabel.textColor = sec;
+    self.slider.minimumTrackTintColor = RDAccentColor;
+    self.slider.maximumTrackTintColor = [cfg chromeSeparatorColor];
+    UIImage *leftImg = [[[UIImage imageNamed:@"read_progress_left"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:fg renderingMode:UIImageRenderingModeAlwaysOriginal];
+    UIImage *rightImg = [[[UIImage imageNamed:@"read_progress_right"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:fg renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [self.left setImage:leftImg forState:UIControlStateNormal];
+    [self.right setImage:rightImg forState:UIControlStateNormal];
 }
 
 -(void)setCharpters:(NSArray<RDCharpterModel *> *)charpters

@@ -12,6 +12,7 @@
 #import "RDLoadIngView.h"
 #import "UINavigationController+FDFullscreenPopGesture.h"
 #import "RDNetErrorView.h"
+#import "RDAppAppearance.h"
 
 @interface RDBaseViewController () <MBProgressHUDDelegate>
 @property (nonatomic,strong) RDLoadIngView *loadingView;
@@ -26,18 +27,36 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.automaticallyAdjustsScrollViewInsets = NO;
+    // Do not use deprecated automaticallyAdjustsScrollViewInsets. Scroll views laid out under a
+    // custom topView with fixed frames (bookshelf/settings tabs, etc.) set
+    // contentInsetAdjustmentBehavior = Never at creation so safe-area insets do not double-apply.
     self.navigationController.navigationBarHidden = YES;
     self.view.backgroundColor = RDBackgroudColor;
     self.fd_prefersNavigationBarHidden = YES;
     [self.view setTintColor:RDGreenColor];
-    // Do any additional setup after loading the view.
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(p_rdBaseAppearanceChanged)
+                                                 name:RDAppAppearanceDidChangeNotification
+                                               object:nil];
 }
+
+- (void)p_rdBaseAppearanceChanged
+{
+    self.view.backgroundColor = RDBackgroudColor;
+    [self.view setTintColor:RDGreenColor];
+    if (self.topView) {
+        self.topView.backgroundColor = RDBackgroudColor;
+        self.topView.titleLabel.textColor = RDBlackColor;
+    }
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     if (!self.navigationController.navigationBar.hidden) {
         [self.navigationController setNavigationBarHidden:YES animated:NO];
     }
+    // 从阅读夜读返回时刷新页面底色
+    self.view.backgroundColor = RDBackgroudColor;
 }
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
@@ -59,6 +78,11 @@
     }
 
     return _topView;
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 -(RDLoadIngView *)loadingView

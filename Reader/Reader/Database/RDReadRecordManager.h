@@ -56,8 +56,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// 仅统计书架本数(不反序列化章节内容,设置页用)
 +(NSInteger)countOnBookshelf;
 
-/// 书架上的书籍是否有更新的章节
-/// @param bookid
+/// 更新书架书籍的「有更新章节」标记
+/// @param bookid 书籍Id
 /// @param update 是否有更新的章节
 +(BOOL)updateOnBookselfUpdateWithBookId:(NSInteger)bookid update:(BOOL)update;
 

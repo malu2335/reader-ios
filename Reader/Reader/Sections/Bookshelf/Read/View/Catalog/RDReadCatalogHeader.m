@@ -8,6 +8,7 @@
 
 #import "RDReadCatalogHeader.h"
 #import "RDLayoutButton.h"
+#import "RDReadConfigManager.h"
 
 @interface RDReadCatalogHeader ()
 
@@ -21,8 +22,20 @@
     if (self) {
         [self addSubview:self.nameLabel];
         [self addSubview:self.button];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    UIColor *fg = [cfg chromeForegroundColor];
+    self.nameLabel.textColor = fg;
+    UIImage *down = [[[UIImage imageNamed:@"book_down"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:fg renderingMode:UIImageRenderingModeAlwaysOriginal];
+    UIImage *up = [[[UIImage imageNamed:@"book_up"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:fg renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [self.button setImage:down forState:UIControlStateNormal];
+    [self.button setImage:up forState:UIControlStateSelected];
 }
 
 -(UILabel *)nameLabel
@@ -30,7 +43,7 @@
     if (!_nameLabel) {
         _nameLabel = [[UILabel alloc] init];
         _nameLabel.font = RDFont17;
-        _nameLabel.textColor = RDBlackColor;
+        _nameLabel.textColor = [[RDReadConfigManager sharedInstance] chromeForegroundColor];
     }
     return _nameLabel;
 }

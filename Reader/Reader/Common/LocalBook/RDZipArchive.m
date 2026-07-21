@@ -394,7 +394,8 @@ static void appendU32(NSMutableData *data, uint32_t value) {
     @catch (NSException *exception) {
         return NO;
     }
-    self.offset += header.length + data.length;
+    // Bounds already checked above (non-zip64); cast summed NSUInteger after guard.
+    self.offset += (uint32_t)(header.length + data.length);
     return YES;
 }
 
@@ -490,7 +491,8 @@ static void appendU32(NSMutableData *data, uint32_t value) {
         return NO;
     }
     [self.records addObject:record];
-    self.offset += header.length + record.size;
+    // Bounds already checked above (non-zip64); cast summed size after guard.
+    self.offset += (uint32_t)(header.length + record.size);
     return YES;
 }
 

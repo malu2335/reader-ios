@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RDReadToolPageView : UIView
 @property (nonatomic,assign) RDPageType defaultType;
 @property (nonatomic,copy) void(^pageType)(RDPageType type);
+- (void)applyChromeTheme;
 @end
 
 NS_ASSUME_NONNULL_END

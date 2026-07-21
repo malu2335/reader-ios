@@ -7,9 +7,9 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "RDLibraryDetailModel.h"
-#import "RDShareModel.h"
 @class RDCharpterModel;
+@class RDLibraryDetailModel;
+@class RDShareModel;
 
 @interface RDBookDetailModel : RDModel
 
@@ -26,7 +26,8 @@
 @property (nonatomic,assign) BOOL updateEnd;    //是否连载
 @property (nonatomic,assign) NSInteger updateCharpterId;  //更新的章节
 @property (nonatomic,assign) NSInteger total;   //总章节数
-@property (nonatomic,strong) NSArray <RDLibraryDetailModel *>*recommend;
+/// 在线书城残留字段(本地书不使用);保留以兼容旧归档/YYModel
+@property (nonatomic,strong) NSArray *recommend;
 @property (nonatomic,strong) RDShareModel *share;
 
 

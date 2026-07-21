@@ -10,6 +10,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface RDVoicePickerController : RDBaseViewController
+/// 展示「导入与管理」面板（截图 / 外部入口）
+- (void)showImportMenu;
 @end
 
 NS_ASSUME_NONNULL_END
