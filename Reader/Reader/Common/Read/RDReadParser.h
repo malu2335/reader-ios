@@ -17,7 +17,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RDReadParser : UIView
 
+/// 分页。preferBackground=YES 时在后台线程排版(不截断正文),完成后主线程回调。
+/// dataSource 等必须同步返回时传 NO:主线程同步执行,超长章才做保护性截断。
 +(void)paginateWithContent:(NSString *)content charpter:(NSString *)charpter bounds:(CGRect)bounds complete:(void(^)(NSAttributedString *content,NSArray *pages))complete;
++(void)paginateWithContent:(NSString *)content
+                  charpter:(NSString *)charpter
+                    bounds:(CGRect)bounds
+          preferBackground:(BOOL)preferBackground
+                  complete:(void(^)(NSAttributedString *content,NSArray *pages))complete;
 
 
 +(NSString *)getShowContent:(NSString *)content charpter:(NSString *)charpter;

@@ -8,6 +8,7 @@
 
 #import "RDBookDetailModel+WCTTableCoding.h"
 #import "RDBookDetailModel.h"
+#import "RDLibraryDetailModel.h"
 #import <WCDB/WCDB.h>
 
 @implementation RDBookDetailModel
