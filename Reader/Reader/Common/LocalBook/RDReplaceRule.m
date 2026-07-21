@@ -372,6 +372,56 @@ static NSString * const kErrorDomain = @"RDReplaceRule";
     [[NSNotificationCenter defaultCenter] postNotificationName:RDReplaceRuleImportDidChangeNotification object:nil];
 }
 
+/// 带截止时间的正则替换;超时则返回原串并 *timedOut=YES,避免灾难性回溯卡死主线程(P1-04)
+static NSString *RDReplaceRegexWithDeadline(NSRegularExpression *re,
+                                            NSString *input,
+                                            NSString *template,
+                                            NSTimeInterval budget,
+                                            BOOL *timedOut)
+{
+    if (timedOut) {
+        *timedOut = NO;
+    }
+    if (!re || input.length == 0) {
+        return input;
+    }
+    NSMutableString *out = [NSMutableString stringWithCapacity:input.length];
+    __block NSUInteger last = 0;
+    __block BOOL hitTimeout = NO;
+    CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + MAX(0.01, budget);
+    NSString *tpl = template ?: @"";
+    [re enumerateMatchesInString:input
+                         options:0
+                           range:NSMakeRange(0, input.length)
+                      usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
+        if (CFAbsoluteTimeGetCurrent() > deadline) {
+            hitTimeout = YES;
+            *stop = YES;
+            return;
+        }
+        NSRange r = match.range;
+        if (r.location == NSNotFound) {
+            return;
+        }
+        if (r.location > last) {
+            [out appendString:[input substringWithRange:NSMakeRange(last, r.location - last)]];
+        }
+        NSString *rep = [re replacementStringForResult:match inString:input offset:0 template:tpl];
+        [out appendString:rep ?: @""];
+        last = r.location + r.length;
+    }];
+    if (hitTimeout) {
+        if (timedOut) {
+            *timedOut = YES;
+        }
+        return input;
+    }
+    if (last < input.length) {
+        [out appendString:[input substringFromIndex:last]];
+    }
+    return out;
+}
+
 - (NSString *)p_applyRulesToText:(NSString *)text contentScope:(BOOL)content titleScope:(BOOL)title
 {
     if (text.length == 0) {
@@ -379,7 +429,15 @@ static NSString * const kErrorDomain = @"RDReplaceRule";
     }
     NSArray <RDReplaceRule *>*snapshot = self.rules;
     NSString *result = text;
+    // 总预算 / 单规则预算:净化跑在阅读分页路径上,必须可打断
+    CFAbsoluteTime allDeadline = CFAbsoluteTimeGetCurrent() + 0.35;
+    const NSTimeInterval kPerRuleBudget = 0.08;
+    // 超长正文:仅对前缀做正则,后缀原样拼接,避免整章灾难回溯;字面量替换仍可全量
+    static const NSUInteger kMaxRegexApplyChars = 250000;
     for (RDReplaceRule *rule in snapshot) {
+        if (CFAbsoluteTimeGetCurrent() > allDeadline) {
+            break;
+        }
         if (!rule.isEnabled || rule.pattern.length == 0) {
             continue;
         }
@@ -399,13 +457,24 @@ static NSString * const kErrorDomain = @"RDReplaceRule";
                 if (!re) {
                     continue;
                 }
-                // 过长正文分段保护:整段替换,限制单次耗时由系统决定
                 NSString *tpl = rule.replacement ?: @"";
-                // 模板中 $ 转义:NSRegularExpression 使用 $1 风格,与 Java 略有差异;直接透传
-                result = [re stringByReplacingMatchesInString:result
-                                                      options:0
-                                                        range:NSMakeRange(0, result.length)
-                                                 withTemplate:tpl];
+                if (result.length > kMaxRegexApplyChars) {
+                    NSRange safe = [result rangeOfComposedCharacterSequencesForRange:NSMakeRange(0, kMaxRegexApplyChars)];
+                    NSString *head = [result substringWithRange:safe];
+                    NSString *tail = [result substringFromIndex:safe.length];
+                    BOOL timedOut = NO;
+                    NSString *newHead = RDReplaceRegexWithDeadline(re, head, tpl, kPerRuleBudget, &timedOut);
+                    if (!timedOut) {
+                        result = [newHead stringByAppendingString:tail];
+                    }
+                    // 超时则跳过本条
+                } else {
+                    BOOL timedOut = NO;
+                    NSString *next = RDReplaceRegexWithDeadline(re, result, tpl, kPerRuleBudget, &timedOut);
+                    if (!timedOut) {
+                        result = next;
+                    }
+                }
             } else {
                 result = [result stringByReplacingOccurrencesOfString:rule.pattern withString:rule.replacement ?: @""];
             }
@@ -599,6 +668,18 @@ static NSString * const kErrorDomain = @"RDReplaceRule";
                 if (completion) {
                     completion(0, [NSError errorWithDomain:kErrorDomain code:http.statusCode
                                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"服务器返回 %ld", (long)http.statusCode]}]);
+                }
+            });
+            return;
+        }
+        // 响应体硬预算:防止恶意/误配置源拖垮内存(P1-05)
+        static const NSUInteger kMaxReplaceRuleImportBytes = 2u * 1024u * 1024u;
+        long long expected = http.expectedContentLength;
+        if ((expected > 0 && expected > (long long)kMaxReplaceRuleImportBytes) || data.length > kMaxReplaceRuleImportBytes) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) {
+                    completion(0, [NSError errorWithDomain:kErrorDomain code:11
+                                                  userInfo:@{NSLocalizedDescriptionKey: @"规则源过大(超过 2MB),已取消导入"}]);
                 }
             });
             return;

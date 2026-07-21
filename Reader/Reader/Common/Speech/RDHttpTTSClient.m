@@ -142,7 +142,18 @@
             }
             return;
         }
+        // 音频响应硬预算(P1-05):完整缓冲路径上的最后一道门
+        static const NSUInteger kMaxHttpTTSAudioBytes = 8u * 1024u * 1024u;
         NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
+        long long expected = http.expectedContentLength;
+        if ((expected > 0 && expected > (long long)kMaxHttpTTSAudioBytes) || data.length > kMaxHttpTTSAudioBytes) {
+            if (completion) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    completion(nil, [NSError errorWithDomain:@"RDHttpTTS" code:15 userInfo:@{NSLocalizedDescriptionKey: @"TTS 音频过大(超过 8MB),已取消"}]);
+                });
+            }
+            return;
+        }
         NSString *ct = http.allHeaderFields[@"Content-Type"] ?: http.allHeaderFields[@"content-type"] ?: @"";
         NSString *ctMain = [[ct componentsSeparatedByString:@";"].firstObject stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
         if ([ctMain hasPrefix:@"text/"] || [ctMain isEqualToString:@"application/json"]) {
