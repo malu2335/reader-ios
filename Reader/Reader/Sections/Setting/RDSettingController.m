@@ -23,12 +23,14 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "AppDelegate.h"
 #import "RDMainController.h"
+#import "RDAppAppearance.h"
 
 typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowImport = 0,
     RDSettingRowImportFont,
     RDSettingRowStorage,
     RDSettingRowClear,
+    RDSettingRowDarkMode,
     RDSettingRowAIConfig,
     RDSettingRowPurify,
     RDSettingRowTTSVoice,
@@ -55,8 +57,9 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    // 书籍 / 阅读增强 / 备份 / 关于（隐私声明 · 开源声明 · 版本）
+    // 书籍 / 显示 / 阅读增强 / 备份 / 关于
     self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
+                      @[@(RDSettingRowDarkMode)],
                       @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowTTSVoice)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowPrivacy), @(RDSettingRowOpenSource), @(RDSettingRowVersion)]];
@@ -65,20 +68,41 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     self.voiceDetailText = @"自动(中文)";
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(p_applyAppearanceChrome)
+                                                 name:RDAppAppearanceDidChangeNotification
+                                               object:nil];
     // 首屏只用占位文案出表;重活放到 view 出现后的下一帧,避免卡 Tab
     dispatch_async(dispatch_get_main_queue(), ^{
         [self p_refreshDetailsAsync];
     });
 }
 
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    // 从阅读返回时夜读可能已变,同步开关与界面色
+    [self p_applyAppearanceChrome];
     // 首次已在 viewDidLoad 排队刷新;之后返回再刷
     if (!self.detailsLoadedOnce) {
         return;
     }
     [self p_refreshDetailsAsync];
+}
+
+- (void)p_applyAppearanceChrome
+{
+    self.view.backgroundColor = RDBackgroudColor;
+    self.tableView.backgroundColor = RDBackgroudColor;
+    self.tableView.separatorColor = RDLightSeparatorColor;
+    self.topView.backgroundColor = RDBackgroudColor;
+    self.topView.titleLabel.textColor = RDBlackColor;
+    [self.tableView reloadData];
 }
 
 - (RDTopView *)topView
@@ -278,9 +302,12 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         cell.detailTextLabel.textColor = RDLightGrayColor;
     }
     cell.accessoryType = UITableViewCellAccessoryNone;
+    cell.accessoryView = nil;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     cell.detailTextLabel.text = nil;
     cell.textLabel.textColor = RDBlackColor;
+    cell.backgroundColor = RDSurfaceColor;
+    cell.detailTextLabel.textColor = RDLightGrayColor;
 
     RDSettingRow row = self.sections[indexPath.section][indexPath.row].integerValue;
     switch (row) {
@@ -303,6 +330,17 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.textLabel.text = @"清空书架";
             cell.textLabel.textColor = [UIColor systemRedColor];
             break;
+        case RDSettingRowDarkMode: {
+            cell.textLabel.text = @"黑暗模式";
+            cell.detailTextLabel.text = @"全局界面变深色";
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            UISwitch *sw = [[UISwitch alloc] init];
+            // 开关反映「设置偏好」;夜读也会让外层变黑,但开关本身只记用户手动偏好
+            sw.on = [RDAppAppearance sharedInstance].darkModeEnabled;
+            [sw addTarget:self action:@selector(p_darkModeSwitch:) forControlEvents:UIControlEventValueChanged];
+            cell.accessoryView = sw;
+            break;
+        }
         case RDSettingRowAIConfig: {
             cell.textLabel.text = @"AI 配置";
             cell.detailTextLabel.text = self.aiDetailText;
@@ -404,6 +442,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [self.navigationController pushViewController:vc animated:YES];
         });
     }
+}
+
+#pragma mark - 黑暗模式
+
+- (void)p_darkModeSwitch:(UISwitch *)sender
+{
+    [RDAppAppearance sharedInstance].darkModeEnabled = sender.isOn;
+    [self p_applyAppearanceChrome];
 }
 
 #pragma mark - 备份与恢复

@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) void (^clickBg)(void);
 
 - (void)reloadData;
+- (void)applyChromeTheme;
 @end
 
 NS_ASSUME_NONNULL_END

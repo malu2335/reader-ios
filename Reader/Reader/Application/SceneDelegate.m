@@ -13,6 +13,7 @@
 #import "RDDatabaseLifecycle.h"
 #import "RDSplashViewController.h"
 #import "RDBookshelfPrefetch.h"
+#import "RDAppAppearance.h"
 #ifdef DEBUG
 #import "RDLegalDocumentController.h"
 #import "RDVoicePickerController.h"
@@ -35,7 +36,7 @@
     AppDelegate *appDelegate = (AppDelegate *)UIApplication.sharedApplication.delegate;
     UIWindow *window = [[UIWindow alloc] initWithWindowScene:windowScene];
     window.backgroundColor = [UIColor whiteColor];
-    window.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
+    // 启动页保持浅色;主界面呈现后再按设置/夜读切换全局深色
 
     // 冷启动「用其他应用打开」:先缓存,等启动页结束后再导入,保证只消费一次
     if (connectionOptions.URLContexts.count > 0) {
@@ -95,6 +96,8 @@
 #endif
         });
     }];
+    // 按设置「黑暗模式」或阅读夜读,切换全局深色
+    [[RDAppAppearance sharedInstance] applyToWindows];
     window.backgroundColor = RDBackgroudColor;
     [RDDisplayBoost applyToWindow:window];
 }

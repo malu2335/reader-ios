@@ -13,6 +13,7 @@
 #import "RDCharpterDataManager.h"
 #import "RDLocalBookManager.h"
 #import "RDBookshelfPrefetch.h"
+#import "RDAppAppearance.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <PhotosUI/PhotosUI.h>
 #import <ImageIO/ImageIO.h>
@@ -46,6 +47,8 @@
                                                  name:RDLocalBookImportedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(importAction)
                                                  name:RDLocalBookImportRequestNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_onAppearanceChanged)
+                                                 name:RDAppAppearanceDidChangeNotification object:nil];
 
     // 启动页已预加载:立刻灌入缓存,首帧不空白
     if ([RDBookshelfPrefetch ready]) {
@@ -65,6 +68,15 @@
 -(void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)p_onAppearanceChanged
+{
+    self.view.backgroundColor = RDBackgroudColor;
+    self.tableView.backgroundColor = RDBackgroudColor;
+    self.topView.backgroundColor = RDBackgroudColor;
+    self.topView.titleLabel.textColor = RDBlackColor;
+    [self.tableView reloadData];
 }
 
 #pragma mark - 本地导入

@@ -141,6 +141,95 @@ static const NSInteger kRDPaperAlertScrimTag = 0x52445041; // 'RDPA'
     [self p_presentCard:card inScrim:scrim window:window fromBottom:NO];
 }
 
++ (void)showToast:(NSString *)message
+{
+    [self showToast:message duration:1.6];
+}
+
++ (void)showToast:(NSString *)message duration:(NSTimeInterval)duration
+{
+    if (message.length == 0) {
+        return;
+    }
+    UIWindow *window = [self p_window];
+    if (!window) {
+        return;
+    }
+    // Floating paper toast at bottom; does not use full-screen scrim
+    static const NSInteger kToastTag = 0x52445453;
+    UIView *old = [window viewWithTag:kToastTag];
+    [old removeFromSuperview];
+
+    CGFloat maxW = MIN(320.0, window.bounds.size.width - 48.0);
+    UILabel *lab = [[UILabel alloc] init];
+    lab.text = message;
+    lab.font = RDFont15;
+    lab.textColor = RDBlackColor;
+    lab.textAlignment = NSTextAlignmentCenter;
+    lab.numberOfLines = 0;
+    CGSize fit = [lab sizeThatFits:CGSizeMake(maxW - 36.0, 120.0)];
+    CGFloat cardW = MIN(maxW, MAX(120.0, fit.width + 36.0));
+    CGFloat cardH = MAX(44.0, fit.height + 22.0);
+
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(0, 0, cardW, cardH)];
+    card.backgroundColor = RDSurfaceColor;
+    card.layer.cornerRadius = 14;
+    card.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+    card.layer.borderColor = RDSeparatorColor.CGColor;
+    card.layer.shadowColor = [UIColor colorWithHexValue:0x2C2620].CGColor;
+    card.layer.shadowOpacity = 0.12f;
+    card.layer.shadowRadius = 14;
+    card.layer.shadowOffset = CGSizeMake(0, 6);
+    card.tag = kToastTag;
+    card.alpha = 0;
+    card.userInteractionEnabled = NO;
+
+    lab.frame = CGRectMake(18, 11, cardW - 36.0, fit.height);
+    [card addSubview:lab];
+
+    CGFloat safeB = window.safeAreaInsets.bottom;
+    CGFloat cy = window.bounds.size.height - safeB - 56.0 - cardH * 0.5;
+    card.center = CGPointMake(CGRectGetMidX(window.bounds), cy);
+    card.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin;
+    [window addSubview:card];
+
+    [UIView animateWithDuration:0.28
+                          delay:0
+         usingSpringWithDamping:0.9
+          initialSpringVelocity:0.4
+                        options:0
+                     animations:^{
+        card.alpha = 1;
+    } completion:nil];
+
+    NSTimeInterval d = (duration > 0.4) ? duration : 1.6;
+    dispatch_time_t when = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(d * NSEC_PER_SEC));
+    dispatch_after(when, dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.22 animations:^{
+            card.alpha = 0;
+            card.transform = CGAffineTransformMakeTranslation(0, 8);
+        } completion:^(BOOL finished) {
+            (void)finished;
+            [card removeFromSuperview];
+        }];
+    });
+}
+
++ (void)showResultSuccess:(BOOL)success title:(NSString *)title message:(NSString *)message
+{
+    NSString *sym = success ? @"checkmark.circle" : @"xmark.circle";
+    NSString *t = title.length ? title : (success ? @"完成" : @"失败");
+    NSString *btn = success ? @"好的" : @"知道了";
+    [self showAlertWithTitle:t
+                     message:message
+                  symbolName:sym
+                     actions:@[
+        [RDPaperAlertAction actionWithTitle:btn
+                                      style:RDPaperAlertActionStylePrimary
+                                    handler:nil],
+    ]];
+}
+
 + (void)dismiss
 {
     [self dismissAnimated:YES completion:nil];
@@ -568,8 +657,13 @@ static const NSInteger kRDPaperAlertScrimTag = 0x52445041; // 'RDPA'
         UILabel *titleL = [[UILabel alloc] init];
         titleL.text = a.title;
         titleL.font = RDBoldFont16;
-        titleL.textColor = (a.style == RDPaperAlertActionStyleDestructive)
-            ? [UIColor colorWithHexValue:0xC0453A] : RDBlackColor;
+        if (a.style == RDPaperAlertActionStyleDestructive) {
+            titleL.textColor = [UIColor colorWithHexValue:0xC0453A];
+        } else if (a.style == RDPaperAlertActionStylePrimary) {
+            titleL.textColor = RDAccentColor;
+        } else {
+            titleL.textColor = RDBlackColor;
+        }
         titleL.userInteractionEnabled = NO;
         if (hasSub) {
             titleL.frame = CGRectMake(18, 12, innerW - 52, 22);

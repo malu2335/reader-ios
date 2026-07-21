@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RDReadCatalogHeader : UIView
 @property (nonatomic,weak) id<RDReadCatalogHeaderDelegate>delegate;
 @property (nonatomic,strong) UILabel *nameLabel;
+- (void)applyChromeTheme;
 @end
 
 NS_ASSUME_NONNULL_END

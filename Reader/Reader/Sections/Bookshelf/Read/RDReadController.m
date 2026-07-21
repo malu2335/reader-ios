@@ -192,7 +192,10 @@
 -(void)setCharpter:(NSString *)charpter content:(NSAttributedString *)content page:(NSInteger)page totalPage:(NSInteger)totalPage charpterIndex:(NSInteger)chaprterIndex totalCharpter:(NSInteger)totalCharpter
 {
     _charpter = charpter;_content = content;_page = page; _totalPage = totalPage; _charpterIndex = chaprterIndex;totalCharpter = _totalCharpter = totalCharpter;
-    self.charpterLabel.text = self.charpter;
+    // 章节首页正文已用大字号显示章名;顶栏小标题仅从第 2 页起出现,避免「两个章节名」
+    BOOL firstPage = (page <= 0);
+    self.charpterLabel.hidden = firstPage;
+    self.charpterLabel.text = firstPage ? @"" : (self.charpter ?: @"");
     self.readView.attributeString = content;
     // 翻页时清掉内联翻译,避免串页
     [self showInlineTranslation:nil];

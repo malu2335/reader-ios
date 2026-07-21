@@ -61,6 +61,15 @@ typedef NS_ENUM(NSInteger, RDPaperAlertActionStyle) {
                    confirmTitle:(NSString *)confirmTitle
                         confirm:(nullable void (^)(NSArray <NSString *>*values))confirm;
 
+/// 轻量纸感提示(自动消失,替代 HUD toast,与整体纸墨一致)
++ (void)showToast:(NSString *)message;
++ (void)showToast:(NSString *)message duration:(NSTimeInterval)duration;
+
+/// 结果卡:成功/失败一键确认(统一符号与主按钮)
++ (void)showResultSuccess:(BOOL)success
+                    title:(NSString *)title
+                  message:(nullable NSString *)message;
+
 /// 关闭当前纸感弹层
 + (void)dismiss;
 + (void)dismissAnimated:(BOOL)animated completion:(nullable void (^)(void))completion;

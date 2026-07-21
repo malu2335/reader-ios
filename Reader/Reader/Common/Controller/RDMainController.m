@@ -16,7 +16,7 @@
 #import "NSArray+rd_wid.h"
 #import "UIView+rd_wid.h"
 #import "UINavigationController+FDFullscreenPopGesture.h"
-
+#import "RDAppAppearance.h"
 
 
 // RDVTabBar keeps tabBarItemWasSelected: private; declare for @selector use.
@@ -25,7 +25,7 @@
 @end
 
 @interface RDMainController ()
-
+@property (nonatomic, strong) UIView *tabSeparator;
 @end
 
 @implementation RDMainController
@@ -41,7 +41,15 @@
     self.delegate = self;
     self.fd_prefersNavigationBarHidden = YES;
    [self initSetup];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(p_onAppAppearanceChanged)
+                                                 name:RDAppAppearanceDidChangeNotification
+                                               object:nil];
+}
 
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 -(void)initSetup{
@@ -54,26 +62,41 @@
     UIView *separatorView = [[UIView alloc] initWithFrame:CGRectMake(0, -1 / [UIScreen mainScreen].scale, self.tabBar.width, 1 / [UIScreen mainScreen].scale)];
     separatorView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     separatorView.backgroundColor = RDSeparatorColor;
+    self.tabSeparator = separatorView;
     [self.tabBar addSubview:separatorView];
+}
+
+- (void)p_onAppAppearanceChanged
+{
+    [self p_applyTabBarChrome];
+    self.tabSeparator.backgroundColor = RDSeparatorColor;
+    self.view.backgroundColor = RDBackgroudColor;
 }
 
 - (void)p_applyTabBarChrome
 {
+    // 图标 tint 会烘焙进图片,需解析当前 trait 下的具体色
+    UITraitCollection *trait = self.traitCollection;
+    UIColor *surface = [RDSurfaceColor resolvedColorWithTraitCollection:trait];
+    UIColor *accent = [RDAccentColor resolvedColorWithTraitCollection:trait];
+    UIColor *muted = [RDLightGrayColor resolvedColorWithTraitCollection:trait];
+
     UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
     UIImage *gear = [UIImage systemImageNamed:@"gearshape" withConfiguration:symbolConfig];
     UIImage *gearFill = [UIImage systemImageNamed:@"gearshape.fill" withConfiguration:symbolConfig];
     NSArray *normalIcons = @[[UIImage imageNamed:@"tabbar_unselect"], gear];
     NSArray *selectedIcons = @[[UIImage imageNamed:@"tabbar_select"], gearFill];
     NSArray *titleArray = @[@"书架", @"设置"];
+    self.tabBar.backgroundColor = surface;
     for (int i = 0; i < self.tabBar.items.count; ++i) {
         RDVTabBarItem *item = self.tabBar.items[i];
-        item.backgroundColor = RDSurfaceColor;
+        item.backgroundColor = surface;
         item.title = [titleArray objectAtIndexSafely:i];
         item.titlePositionAdjustment = UIOffsetMake(0, 4);
-        item.selectedTitleAttributes = @{NSForegroundColorAttributeName: RDAccentColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
-        item.unselectedTitleAttributes = @{NSForegroundColorAttributeName: RDLightGrayColor, NSFontAttributeName: [UIFont systemFontOfSize:11]};
-        UIImage *selectedImage = [selectedIcons[i] imageWithTintColor:RDAccentColor];
-        UIImage *normalImage = [normalIcons[i] imageWithTintColor:RDLightGrayColor];
+        item.selectedTitleAttributes = @{NSForegroundColorAttributeName: accent, NSFontAttributeName: [UIFont systemFontOfSize:11]};
+        item.unselectedTitleAttributes = @{NSForegroundColorAttributeName: muted, NSFontAttributeName: [UIFont systemFontOfSize:11]};
+        UIImage *selectedImage = [selectedIcons[i] imageWithTintColor:accent];
+        UIImage *normalImage = [normalIcons[i] imageWithTintColor:muted];
         [item setFinishedSelectedImage:selectedImage withFinishedUnselectedImage:normalImage];
         [item removeTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchDown];
         [item addTarget:self.tabBar action:@selector(tabBarItemWasSelected:) forControlEvents:UIControlEventTouchUpInside];
@@ -96,16 +119,5 @@
     // 触发 viewDidLoad / 表布局,但不切 Tab
     (void)setting.view;
 }
-
-
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
 
 @end

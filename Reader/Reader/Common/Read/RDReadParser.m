@@ -13,10 +13,64 @@
 
 @implementation RDReadParser
 
+/// 正文开头若已含章节名,去掉以免与分页拼入的标题重复
++ (NSString *)p_stripLeadingTitle:(NSString *)title fromContent:(NSString *)content
+{
+    if (title.length == 0 || content.length == 0) {
+        return content ?: @"";
+    }
+    NSCharacterSet *ws = [NSCharacterSet whitespaceAndNewlineCharacterSet];
+    NSString *t = [title stringByTrimmingCharactersInSet:ws];
+    if (t.length == 0) {
+        return content;
+    }
+    // 去掉开头空白
+    NSUInteger i = 0;
+    while (i < content.length && [ws characterIsMember:[content characterAtIndex:i]]) {
+        i++;
+    }
+    if (i >= content.length) {
+        return content;
+    }
+    NSString *body = [content substringFromIndex:i];
+    // 1) 正文直接以章节名开头
+    if ([body hasPrefix:t]) {
+        NSString *rest = [body substringFromIndex:t.length];
+        NSUInteger j = 0;
+        while (j < rest.length && [ws characterIsMember:[rest characterAtIndex:j]]) {
+            j++;
+        }
+        return j < rest.length ? [rest substringFromIndex:j] : @"";
+    }
+    // 2) 第一行等于章节名(常见 txt 章首自带标题)
+    NSRange nl = [body rangeOfCharacterFromSet:[NSCharacterSet newlineCharacterSet]];
+    NSString *firstLine = (nl.location != NSNotFound) ? [body substringToIndex:nl.location] : body;
+    firstLine = [firstLine stringByTrimmingCharactersInSet:ws];
+    if ([firstLine isEqualToString:t]) {
+        if (nl.location == NSNotFound) {
+            return @"";
+        }
+        NSString *rest = [body substringFromIndex:nl.location];
+        NSUInteger j = 0;
+        while (j < rest.length && [ws characterIsMember:[rest characterAtIndex:j]]) {
+            j++;
+        }
+        return j < rest.length ? [rest substringFromIndex:j] : @"";
+    }
+    return content;
+}
+
 +(void)paginateWithContent:(NSString *)content charpter:(NSString *)charpter bounds:(CGRect)bounds complete:(void(^)(NSAttributedString *content,NSArray *pages))complete
 {
-    // legado 风格净化:分页前应用启用中的替换规则
+    // legado 风格净化:分页前应用启用中的替换规则(正文 + 标题各自 scope)
     NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:content ?: @""];
+    NSString *cleanTitle = [[RDReplaceRuleStore sharedInstance] applyToTitle:charpter ?: @""];
+    // 文件正文常自带章名,再拼 cleanTitle 会显示两个
+    cleaned = [self p_stripLeadingTitle:cleanTitle fromContent:cleaned];
+    // 也试着用原始章节名去重(净化后标题可能略变)
+    if (charpter.length && ![charpter isEqualToString:cleanTitle]) {
+        cleaned = [self p_stripLeadingTitle:charpter fromContent:cleaned];
+    }
 
     // 分页目前是主线程同步 CoreText 排版(P1-11);正常章节耗时很短,但异常解析或恶意文件
     // 可能产生几 MB 的单"章",一次性排版会长时间阻塞主线程甚至触发 watchdog 强杀。
@@ -31,15 +85,19 @@
     CTFramesetterRef frameSetter;
     CGPathRef path;
     
-    NSMutableAttributedString *attrString = [[NSMutableAttributedString  alloc] initWithString:[charpter stringByAppendingString:@"\n"]];
-    NSDictionary *charpterAttribute = [RDReadParser paraserChapterFontArrribute:[RDReadConfigManager sharedInstance]];
-    [attrString setAttributes:charpterAttribute range:NSMakeRange(0, attrString.length)];
+    NSMutableAttributedString *attrString = [[NSMutableAttributedString  alloc] init];
+    if (cleanTitle.length > 0) {
+        NSMutableAttributedString *titleAttr = [[NSMutableAttributedString alloc] initWithString:[cleanTitle stringByAppendingString:@"\n"]];
+        NSDictionary *charpterAttribute = [RDReadParser paraserChapterFontArrribute:[RDReadConfigManager sharedInstance]];
+        [titleAttr setAttributes:charpterAttribute range:NSMakeRange(0, titleAttr.length)];
+        [attrString appendAttributedString:titleAttr];
+    }
     
-    NSMutableAttributedString *contentAttr = [[NSMutableAttributedString  alloc] initWithString:cleaned];
+    NSMutableAttributedString *contentAttr = [[NSMutableAttributedString  alloc] initWithString:cleaned ?: @""];
     NSDictionary *contentAttribute = [RDReadParser paraserFontArrribute:[RDReadConfigManager sharedInstance]];
-    [contentAttr setAttributes:contentAttribute range:NSMakeRange(0, contentAttr.length)];
-    
-    
+    if (contentAttr.length > 0) {
+        [contentAttr setAttributes:contentAttribute range:NSMakeRange(0, contentAttr.length)];
+    }
     [attrString appendAttributedString:contentAttr];
     
     

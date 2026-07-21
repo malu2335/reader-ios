@@ -361,7 +361,8 @@ IMP_SINGLETON(RDSpeechManager)
     self.chapterIndex = next;
     [self.delegate speechManagerWillSpeakChapter:chapter];
     NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:chapter.content ?: @""];
-    NSString *text = [NSString stringWithFormat:@"%@\n%@", chapter.name ?: @"", cleaned];
+    NSString *title = [[RDReplaceRuleStore sharedInstance] applyToTitle:chapter.name ?: @""];
+    NSString *text = [NSString stringWithFormat:@"%@\n%@", title, cleaned];
     // 续播时重新解析引擎(用户可能中途改了语音)
     NSString *pref = [RDVoiceManager sharedInstance].preferredVoiceIdentifier;
     self.httpEngine = [[RDHttpTTSStore sharedInstance] engineWithVoiceIdentifier:pref];

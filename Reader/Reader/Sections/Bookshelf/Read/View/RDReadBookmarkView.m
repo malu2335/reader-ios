@@ -7,6 +7,7 @@
 #import "RDBookmarkManager.h"
 #import "RDBookmarkModel.h"
 #import "RDBookDetailModel.h"
+#import "RDReadConfigManager.h"
 
 @interface RDReadBookmarkView () <UITableViewDelegate, UITableViewDataSource>
 @property (nonatomic, strong) UILabel *titleLabel;
@@ -21,16 +22,28 @@
 {
     self = [super initWithFrame:frame];
     if (self) {
-        self.backgroundColor = RDReadBg;
         [self addSubview:self.titleLabel];
         [self addSubview:self.addBtn];
         [self addSubview:self.tableView];
         UIView *line = [[UIView alloc] initWithFrame:CGRectMake(0, 0, ScreenWidth, 1.0 / UIScreen.mainScreen.scale)];
-        line.backgroundColor = RDSeparatorColor;
+        line.tag = 8801;
         line.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         [self addSubview:line];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    self.backgroundColor = [cfg chromeBackgroundColor];
+    self.titleLabel.textColor = [cfg chromeForegroundColor];
+    [self.addBtn setTitleColor:RDAccentColor forState:UIControlStateNormal];
+    self.tableView.separatorColor = [cfg chromeSeparatorColor];
+    UIView *line = [self viewWithTag:8801];
+    line.backgroundColor = [cfg chromeSeparatorColor];
+    [self.tableView reloadData];
 }
 
 - (void)setBook:(RDBookDetailModel *)book
@@ -111,17 +124,20 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    UIColor *fg = [cfg chromeForegroundColor];
+    UIColor *sec = [cfg chromeSecondaryColor];
     if (self.items.count == 0) {
         static NSString *emptyId = @"empty";
         UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:emptyId];
         if (!cell) {
             cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:emptyId];
             cell.textLabel.font = RDFont14;
-            cell.textLabel.textColor = RDLightGrayColor;
             cell.textLabel.textAlignment = NSTextAlignmentCenter;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
             cell.backgroundColor = [UIColor clearColor];
         }
+        cell.textLabel.textColor = sec;
         cell.textLabel.text = @"暂无书签，点右上角添加当前页";
         return cell;
     }
@@ -130,12 +146,12 @@
     if (!cell) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cid];
         cell.textLabel.font = RDBoldFont15;
-        cell.textLabel.textColor = RDBlackColor;
         cell.detailTextLabel.font = RDFont12;
-        cell.detailTextLabel.textColor = RDLightGrayColor;
         cell.detailTextLabel.numberOfLines = 2;
         cell.backgroundColor = [UIColor clearColor];
     }
+    cell.textLabel.textColor = fg;
+    cell.detailTextLabel.textColor = sec;
     RDBookmarkModel *bm = self.items[indexPath.row];
     cell.textLabel.text = bm.charpterName.length ? bm.charpterName : @"未命名章节";
     NSString *time = [self p_formatTime:bm.createTime];

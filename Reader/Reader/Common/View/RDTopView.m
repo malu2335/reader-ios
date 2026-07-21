@@ -11,6 +11,7 @@
 #import "RDMarcos.h"
 #import "UIView+rd_dispalyInfo.h"
 #import "NSArray+rd_wid.h"
+#import "RDAppAppearance.h"
 #import "Reader.pch"
 
 @interface RDTopView ()
@@ -30,6 +31,23 @@
     self.frame = CGRectMake(0, 0, ScreenWidth, [UIView statusBar] + [UIView navigationBar]);
     [self addSubview:self.titleLabel];
     self.backgroundColor = RDBackgroudColor;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(p_applyAppearance)
+                                                 name:RDAppAppearanceDidChangeNotification
+                                               object:nil];
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)p_applyAppearance
+{
+    self.backgroundColor = RDBackgroudColor;
+    self.titleLabel.textColor = RDBlackColor;
+    self.separate.backgroundColor = RDSeparatorColor;
+    self.backBtn.tintColor = RDBlackColor;
 }
 - (instancetype)initWithBackStyle {
     self = [super init];
@@ -64,7 +82,9 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations" // UIButtonConfiguration rewrite deferred
         button.adjustsImageWhenDisabled = NO;
 #pragma clang diagnostic pop
-        [button setImage:[UIImage imageNamed:@"button_back"] forState:UIControlStateNormal];
+        UIImage *back = [[UIImage imageNamed:@"button_back"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        [button setImage:back forState:UIControlStateNormal];
+        button.tintColor = RDBlackColor;
         button.imageSize = CGSizeMake(11, 19);
         
         _backBtn = button;

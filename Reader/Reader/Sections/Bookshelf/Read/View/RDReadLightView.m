@@ -40,8 +40,23 @@
         [self addSubview:self.smallLight];
         [self addSubview:self.slider];
         [self addSubview:self.theme];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    self.backgroundColor = [cfg chromeBackgroundColor];
+    UIColor *fg = [cfg chromeForegroundColor];
+    UIColor *sec = [cfg chromeSecondaryColor];
+    // 亮度图标随主题着色
+    self.smallLight.image = [[[UIImage imageNamed:@"book_light_small"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:sec renderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.bigLight.image = [[[UIImage imageNamed:@"book_light_unselect"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:fg renderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.slider.minimumTrackTintColor = RDAccentColor;
+    self.slider.maximumTrackTintColor = [cfg chromeSeparatorColor];
+    self.theme.theme = cfg.theme;
 }
 
 -(UIImageView *)bigLight

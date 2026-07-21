@@ -2,10 +2,11 @@
 //  RDReadToolBar.m
 //  Reader
 //
-//  阅读底栏:目录 · 进度 · 书签 · 亮度 · 设置
+//  阅读底栏:目录 · 书签 · 亮度 · 设置
 //
 
 #import "RDReadToolBar.h"
+#import "RDReadConfigManager.h"
 
 @interface RDReadToolBar ()
 @property (nonatomic,strong) RDLayoutButton *lastButton;
@@ -17,13 +18,43 @@
     self = [super initWithFrame:frame];
     if (self) {
         [self addSubview:self.menu];
-        [self addSubview:self.slider];
         [self addSubview:self.bookmark];
         [self addSubview:self.light];
         [self addSubview:self.setting];
-        [self setBackgroundColor:RDReadBg];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (UIImage *)p_tintedImageNamed:(NSString *)name color:(UIColor *)color
+{
+    UIImage *img = [UIImage imageNamed:name];
+    if (!img) {
+        return nil;
+    }
+    return [[img imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:color renderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    UIColor *bg = [cfg chromeBackgroundColor];
+    UIColor *fg = [cfg chromeForegroundColor];
+    UIColor *accent = RDAccentColor;
+    self.backgroundColor = bg;
+
+    [self.menu setImage:[self p_tintedImageNamed:@"book_menu_unselect" color:fg] forState:UIControlStateNormal];
+    [self.menu setImage:[self p_tintedImageNamed:@"book_menu_select" color:accent] forState:UIControlStateSelected];
+    [self.light setImage:[self p_tintedImageNamed:@"book_light_unselect" color:fg] forState:UIControlStateNormal];
+    [self.light setImage:[self p_tintedImageNamed:@"book_light_select" color:accent] forState:UIControlStateSelected];
+    [self.setting setImage:[self p_tintedImageNamed:@"book_set_unselect" color:fg] forState:UIControlStateNormal];
+    [self.setting setImage:[self p_tintedImageNamed:@"book_set_select" color:accent] forState:UIControlStateSelected];
+
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightRegular];
+    UIImage *n = [[UIImage systemImageNamed:@"bookmark" withConfiguration:config] imageWithTintColor:fg renderingMode:UIImageRenderingModeAlwaysOriginal];
+    UIImage *s = [[UIImage systemImageNamed:@"bookmark.fill" withConfiguration:config] imageWithTintColor:accent renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [self.bookmark setImage:n forState:UIControlStateNormal];
+    [self.bookmark setImage:s forState:UIControlStateSelected];
 }
 
 -(RDLayoutButton *)p_buttonWithImage:(NSString *)normal selected:(NSString *)selected
@@ -44,14 +75,6 @@
         _menu = [self p_buttonWithImage:@"book_menu_unselect" selected:@"book_menu_select"];
     }
     return _menu;
-}
-
--(RDLayoutButton *)slider
-{
-    if (!_slider) {
-        _slider = [self p_buttonWithImage:@"book_progress_unselect" selected:@"book_progress_select"];
-    }
-    return _slider;
 }
 
 -(RDLayoutButton *)bookmark
@@ -97,11 +120,6 @@
             [self.delegate didMenu];
         }
     }
-    else if (sender == self.slider) {
-        if ([self.delegate respondsToSelector:@selector(didSlider)]) {
-            [self.delegate didSlider];
-        }
-    }
     else if (sender == self.bookmark) {
         if ([self.delegate respondsToSelector:@selector(didBookmark)]) {
             [self.delegate didBookmark];
@@ -122,13 +140,13 @@
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-    CGFloat width = self.width / 5.0;
+    // 四等分:目录 · 书签 · 亮度 · 设置
+    CGFloat width = self.width / 4.0;
     CGFloat h = self.height - [UIView safeBottomBar];
     self.menu.frame = CGRectMake(0, 0, width, h);
-    self.slider.frame = CGRectMake(width, 0, width, h);
-    self.bookmark.frame = CGRectMake(width * 2, 0, width, h);
-    self.light.frame = CGRectMake(width * 3, 0, width, h);
-    self.setting.frame = CGRectMake(width * 4, 0, width, h);
+    self.bookmark.frame = CGRectMake(width, 0, width, h);
+    self.light.frame = CGRectMake(width * 2, 0, width, h);
+    self.setting.frame = CGRectMake(width * 3, 0, width, h);
 }
 
 @end

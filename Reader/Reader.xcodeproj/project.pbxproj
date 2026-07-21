@@ -72,6 +72,7 @@
 		29A5196223FC0921008311B5 /* RDBookshelfCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 29A5196123FC0921008311B5 /* RDBookshelfCell.m */; };
 		29B00BF2237C26B900E1B892 /* RDReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00BF1237C26B900E1B892 /* RDReadController.m */; };
 		29B00BF6237C275800E1B892 /* RDReadConfigManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00BF5237C275800E1B892 /* RDReadConfigManager.m */; };
+		4141619119F74DE098199799 /* RDAppAppearance.m in Sources */ = {isa = PBXBuildFile; fileRef = 8758CDB4DC6A466794F63E19 /* RDAppAppearance.m */; };
 		29B00BFC237C36FC00E1B892 /* StepSlider.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00BFB237C36FC00E1B892 /* StepSlider.m */; };
 		29B00BFF237C44FE00E1B892 /* RDReadToolBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00BFE237C44FE00E1B892 /* RDReadToolBar.m */; };
 		29B00C02237C451200E1B892 /* RDReadTopBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00C01237C451200E1B892 /* RDReadTopBar.m */; };
@@ -304,6 +305,8 @@
 		29B00BF1237C26B900E1B892 /* RDReadController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadController.m; sourceTree = "<group>"; };
 		29B00BF4237C275800E1B892 /* RDReadConfigManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadConfigManager.h; sourceTree = "<group>"; };
 		29B00BF5237C275800E1B892 /* RDReadConfigManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDReadConfigManager.m; sourceTree = "<group>"; };
+		DBCD3DAABDB441ADB0E06F0D /* RDAppAppearance.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDAppAppearance.h; sourceTree = "<group>"; };
+		8758CDB4DC6A466794F63E19 /* RDAppAppearance.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDAppAppearance.m; sourceTree = "<group>"; };
 		29B00BFA237C36FC00E1B892 /* StepSlider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StepSlider.h; sourceTree = "<group>"; };
 		29B00BFB237C36FC00E1B892 /* StepSlider.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = StepSlider.m; sourceTree = "<group>"; };
 		29B00BFD237C44FE00E1B892 /* RDReadToolBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDReadToolBar.h; sourceTree = "<group>"; };
@@ -1042,6 +1045,8 @@
 			children = (
 				29B00BF4237C275800E1B892 /* RDReadConfigManager.h */,
 				29B00BF5237C275800E1B892 /* RDReadConfigManager.m */,
+				DBCD3DAABDB441ADB0E06F0D /* RDAppAppearance.h */,
+				8758CDB4DC6A466794F63E19 /* RDAppAppearance.m */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -1602,6 +1607,7 @@
 				294C75DD2405254E0013FB30 /* RDChannelModel.m in Sources */,
 				29696CED2386C94900212879 /* RDLibraryDetailModel.m in Sources */,
 				29B00BF6237C275800E1B892 /* RDReadConfigManager.m in Sources */,
+				4141619119F74DE098199799 /* RDAppAppearance.m in Sources */,
 				29696CD1238530DC00212879 /* RDReadCatalogHeader.m in Sources */,
 				29696CCE23852ECE00212879 /* RDReadCatalogCell.m in Sources */,
 				29B00BF2237C26B900E1B892 /* RDReadController.m in Sources */,
@@ -1885,7 +1891,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202607201251;
+				CURRENT_PROJECT_VERSION = 202607211152;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1896,7 +1902,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.9.3;
+				MARKETING_VERSION = 1.13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1915,7 +1921,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202607201251;
+				CURRENT_PROJECT_VERSION = 202607211152;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1926,7 +1932,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.9.3;
+				MARKETING_VERSION = 1.13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";

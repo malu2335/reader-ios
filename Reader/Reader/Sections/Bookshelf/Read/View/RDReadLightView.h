@@ -11,7 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface RDReadLightView : UIView
-
+- (void)applyChromeTheme;
 @end
 
 NS_ASSUME_NONNULL_END

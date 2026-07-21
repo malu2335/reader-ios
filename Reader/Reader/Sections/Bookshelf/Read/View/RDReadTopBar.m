@@ -7,6 +7,7 @@
 
 #import "RDReadTopBar.h"
 #import "RDLayoutButton.h"
+#import "RDReadConfigManager.h"
 
 @interface RDReadTopBar ()
 @property (nonatomic, strong) RDLayoutButton *backBtn;
@@ -25,19 +26,43 @@
         [self addSubview:self.shareBtn];
         [self addSubview:self.translateBtn];
         [self addSubview:self.speechBtn];
-        [self setBackgroundColor:RDReadBg];
+        [self applyChromeTheme];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    UIColor *bg = [cfg chromeBackgroundColor];
+    UIColor *fg = [cfg chromeForegroundColor];
+    self.backgroundColor = bg;
+
+    UIImage *back = [[UIImage imageNamed:@"button_back"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [self.backBtn setImage:back forState:UIControlStateNormal];
+    self.backBtn.tintColor = fg;
+
+    [self p_restyleButton:self.speechBtn symbol:@"headphones" title:@"听" color:fg];
+    [self p_restyleButton:self.translateBtn symbol:@"globe" title:@"译" color:fg];
+    [self p_restyleButton:self.shareBtn symbol:@"square.and.arrow.up" title:@"享" color:fg];
+}
+
+- (void)p_restyleButton:(UIButton *)btn symbol:(NSString *)name title:(NSString *)title color:(UIColor *)color
+{
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightRegular];
+    UIImage *icon = [[UIImage systemImageNamed:name withConfiguration:config] imageWithTintColor:color renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [btn setImage:icon forState:UIControlStateNormal];
+    [btn setTitle:[NSString stringWithFormat:@" %@", title] forState:UIControlStateNormal];
+    [btn setTitleColor:color forState:UIControlStateNormal];
 }
 
 - (RDLayoutButton *)backBtn {
     if (!_backBtn) {
         RDLayoutButton *button = [[RDLayoutButton alloc] initWithFrame:CGRectMake(0, [UIView statusBar], 40, [UIView navigationBar])];
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations" // UIButtonConfiguration rewrite deferred
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         button.adjustsImageWhenDisabled = NO;
 #pragma clang diagnostic pop
-        [button setImage:[UIImage imageNamed:@"button_back"] forState:UIControlStateNormal];
         button.imageSize = CGSizeMake(11, 19);
         _backBtn = button;
         [_backBtn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
@@ -48,13 +73,9 @@
 - (UIButton *)p_iconButtonWithSymbol:(NSString *)name title:(NSString *)title
 {
     UIButton *btn = [[UIButton alloc] init];
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightRegular];
-    UIImage *icon = [[UIImage systemImageNamed:name withConfiguration:config] imageWithTintColor:RDBlackColor renderingMode:UIImageRenderingModeAlwaysOriginal];
-    [btn setImage:icon forState:UIControlStateNormal];
-    [btn setTitle:[NSString stringWithFormat:@" %@", title] forState:UIControlStateNormal];
-    [btn setTitleColor:RDBlackColor forState:UIControlStateNormal];
     btn.titleLabel.font = RDFont13;
     [btn addTarget:self action:@selector(click:) forControlEvents:UIControlEventTouchUpInside];
+    [self p_restyleButton:btn symbol:name title:title color:RDBlackColor];
     return btn;
 }
 

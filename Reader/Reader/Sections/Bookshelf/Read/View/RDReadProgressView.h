@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic,strong) RDBookDetailModel *book;
 
 @property (nonatomic,weak) id<RDReadProgressViewDelegate>delegate;
+- (void)applyChromeTheme;
 @end
 
 NS_ASSUME_NONNULL_END

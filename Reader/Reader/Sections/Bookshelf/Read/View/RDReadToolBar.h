@@ -12,7 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol RDReadToolBarDelegate <NSObject>
 @optional
 -(void)didMenu;
--(void)didSlider;
 -(void)didBookmark;
 -(void)didLight;
 -(void)didSetting;
@@ -20,10 +19,11 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RDReadToolBar : UIView
 @property (nonatomic,weak) id<RDReadToolBarDelegate>delegate;
 @property (nonatomic,strong) RDLayoutButton *menu;
-@property (nonatomic,strong) RDLayoutButton *slider;
 @property (nonatomic,strong) RDLayoutButton *bookmark;
 @property (nonatomic,strong) RDLayoutButton *light;
 @property (nonatomic,strong) RDLayoutButton *setting;
+/// 跟随阅读主题(夜读时底栏同步深色)
+- (void)applyChromeTheme;
 @end
 
 NS_ASSUME_NONNULL_END

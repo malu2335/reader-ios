@@ -28,26 +28,37 @@
                       toColor:(UIColor*)c2
                    withHeight:(int)height;
 
-
-// ============ 设计令牌:安静纸质阅读感 ============
-// 纸面层次:页面底色 → 卡片表面 → 阅读纸色,统一暖色调
-#define RDBackgroudColor    [UIColor colorWithHexValue:0xF7F3EA]   // 页面纸色
-#define RDSurfaceColor      [UIColor colorWithHexValue:0xFDFBF5]   // 卡片/浮层表面
-#define RDReadBg            [UIColor colorWithHexValue:0xF5EFE2]   // 阅读默认纸色
-
-// 墨色文字层次
-#define RDBlackColor        [UIColor colorWithHexValue:0x2C2620]   // 主文字(墨)
-#define RDGrayColor         [UIColor colorWithHexValue:0x6E6459]   // 次级文字
-#define RDLightGrayColor    [UIColor colorWithHexValue:0x9A8F81]   // 弱化文字
-#define RDPlaceholderColor  [UIColor colorWithHexValue:0xB9AE9C]   // 占位文字
-
-// 主题色:低饱和赭褐(旧名 RDGreenColor 保留以兼容既有调用)
-#define RDAccentColor       [UIColor colorWithHexValue:0x8F5B3B]
-#define RDAccentSoftColor   [UIColor colorWithHexValue:0x8F5B3B alpha:0.10f]
-#define RDGreenColor        RDAccentColor
-
-// 分隔线
-#define RDSeparatorColor    [UIColor colorWithHexValue:0xDCD3C3]
-#define RDLightSeparatorColor [UIColor colorWithHexValue:0xEDE7D9]
+/// 浅/深双色动态令牌(随 window.userInterfaceStyle 切换)
++ (UIColor *)rd_dynamicLight:(NSInteger)lightHex dark:(NSInteger)darkHex;
++ (UIColor *)rd_dynamicLight:(NSInteger)lightHex lightAlpha:(CGFloat)la dark:(NSInteger)darkHex darkAlpha:(CGFloat)da;
++ (UIColor *)rd_paperBackgroundColor;
++ (UIColor *)rd_paperSurfaceColor;
++ (UIColor *)rd_paperReadBackgroundColor;
++ (UIColor *)rd_inkColor;
++ (UIColor *)rd_inkSecondaryColor;
++ (UIColor *)rd_inkTertiaryColor;
++ (UIColor *)rd_inkPlaceholderColor;
++ (UIColor *)rd_accentColor;
++ (UIColor *)rd_accentSoftColor;
++ (UIColor *)rd_separatorColor;
++ (UIColor *)rd_lightSeparatorColor;
 
 @end
+
+// ============ 设计令牌:安静纸质阅读感(支持全局深色) ============
+// 浅色:暖纸;深色:与阅读「夜读」一致的暖炭底 + 米黄字
+#define RDBackgroudColor    [UIColor rd_paperBackgroundColor]
+#define RDSurfaceColor      [UIColor rd_paperSurfaceColor]
+#define RDReadBg            [UIColor rd_paperReadBackgroundColor]
+
+#define RDBlackColor        [UIColor rd_inkColor]
+#define RDGrayColor         [UIColor rd_inkSecondaryColor]
+#define RDLightGrayColor    [UIColor rd_inkTertiaryColor]
+#define RDPlaceholderColor  [UIColor rd_inkPlaceholderColor]
+
+#define RDAccentColor       [UIColor rd_accentColor]
+#define RDAccentSoftColor   [UIColor rd_accentSoftColor]
+#define RDGreenColor        RDAccentColor
+
+#define RDSeparatorColor    [UIColor rd_separatorColor]
+#define RDLightSeparatorColor [UIColor rd_lightSeparatorColor]

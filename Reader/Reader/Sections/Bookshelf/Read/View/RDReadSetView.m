@@ -32,10 +32,27 @@
         [self addSubview:self.fontScroll];
         [self addSubview:self.pageView];
         [self reloadFontChips];
+        [self applyChromeTheme];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadFontChips)
                                                      name:RDFontListChangedNotification object:nil];
     }
     return self;
+}
+
+- (void)applyChromeTheme
+{
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    self.backgroundColor = [cfg chromeBackgroundColor];
+    UIColor *fg = [cfg chromeForegroundColor];
+    UIColor *sec = [cfg chromeSecondaryColor];
+    UIImage *big = [UIImage imageNamed:@"book_big_word"] ?: [UIImage imageNamed:@"book_set_unselect"];
+    UIImage *small = [UIImage imageNamed:@"book_small_word"] ?: [UIImage imageNamed:@"book_set_unselect"];
+    self.bigWord.image = [[big imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:fg renderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.smallWord.image = [[small imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:sec renderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.stepSlider.trackColor = [cfg chromeSeparatorColor];
+    [self.stepSlider setTintColor:[cfg chromeSeparatorColor]];
+    [self.pageView applyChromeTheme];
+    [self reloadFontChips];
 }
 
 -(void)dealloc
@@ -59,7 +76,10 @@
 {
     [self.fontScroll.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
     self.fontOptions = [[RDFontManager sharedInstance] allOptions];
-    NSString *currentName = [RDReadConfigManager sharedInstance].fontName;
+    RDReadConfigManager *cfg = [RDReadConfigManager sharedInstance];
+    NSString *currentName = cfg.fontName;
+    UIColor *normalColor = [cfg chromeSecondaryColor];
+    UIColor *borderColor = [cfg chromeSeparatorColor];
 
     CGFloat x = 25;
     for (NSInteger i = 0; i < self.fontOptions.count; i++) {
@@ -76,8 +96,8 @@
 #pragma clang diagnostic pop
         BOOL selected = (option.fontName == nil && currentName.length == 0) ||
                         (option.fontName && [option.fontName isEqualToString:currentName]);
-        [chip setTitleColor:selected ? RDAccentColor : RDGrayColor forState:UIControlStateNormal];
-        chip.layer.borderColor = selected ? RDAccentColor.CGColor : RDSeparatorColor.CGColor;
+        [chip setTitleColor:selected ? RDAccentColor : normalColor forState:UIControlStateNormal];
+        chip.layer.borderColor = selected ? RDAccentColor.CGColor : borderColor.CGColor;
         [chip addTarget:self action:@selector(chipClick:) forControlEvents:UIControlEventTouchUpInside];
         CGSize size = [chip sizeThatFits:CGSizeMake(CGFLOAT_MAX, 30)];
         chip.frame = CGRectMake(x, 0, MAX(size.width, 60), 30);
