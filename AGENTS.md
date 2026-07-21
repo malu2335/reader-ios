@@ -21,7 +21,8 @@
 | `master`（含 AI） | **奇数** | +2（…5→7→9） | 第三位 +1 |
 | `codex/jianyue-offline-reader` | **偶数** | +2（…6→8） | 第三位 +1 |
 
-例：master 当前 **1.13.0**；下次功能 → **1.15.0**；仅修 bug → **1.13.1**。两线独立演进。
+例：master 当前 **1.13.1**；下次功能 → **1.15.0**；仅修 bug → **1.13.2**。两线独立演进。  
+注意：`RDReadConfigManager` 的 `dispatch_once` 内禁止 `setTheme:` 同步发通知（会经 `RDAppAppearance` 回入 once 闪退）。
 
 ## 模拟器
 
