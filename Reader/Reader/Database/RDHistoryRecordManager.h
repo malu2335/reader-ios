@@ -12,23 +12,24 @@
 
 @interface RDHistoryRecordManager : NSObject
 
-/// 插入阅读记录
-+(void)insertOrReplaceModel:(RDBookDetailModel *)model;
+/// 插入阅读记录;返回是否写库成功(P2-DB-03)
++(BOOL)insertOrReplaceModel:(RDBookDetailModel *)model;
 
 /// 获取所有的阅读记录
 +(NSArray *)getAllHistory;
 
 
-/// 删除某一个阅读记录
+/// 删除某一个阅读记录;返回是否写库成功(P2-DB-03)
 /// @param bookId 书籍Id
-+(void)deleteHistoryWithBookId:(NSInteger )bookId;
++(BOOL)deleteHistoryWithBookId:(NSInteger )bookId;
 
 /// 获取阅读记录数量
 +(NSInteger)getHisoryCount;
 
 
 /// 删除所有的记录
-+(void)deleteAllHistory;
+/// 清空历史;返回是否写库成功(Issue 14)
++(BOOL)deleteAllHistory;
 @end
 
 

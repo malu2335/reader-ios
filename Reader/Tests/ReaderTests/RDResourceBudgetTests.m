@@ -109,4 +109,68 @@
     [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
 }
 
+/// dataForEntry:maxUncompressedBytes: 必须在解压前拒绝超预算条目(P1-CHAIN-01)
+- (void)testZipEntryBudgetRejectsOversizedDeclaredEntry
+{
+    // 构造最小合法 ZIP:一条 stored 条目,中央目录声明 uncompressedSize 远超 4MB
+    // 实际 payload 很小——验证“声明大小预检”而不是真解压 200MB
+    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"budget-fake.zip"];
+    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+
+    NSMutableData *zip = [NSMutableData data];
+    NSData *nameData = [@"huge.xhtml" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *payload = [@"tiny" dataUsingEncoding:NSUTF8StringEncoding];
+    uint32_t declaredSize = (uint32_t)(10ull * 1024 * 1024); // 10MB 声明
+    uint32_t crc = 0; // 不必真实 CRC:预算检查在 CRC 前
+
+    // local file header
+    uint8_t local[30] = {0};
+    uint32_t sigLocal = 0x04034b50;
+    memcpy(local, &sigLocal, 4);
+    uint16_t nameLen = (uint16_t)nameData.length;
+    uint32_t compSize = (uint32_t)payload.length;
+    memcpy(local + 18, &compSize, 4);
+    memcpy(local + 22, &declaredSize, 4);
+    memcpy(local + 26, &nameLen, 2);
+    [zip appendBytes:local length:30];
+    [zip appendData:nameData];
+    [zip appendData:payload];
+
+    uint32_t localOffset = 0;
+    uint32_t centralOffset = (uint32_t)zip.length;
+    // central directory header
+    uint8_t central[46] = {0};
+    uint32_t sigCentral = 0x02014b50;
+    memcpy(central, &sigCentral, 4);
+    memcpy(central + 16, &crc, 4);
+    memcpy(central + 20, &compSize, 4);
+    memcpy(central + 24, &declaredSize, 4);
+    memcpy(central + 28, &nameLen, 2);
+    memcpy(central + 42, &localOffset, 4);
+    [zip appendBytes:central length:46];
+    [zip appendData:nameData];
+
+    // EOCD
+    uint8_t eocd[22] = {0};
+    uint32_t sigEOCD = 0x06054b50;
+    uint16_t total = 1;
+    uint32_t centralSize = 46 + nameLen;
+    memcpy(eocd, &sigEOCD, 4);
+    memcpy(eocd + 8, &total, 2);
+    memcpy(eocd + 10, &total, 2);
+    memcpy(eocd + 12, &centralSize, 4);
+    memcpy(eocd + 16, &centralOffset, 4);
+    [zip appendBytes:eocd length:22];
+    XCTAssertTrue([zip writeToFile:path atomically:YES]);
+
+    RDZipArchive *archive = [[RDZipArchive alloc] initWithPath:path];
+    XCTAssertNotNil(archive, @"最小 ZIP 应能打开");
+    XCTAssertEqual([archive declaredUncompressedSizeForEntry:@"huge.xhtml"], (unsigned long long)declaredSize);
+    // 调用方 4MB 预算:声明 10MB 必须在分配前拒绝
+    NSData *data = [archive dataForEntry:@"huge.xhtml" maxUncompressedBytes:4ull * 1024 * 1024];
+    XCTAssertNil(data, @"超调用方预算的条目不得解压返回");
+
+    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+}
+
 @end

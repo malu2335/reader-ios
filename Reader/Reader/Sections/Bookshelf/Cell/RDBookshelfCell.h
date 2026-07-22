@@ -15,6 +15,13 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic,copy) void (^needReload)(void);
 @property (nonatomic,copy) void (^changeCover)(RDBookDetailModel *book);
 @property (nonatomic,copy) void (^resetCover)(RDBookDetailModel *book);
+/// 多选合并合集模式
+@property (nonatomic,assign) BOOL selectionMode;
+@property (nonatomic,copy,nullable) NSSet <NSNumber *>*selectedBookIds;
+@property (nonatomic,copy,nullable) void (^toggleSelect)(RDBookDetailModel *book);
+@property (nonatomic,copy,nullable) void (^createCollection)(RDBookDetailModel *book);
+@property (nonatomic,copy,nullable) void (^addToCollection)(RDBookDetailModel *book);
+@property (nonatomic,copy,nullable) void (^dissolveCollection)(RDBookDetailModel *book);
 +(CGFloat )cellHeight;
 @end
 

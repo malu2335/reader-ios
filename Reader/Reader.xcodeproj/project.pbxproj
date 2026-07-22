@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		91BE0F3B4F82415AAF2BD08E /* RDComicChapterListController.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A83DC218F37459BBACFA606 /* RDComicChapterListController.m */; };
 		02E2FAF0556CA8051184FCD7 /* RDBookshelfUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9CD2611127F6422656D18DB0 /* RDBookshelfUITests.m */; };
 		071B71033545EB805BBC6FF4 /* RDMobiBookParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 68F31C352B682E98E9009858 /* RDMobiBookParser.m */; };
 		0C829B4A531C176EFEAB483B /* RDImportDiagnosticTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0E8DA6789784B4B9BFD3E9C3 /* RDImportDiagnosticTests.m */; };
@@ -28,7 +29,6 @@
 		29406FE423B0DB1F00E4495F /* RDCategoryModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FE323B0DB1F00E4495F /* RDCategoryModel.m */; };
 		29406FE623B0E44C00E4495F /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = 29406FE523B0E44C00E4495F /* config.json */; };
 		29406FEE23B0E6B200E4495F /* RDGlobalModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FED23B0E6B200E4495F /* RDGlobalModel.m */; };
-		29406FF123B0E88A00E4495F /* RDHttpModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FF023B0E88A00E4495F /* RDHttpModel.m */; };
 		29406FF723B0F6C400E4495F /* RDToastView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29406FF623B0F6C400E4495F /* RDToastView.m */; };
 		29407C8323607D0E003C9643 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 29407C8223607D0E003C9643 /* AppDelegate.m */; };
 		29407C8E23607D0F003C9643 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29407C8D23607D0F003C9643 /* Assets.xcassets */; };
@@ -38,31 +38,25 @@
 		29407CA72360877F003C9643 /* RDBaseViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 29407CA62360877F003C9643 /* RDBaseViewController.m */; };
 		29407CAB236087FA003C9643 /* RDMainController.m in Sources */ = {isa = PBXBuildFile; fileRef = 29407CAA236087FA003C9643 /* RDMainController.m */; };
 		294B0EAD2361A39C00AB99DA /* RDTopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 294B0EAC2361A39C00AB99DA /* RDTopView.m */; };
-		294C75DD2405254E0013FB30 /* RDChannelModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 294C75DC2405254E0013FB30 /* RDChannelModel.m */; };
 		29554D4E237D05AD00B4428D /* RDReadSetView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29554D4D237D05AD00B4428D /* RDReadSetView.m */; };
 		29554D51237D05BD00B4428D /* RDReadLightView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29554D50237D05BD00B4428D /* RDReadLightView.m */; };
 		29554D54237D05D500B4428D /* RDReadSliderView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29554D53237D05D500B4428D /* RDReadSliderView.m */; };
-		295A669223FD1C2400E2631A /* RDSearchHistoryModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 295A669123FD1C2400E2631A /* RDSearchHistoryModel.m */; };
 		295A669523FD20A900E2631A /* RDTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = 295A669423FD20A900E2631A /* RDTextField.m */; };
-		295C3AC124341F1E0057C0DC /* RDSpecialModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 295C3AC024341F1E0057C0DC /* RDSpecialModel.m */; };
 		29696CCE23852ECE00212879 /* RDReadCatalogCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CCD23852ECE00212879 /* RDReadCatalogCell.m */; };
 		29696CD1238530DC00212879 /* RDReadCatalogHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CD0238530DC00212879 /* RDReadCatalogHeader.m */; };
 		29696CD42385398800212879 /* RDReadCatalogView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CD32385398800212879 /* RDReadCatalogView.m */; };
 		29696CDA238683D700212879 /* RDReadParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CD9238683D700212879 /* RDReadParser.m */; };
-		29696CE12386B27500212879 /* RDChapterListModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CE02386B27500212879 /* RDChapterListModel.m */; };
 		29696CE42386B7EF00212879 /* RDReadModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CE32386B7EF00212879 /* RDReadModel.m */; };
 		29696CE92386C38E00212879 /* RDCharpterModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = 29696CE62386C38E00212879 /* RDCharpterModel.mm */; };
 		29696CED2386C94900212879 /* RDLibraryDetailModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CEA2386C94900212879 /* RDLibraryDetailModel.m */; };
 		29696CF02386D48300212879 /* RDReadPageViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 29696CEF2386D48300212879 /* RDReadPageViewController.m */; };
 		29696CF42386D62F00212879 /* RDBookDetailModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = 29696CF12386D62F00212879 /* RDBookDetailModel.mm */; };
-		296B7835236877510077BCAD /* RDUserModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 296B7834236877510077BCAD /* RDUserModel.m */; };
 		2979A5842445664100AE053B /* RDNetErrorView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2979A5832445664100AE053B /* RDNetErrorView.m */; };
 		297F507124124B8E002837A2 /* RDCacheModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 297F507024124B8E002837A2 /* RDCacheModel.m */; };
 		2992BB6B23B213AC00C599B1 /* RDLoadIngView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB6A23B213AC00C599B1 /* RDLoadIngView.m */; };
 		2992BB6F23B21B8800C599B1 /* RDDateUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB6E23B21B8800C599B1 /* RDDateUtil.m */; };
 		2992BB7923B2375500C599B1 /* RDUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 2992BB7823B2375500C599B1 /* RDUtilities.m */; };
 		2998A8002428E86500C4E07B /* RDButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A7FF2428E86500C4E07B /* RDButton.m */; };
-		2998A816242A23A100C4E07B /* RDUpdateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 2998A815242A23A100C4E07B /* RDUpdateModel.m */; };
 		299F6456243C628000D4C085 /* UIScrollView+rd_ges.m in Sources */ = {isa = PBXBuildFile; fileRef = 299F6455243C628000D4C085 /* UIScrollView+rd_ges.m */; };
 		29A5196223FC0921008311B5 /* RDBookshelfCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 29A5196123FC0921008311B5 /* RDBookshelfCell.m */; };
 		29B00BF2237C26B900E1B892 /* RDReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B00BF1237C26B900E1B892 /* RDReadController.m */; };
@@ -82,7 +76,6 @@
 		29CE2B9323FD2715001B0D03 /* RDLimitInput.m in Sources */ = {isa = PBXBuildFile; fileRef = 29CE2B9223FD2715001B0D03 /* RDLimitInput.m */; };
 		29CE2BB223FF7FB4001B0D03 /* RDReadHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 29CE2BB123FF7FB4001B0D03 /* RDReadHelper.m */; };
 		29CE2BB523FFBA4D001B0D03 /* RDUpdateControl.m in Sources */ = {isa = PBXBuildFile; fileRef = 29CE2BB423FFBA4D001B0D03 /* RDUpdateControl.m */; };
-		29D18597236730F200D7A7B0 /* RDDiscoverItemModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29D18596236730F200D7A7B0 /* RDDiscoverItemModel.m */; };
 		29EFAF4C236472800020E5AE /* RDModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 29EFAF4B236472800020E5AE /* RDModel.m */; };
 		29EFAF4F236473350020E5AE /* RDModelAgent.m in Sources */ = {isa = PBXBuildFile; fileRef = 29EFAF4E236473350020E5AE /* RDModelAgent.m */; };
 		29EFAF52236473B00020E5AE /* NSFileManager+rd_wid.m in Sources */ = {isa = PBXBuildFile; fileRef = 29EFAF51236473B00020E5AE /* NSFileManager+rd_wid.m */; };
@@ -95,6 +88,8 @@
 		4455CC9DE4DA9035CF071FF4 /* RDResourceBudgetTests.m in Sources */ = {isa = PBXBuildFile; fileRef = AF453A1D48A635B907582D26 /* RDResourceBudgetTests.m */; };
 		48A3A9D8AD90A22290217C61 /* RDDatabaseLayerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 07F90865936A1F0B2E3D3BBA /* RDDatabaseLayerTests.m */; };
 		621C6567E53548639FD2E2F4 /* RDComicReadController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1868C360CBE04902804DB56E /* RDComicReadController.m */; };
+		A1B2C3D4E5F64789AB0C0003 /* RDBookCollectionManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64789AB0C0002 /* RDBookCollectionManager.mm */; };
+		A1B2C3D4E5F64789AB0C0006 /* RDBookshelfCollectionController.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64789AB0C0005 /* RDBookshelfCollectionController.m */; };
 		63A52E4840A444CEB8643F48 /* RDComicHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 9EB2CFA1BB18478F8226647E /* RDComicHelper.m */; };
 		6F0ABC75BCD98B764AA25095 /* RDFontManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 1FCABBDF66CC2C03DF4F2E91 /* RDFontManager.m */; };
 		770720095DA08678DB79B9B4 /* RDZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = 6ECE7CD0B4D6FF9E14F9BBEA /* RDZipArchive.m */; };
@@ -155,6 +150,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4378180514B345BBA7F29FFC /* RDComicChapterListController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDComicChapterListController.h; sourceTree = "<group>"; };
+		7A83DC218F37459BBACFA606 /* RDComicChapterListController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDComicChapterListController.m; sourceTree = "<group>"; };
+		A1B2C3D4E5F64789AB0C0001 /* RDBookCollectionManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookCollectionManager.h; sourceTree = "<group>"; };
+		A1B2C3D4E5F64789AB0C0002 /* RDBookCollectionManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = RDBookCollectionManager.mm; sourceTree = "<group>"; };
+		A1B2C3D4E5F64789AB0C0004 /* RDBookshelfCollectionController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RDBookshelfCollectionController.h; sourceTree = "<group>"; };
+		A1B2C3D4E5F64789AB0C0005 /* RDBookshelfCollectionController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RDBookshelfCollectionController.m; sourceTree = "<group>"; };
 		00426DA90F1259A4B7255FE3 /* Pods-ReaderUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ReaderUITests.debug.xcconfig"; path = "Target Support Files/Pods-ReaderUITests/Pods-ReaderUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		016DFB88DA12605DA3BF6CDE /* Pods-Reader.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Reader.release.xcconfig"; path = "Target Support Files/Pods-Reader/Pods-Reader.release.xcconfig"; sourceTree = "<group>"; };
 		07F90865936A1F0B2E3D3BBA /* RDDatabaseLayerTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RDDatabaseLayerTests.m; sourceTree = "<group>"; };
@@ -505,6 +506,8 @@
 				29BA84912361D214000FE927 /* Cell */,
 				127B2EA6693D9C0F71C58960 /* RDBookshelfController.h */,
 				127B294B423F32901606DFD0 /* RDBookshelfController.m */,
+				A1B2C3D4E5F64789AB0C0004 /* RDBookshelfCollectionController.h */,
+				A1B2C3D4E5F64789AB0C0005 /* RDBookshelfCollectionController.m */,
 			);
 			path = Bookshelf;
 			sourceTree = "<group>";
@@ -889,6 +892,8 @@
 				A11B002TX01FILEREF0004 /* RDReadRecordManager+DBInternal.h */,
 				A11B002TX01FILEREF0002 /* RDLibraryTransaction.h */,
 				A11B002TX01FILEREF0001 /* RDLibraryTransaction.mm */,
+				A1B2C3D4E5F64789AB0C0001 /* RDBookCollectionManager.h */,
+				A1B2C3D4E5F64789AB0C0002 /* RDBookCollectionManager.mm */,
 				29F97D3A240CEB8000909240 /* RDHistoryRecordManager.h */,
 				29F97D3B240CEB8000909240 /* RDHistoryRecordManager.mm */,
 				A11B001BM01FILEREF0002 /* RDBookmarkModel.h */,
@@ -1187,6 +1192,8 @@
 				9EB2CFA1BB18478F8226647E /* RDComicHelper.m */,
 				25D3CE3C0AED4878BB582152 /* RDComicReadController.h */,
 				1868C360CBE04902804DB56E /* RDComicReadController.m */,
+				4378180514B345BBA7F29FFC /* RDComicChapterListController.h */,
+				7A83DC218F37459BBACFA606 /* RDComicChapterListController.m */,
 				A11B001RP01FILEREF0002 /* RDReplaceRule.h */,
 				A11B001RP01FILEREF0001 /* RDReplaceRule.m */,
 				A11B001RP02FILEREF0002 /* RDShareCardBuilder.h */,
@@ -1512,13 +1519,13 @@
 				E1C8FD090799D51DC7A68BB4 /* RDPdfReadController.m in Sources */,
 				63A52E4840A444CEB8643F48 /* RDComicHelper.m in Sources */,
 				621C6567E53548639FD2E2F4 /* RDComicReadController.m in Sources */,
-				296B7835236877510077BCAD /* RDUserModel.m in Sources */,
+				91BE0F3B4F82415AAF2BD08E /* RDComicChapterListController.m in Sources */,
+				A1B2C3D4E5F64789AB0C0003 /* RDBookCollectionManager.mm in Sources */,
+				A1B2C3D4E5F64789AB0C0006 /* RDBookshelfCollectionController.m in Sources */,
 				29407CA42360873B003C9643 /* RDNavigationController.m in Sources */,
 				ABF5D50E23B83BE5008E3163 /* RDDatabaseManager.mm in Sources */,
 				29A5196223FC0921008311B5 /* RDBookshelfCell.m in Sources */,
-				295A669223FD1C2400E2631A /* RDSearchHistoryModel.m in Sources */,
 				29407CA72360877F003C9643 /* RDBaseViewController.m in Sources */,
-				294C75DD2405254E0013FB30 /* RDChannelModel.m in Sources */,
 				29696CED2386C94900212879 /* RDLibraryDetailModel.m in Sources */,
 				29B00BF6237C275800E1B892 /* RDReadConfigManager.m in Sources */,
 				4141619119F74DE098199799 /* RDAppAppearance.m in Sources */,
@@ -1540,7 +1547,6 @@
 				29696CD42385398800212879 /* RDReadCatalogView.m in Sources */,
 				29696CDA238683D700212879 /* RDReadParser.m in Sources */,
 				29CE2BB523FFBA4D001B0D03 /* RDUpdateControl.m in Sources */,
-				2998A816242A23A100C4E07B /* RDUpdateModel.m in Sources */,
 				29407C9423607D0F003C9643 /* main.m in Sources */,
 				127B27996D0F20EF3C42B109 /* UIView+rd_dispalyInfo.m in Sources */,
 				29EFAF4C236472800020E5AE /* RDModel.m in Sources */,
@@ -1550,7 +1556,6 @@
 				A11B002TX01BUILDFILE01 /* RDLibraryTransaction.mm in Sources */,
 				29BA84972361D263000FE927 /* RDBookshelfNoneCell.m in Sources */,
 				29F97D3C240CEB8000909240 /* RDHistoryRecordManager.mm in Sources */,
-				29406FF123B0E88A00E4495F /* RDHttpModel.m in Sources */,
 				29696CE42386B7EF00212879 /* RDReadModel.m in Sources */,
 				29B00C02237C451200E1B892 /* RDReadTopBar.m in Sources */,
 				29BA84A02361E249000FE927 /* RDBookshelfBaseCell.m in Sources */,
@@ -1566,11 +1571,8 @@
 				29EFAF4F236473350020E5AE /* RDModelAgent.m in Sources */,
 				29554D54237D05D500B4428D /* RDReadSliderView.m in Sources */,
 				127B29540C1E2EDA410D2B05 /* UIView+rd_wid.m in Sources */,
-				295C3AC124341F1E0057C0DC /* RDSpecialModel.m in Sources */,
-				29696CE12386B27500212879 /* RDChapterListModel.m in Sources */,
 				292242ED23AC7ED700FE93C3 /* RDBatteryView.m in Sources */,
 				127B2C7F2CADF6A0AA93080B /* RDLayoutButton.m in Sources */,
-				29D18597236730F200D7A7B0 /* RDDiscoverItemModel.m in Sources */,
 				2992BB6F23B21B8800C599B1 /* RDDateUtil.m in Sources */,
 				127B279B929AF7EE06232222 /* UIFont+rd_wid.m in Sources */,
 				2992BB7923B2375500C599B1 /* RDUtilities.m in Sources */,
@@ -1797,7 +1799,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-CURRENT_PROJECT_VERSION = 202607211855;
+				CURRENT_PROJECT_VERSION = 202607230735;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1808,7 +1810,7 @@ CURRENT_PROJECT_VERSION = 202607211855;
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-MARKETING_VERSION = 1.8.1;
+				MARKETING_VERSION = 1.10.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1827,7 +1829,7 @@ MARKETING_VERSION = 1.8.1;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-CURRENT_PROJECT_VERSION = 202607211855;
+				CURRENT_PROJECT_VERSION = 202607230735;
 				DEVELOPMENT_TEAM = K4LLFK266A;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1838,7 +1840,7 @@ CURRENT_PROJECT_VERSION = 202607211855;
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-MARKETING_VERSION = 1.8.1;
+				MARKETING_VERSION = 1.10.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.malu2335.reader;
 				PRODUCT_NAME = "纸羽轻阅";
 				PROVISIONING_PROFILE_SPECIFIER = "";

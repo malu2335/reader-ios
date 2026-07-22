@@ -13,11 +13,16 @@
 
 @implementation RDHistoryRecordManager
 
-+(void)insertOrReplaceModel:(RDBookDetailModel *)model
++(BOOL)insertOrReplaceModel:(RDBookDetailModel *)model
 {
+    if (!model || model.bookId == 0) {
+        return NO;
+    }
+    __block BOOL ok = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db insertOrReplaceObject:model into:kHistoryRecordTable];
+        ok = [db insertOrReplaceObject:model into:kHistoryRecordTable];
     }];
+    return ok;
 }
 
 +(NSInteger)getHisoryCount
@@ -38,17 +43,24 @@
     return result;
 }
 
-+(void)deleteHistoryWithBookId:(NSInteger)bookId
++(BOOL)deleteHistoryWithBookId:(NSInteger)bookId
 {
+    if (bookId == 0) {
+        return NO;
+    }
+    __block BOOL ok = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db deleteObjectsFromTable:kHistoryRecordTable where:RDBookDetailModel.bookId.is(bookId)];
+        ok = [db deleteObjectsFromTable:kHistoryRecordTable where:RDBookDetailModel.bookId.is(bookId)];
     }];
+    return ok;
 }
 
-+(void)deleteAllHistory
++(BOOL)deleteAllHistory
 {
+    __block BOOL ok = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db deleteAllObjectsFromTable:kHistoryRecordTable];
+        ok = [db deleteAllObjectsFromTable:kHistoryRecordTable];
     }];
+    return ok;
 }
 @end

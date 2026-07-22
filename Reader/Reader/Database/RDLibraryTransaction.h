@@ -23,6 +23,9 @@ NS_ASSUME_NONNULL_BEGIN
      touchReadTime:(BOOL)touchReadTime
              error:(NSError **)error;
 
+/// 单书四表(read/chapter/bookmark/history)同事务删除;失败整体回滚(P1-BE-02)
++ (BOOL)deleteAllRecordsForBookId:(NSInteger)bookId error:(NSError * _Nullable * _Nullable)error;
+
 @end
 
 NS_ASSUME_NONNULL_END

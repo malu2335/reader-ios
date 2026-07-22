@@ -187,7 +187,9 @@
 
     //1. container.xml → OPF 路径
     NSString *containerName = [zip entryMatchingName:@"META-INF/container.xml"];
-    NSData *containerData = containerName ? [zip dataForEntry:containerName] : nil;
+    // 清单/容器用更小预算;正文条目在 spine 循环里用单章上限(P1-CHAIN-01)
+    static const unsigned long long kEpubMetaMaxBytes = 2ull * 1024 * 1024;
+    NSData *containerData = containerName ? [zip dataForEntry:containerName maxUncompressedBytes:kEpubMetaMaxBytes] : nil;
     NSString *opfPath = nil;
     if (containerData) {
         NSString *containerXml = [RDBookTextUtil stringFromData:containerData];
@@ -206,7 +208,7 @@
             }
         }
     }
-    NSData *opfData = opfPath ? [zip dataForEntry:([zip entryMatchingName:opfPath] ?: opfPath)] : nil;
+    NSData *opfData = opfPath ? [zip dataForEntry:([zip entryMatchingName:opfPath] ?: opfPath) maxUncompressedBytes:kEpubMetaMaxBytes] : nil;
     if (!opfData) {
         if (errorMessage) *errorMessage = @"EPUB 缺少可识别的内容清单";
         return nil;
@@ -241,8 +243,19 @@
         }
         NSString *href = [self resolveHref:item.href baseDir:opfDir];
         NSString *entry = [zip entryMatchingName:href];
-        NSData *chapterData = entry ? [zip dataForEntry:entry] : nil;
+        // 解压前强制单章预算,避免先分配 200MB 再拒绝(P1-CHAIN-01)
+        NSData *chapterData = entry ? [zip dataForEntry:entry maxUncompressedBytes:kRDImportMaxEpubChapterBytes] : nil;
         if (!chapterData) {
+            if (entry.length > 0) {
+                unsigned long long declared = [zip declaredUncompressedSizeForEntry:entry];
+                if (declared > kRDImportMaxEpubChapterBytes) {
+                    if (errorMessage) {
+                        *errorMessage = [NSString stringWithFormat:@"EPUB 单章过大(上限 %llu MB),无法导入",
+                                         kRDImportMaxEpubChapterBytes / (1024ull * 1024ull)];
+                    }
+                    return nil;
+                }
+            }
             continue;
         }
         if (chapterData.length > kRDImportMaxEpubChapterBytes) {
@@ -404,7 +417,7 @@ static NSString *RDEpubAttrValue(NSString *tag, NSString *attr)
         return @{};
     }
     NSString *entry = [zip entryMatchingName:[self resolveHref:tocHref baseDir:opfDir]];
-    NSData *tocData = entry ? [zip dataForEntry:entry] : nil;
+    NSData *tocData = entry ? [zip dataForEntry:entry maxUncompressedBytes:2ull * 1024 * 1024] : nil;
     if (!tocData) {
         return @{};
     }
@@ -458,7 +471,7 @@ static NSString *RDEpubAttrValue(NSString *tag, NSString *attr)
         return nil;
     }
     NSString *entry = [zip entryMatchingName:[self resolveHref:coverItem.href baseDir:opfDir]];
-    return entry ? [zip dataForEntry:entry] : nil;
+    return entry ? [zip dataForEntry:entry maxUncompressedBytes:kRDImportMaxComicImageBytes] : nil;
 }
 
 //相对 OPF 目录解析 href,处理 ../ 与 URL 编码

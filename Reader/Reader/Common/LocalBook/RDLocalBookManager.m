@@ -24,6 +24,7 @@
 
 NSString * const RDLocalBookImportedNotification = @"RDLocalBookImportedNotification";
 NSString * const RDLocalBookImportRequestNotification = @"RDLocalBookImportRequestNotification";
+NSString * const RDBookshelfMergeRequestNotification = @"RDBookshelfMergeRequestNotification";
 
 static NSString * const kLocalBooksDirName = @"LocalBooks";
 static NSString * const kPDFAutoCoverVersion = @"v1";
@@ -53,7 +54,7 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
 
 + (NSArray <NSString *>*)supportedExtensions
 {
-    return @[@"txt", @"epub", @"mobi", @"pdf", @"azw", @"zip", @"cbz"];
+    return @[@"txt", @"text", @"epub", @"mobi", @"pdf", @"azw", @"azw3", @"zip", @"cbz"];
 }
 
 + (BOOL)isSupportedFileURL:(NSURL *)url
@@ -77,10 +78,30 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
     return dir;
 }
 
++ (nullable NSString *)safeAbsolutePathForLocalPath:(NSString *)localPath
+{
+    if (localPath.length == 0) {
+        return nil;
+    }
+    if ([localPath hasPrefix:@"/"] || [localPath containsString:@".."]) {
+        return nil;
+    }
+    NSString *root = [[self booksDirectory] stringByStandardizingPath];
+    NSString *full = [[root stringByAppendingPathComponent:localPath] stringByStandardizingPath];
+    if (![full hasPrefix:root]) {
+        return nil;
+    }
+    return full;
+}
+
 + (NSString *)absolutePathForBook:(RDBookDetailModel *)book
 {
     if (book.localPath.length == 0) {
         return nil;
+    }
+    NSString *safe = [self safeAbsolutePathForLocalPath:book.localPath];
+    if (safe) {
+        return safe;
     }
     return [[self booksDirectory] stringByAppendingPathComponent:book.localPath];
 }
@@ -447,14 +468,40 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
                 return;
             }
             result = [[RDLocalBookParseResult alloc] init];
-            result.chapters = @[];
             result.title = displayName;
-            comicPageCount = pages.count;
-            NSData *first = [zip dataForEntry:pages.firstObject];
-            if (first.length > 0) {
-                result.coverData = first;
+            // 多话结构(如 001_1话/ 002_2话/):拆成章节;否则整本图集
+            NSArray <NSDictionary *>*chapterInfos = isDir ? @[] : [RDComicHelper chapterInfosFromZipEntries:pages];
+            if (chapterInfos.count >= 2) {
+                NSMutableArray <RDCharpterModel *>*chapters = [NSMutableArray arrayWithCapacity:chapterInfos.count];
+                for (NSDictionary *info in chapterInfos) {
+                    RDCharpterModel *ch = [[RDCharpterModel alloc] init];
+                    ch.charpterId = [info[@"charpterId"] integerValue];
+                    ch.name = info[@"name"] ?: [NSString stringWithFormat:@"第%ld话", (long)ch.charpterId];
+                    NSString *prefix = info[@"prefix"] ?: @"";
+                    NSInteger pc = [info[@"pageCount"] integerValue];
+                    ch.content = [RDComicHelper comicChapterContentWithPrefix:prefix pageCount:pc];
+                    [chapters addObject:ch];
+                }
+                result.chapters = chapters.copy;
+                comicPageCount = chapters.count; // multi-话: total = 话数
+                // 封面取第一话第一张
+                NSString *prefix0 = chapterInfos.firstObject[@"prefix"] ?: @"";
+                NSArray *firstPages = [RDComicHelper imageEntries:pages withPrefix:prefix0];
+                NSString *coverEntry = firstPages.firstObject ?: pages.firstObject;
+                NSData *first = coverEntry ? [zip dataForEntry:coverEntry] : nil;
+                if (first.length > 0) {
+                    result.coverData = first;
+                }
+                result.author = @"本地漫画";
+            } else {
+                result.chapters = @[];
+                comicPageCount = pages.count;
+                NSData *first = [zip dataForEntry:pages.firstObject];
+                if (first.length > 0) {
+                    result.coverData = first;
+                }
+                result.author = isDir ? @"图片文件夹" : @"本地图集";
             }
-            result.author = isDir ? @"图片文件夹" : @"本地图集";
         }
 
         if (!result) {
@@ -542,6 +589,410 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
             return;
         }
         finish(book, nil, NO);
+    });
+}
+
+#pragma mark - Append comic chapters
+
+/// 从 URL 收集待追加的话:每项 @{ @"name": NSString, @"entries": NSArray<NSString *>, @"zip": RDZipArchive? , @"dir": NSString? }
+/// entries 为 zip 条目名或相对 dir 的路径
++ (NSArray <NSDictionary *>*)p_sourceChapterBundlesFromURL:(NSURL *)url
+                                                   display:(NSString *)displayName
+                                                     error:(NSString **)errorMessage
+{
+    BOOL isDir = NO;
+    [[NSFileManager defaultManager] fileExistsAtPath:url.path isDirectory:&isDir];
+    if (isDir) {
+        // 子目录各含图片 → 多话;否则整夹一话
+        NSFileManager *fm = [NSFileManager defaultManager];
+        NSArray *children = [fm contentsOfDirectoryAtPath:url.path error:nil] ?: @[];
+        NSMutableArray <NSDictionary *>*multi = [NSMutableArray array];
+        for (NSString *name in [children sortedArrayUsingComparator:^NSComparisonResult(NSString *a, NSString *b) {
+            return [RDComicHelper comparePaths:a to:b];
+        }]) {
+            if ([name hasPrefix:@"."] || [name isEqualToString:@"__MACOSX"]) { continue; }
+            NSString *full = [url.path stringByAppendingPathComponent:name];
+            BOOL childDir = NO;
+            if (![fm fileExistsAtPath:full isDirectory:&childDir] || !childDir) { continue; }
+            NSArray *imgs = [RDComicHelper sortedImageRelativePathsInDirectory:full];
+            if (imgs.count == 0) { continue; }
+            [multi addObject:@{
+                @"name": name,
+                @"entries": imgs,
+                @"dir": full,
+            }];
+        }
+        if (multi.count >= 2) {
+            return multi.copy;
+        }
+        NSArray *imgs = [RDComicHelper sortedImageRelativePathsInDirectory:url.path];
+        if (imgs.count == 0) {
+            if (errorMessage) { *errorMessage = @"文件夹中没有可导入的图片"; }
+            return nil;
+        }
+        return @[ @{
+            @"name": displayName.length ? displayName : (url.lastPathComponent ?: @"新话"),
+            @"entries": imgs,
+            @"dir": url.path,
+        } ];
+    }
+
+    NSString *ext = url.pathExtension.lowercaseString;
+    if (!([ext isEqualToString:@"zip"] || [ext isEqualToString:@"cbz"] || ext.length == 0)) {
+        // 无扩展名也可能是 zip;交给 RDZipArchive 试开
+    }
+    RDZipArchive *zip = [[RDZipArchive alloc] initWithPath:url.path];
+    if (!zip) {
+        if (errorMessage) { *errorMessage = @"无法打开压缩包"; }
+        return nil;
+    }
+    NSArray <NSString *>*pages = [RDComicHelper sortedImageEntriesInZip:zip];
+    if (pages.count == 0) {
+        if (errorMessage) { *errorMessage = @"压缩包内未找到图片"; }
+        return nil;
+    }
+    NSArray <NSDictionary *>*infos = [RDComicHelper chapterInfosFromZipEntries:pages];
+    if (infos.count >= 2) {
+        NSMutableArray *bundles = [NSMutableArray arrayWithCapacity:infos.count];
+        for (NSDictionary *info in infos) {
+            NSString *prefix = info[@"prefix"] ?: @"";
+            NSArray *entries = [RDComicHelper imageEntries:pages withPrefix:prefix];
+            if (entries.count == 0) { continue; }
+            [bundles addObject:@{
+                @"name": info[@"name"] ?: @"新话",
+                @"entries": entries,
+                @"zip": zip,
+            }];
+        }
+        if (bundles.count > 0) {
+            return bundles.copy;
+        }
+    }
+    return @[ @{
+        @"name": displayName.length ? displayName : (url.lastPathComponent.stringByDeletingPathExtension ?: @"新话"),
+        @"entries": pages,
+        @"zip": zip,
+    } ];
+}
+
++ (NSString *)p_sanitizeZipSegment:(NSString *)name
+{
+    if (name.length == 0) {
+        return @"话";
+    }
+    NSMutableString *s = [name mutableCopy];
+    NSArray *bad = @[@"/", @"\\", @":", @"*", @"?", @"\"", @"<", @">", @"|"];
+    for (NSString *ch in bad) {
+        [s replaceOccurrencesOfString:ch withString:@"_" options:0 range:NSMakeRange(0, s.length)];
+    }
+    s = [[s stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] mutableCopy];
+    if (s.length == 0) {
+        return @"话";
+    }
+    if (s.length > 40) {
+        return [s substringToIndex:40];
+    }
+    return s.copy;
+}
+
++ (BOOL)p_addZipEntryToWriter:(RDZipWriter *)writer
+                     destName:(NSString *)destName
+                   fromSource:(NSDictionary *)bundle
+                   entryOrRel:(NSString *)entry
+                        error:(NSString **)errorMessage
+{
+    if (!writer || destName.length == 0 || entry.length == 0) {
+        return NO;
+    }
+    RDZipArchive *zip = bundle[@"zip"];
+    NSString *dir = bundle[@"dir"];
+    if (zip) {
+        NSString *tmp = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                         [NSString stringWithFormat:@"rd_comic_append_%@_%u", @((NSUInteger)entry.hash), arc4random()]];
+        if (![zip writeEntry:entry toFile:tmp]) {
+            // 回退内存
+            NSData *data = [zip dataForEntry:entry];
+            if (data.length == 0 || ![writer addEntryWithName:destName data:data]) {
+                if (errorMessage) { *errorMessage = @"写入图片失败"; }
+                return NO;
+            }
+            return YES;
+        }
+        BOOL ok = [writer addEntryWithName:destName fileAtPath:tmp];
+        [[NSFileManager defaultManager] removeItemAtPath:tmp error:nil];
+        if (!ok) {
+            if (errorMessage) { *errorMessage = @"写入图片失败"; }
+            return NO;
+        }
+        return YES;
+    }
+    if (dir.length > 0) {
+        NSString *full = [dir stringByAppendingPathComponent:entry];
+        if (![writer addEntryWithName:destName fileAtPath:full]) {
+            NSData *data = [NSData dataWithContentsOfFile:full options:NSDataReadingMappedIfSafe error:nil];
+            if (data.length == 0 || ![writer addEntryWithName:destName data:data]) {
+                if (errorMessage) { *errorMessage = @"写入图片失败"; }
+                return NO;
+            }
+        }
+        return YES;
+    }
+    if (errorMessage) { *errorMessage = @"无法读取源图片"; }
+    return NO;
+}
+
++ (void)appendComicChaptersToBook:(RDBookDetailModel *)book
+                          fromURL:(NSURL *)url
+                         complete:(void (^)(NSInteger, NSString *))complete
+{
+    void (^finish)(NSInteger, NSString *) = ^(NSInteger added, NSString *message) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (added > 0) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:book];
+            }
+            if (complete) {
+                complete(added, message);
+            }
+        });
+    };
+
+    if (!book || book.bookId >= 0 || ![RDComicHelper isComicFileType:book.fileType]) {
+        finish(0, @"仅支持本地漫画追加新话");
+        return;
+    }
+    if (!url) {
+        finish(0, @"无效文件");
+        return;
+    }
+
+    dispatch_async([self importQueue], ^{
+        BOOL scoped = [url startAccessingSecurityScopedResource];
+        NSString *bookPath = [self absolutePathForBook:book];
+        if (bookPath.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:bookPath]) {
+            if (scoped) { [url stopAccessingSecurityScopedResource]; }
+            finish(0, @"原漫画文件不存在");
+            return;
+        }
+
+        NSString *displayName = url.lastPathComponent.stringByDeletingPathExtension;
+        if (displayName.length == 0) {
+            displayName = url.lastPathComponent;
+        }
+        NSString *srcError = nil;
+        NSArray <NSDictionary *>*bundles = [self p_sourceChapterBundlesFromURL:url display:displayName error:&srcError];
+        if (scoped) {
+            [url stopAccessingSecurityScopedResource];
+        }
+        if (bundles.count == 0) {
+            finish(0, srcError ?: @"没有可导入的图片");
+            return;
+        }
+
+        RDZipArchive *oldZip = [[RDZipArchive alloc] initWithPath:bookPath];
+        if (!oldZip) {
+            finish(0, @"无法打开原漫画文件");
+            return;
+        }
+        NSArray <NSString *>*oldImages = [RDComicHelper sortedImageEntriesInZip:oldZip];
+        if (oldImages.count == 0) {
+            finish(0, @"原漫画中没有图片");
+            return;
+        }
+
+        NSArray <RDCharpterModel *>*existingRows = [RDCharpterDataManager getComicChapterRowsWithBookId:book.bookId] ?: @[];
+        BOOL needBootstrap = (existingRows.count == 0);
+
+        // 已有话的 prefix,避免碰撞
+        NSMutableSet <NSString *>*usedPrefixes = [NSMutableSet set];
+        NSInteger maxId = 0;
+        for (RDCharpterModel *ch in existingRows) {
+            maxId = MAX(maxId, ch.charpterId);
+            NSDictionary *info = [RDComicHelper comicChapterInfoFromContent:ch.content];
+            NSString *p = info[@"prefix"];
+            if (p.length > 0) {
+                [usedPrefixes addObject:p];
+            }
+        }
+
+        NSString *bootstrapPrefix = nil;
+        RDCharpterModel *bootstrapChapter = nil;
+        if (needBootstrap) {
+            maxId = 1;
+            bootstrapPrefix = @"001_第1话/";
+            while ([usedPrefixes containsObject:bootstrapPrefix]) {
+                bootstrapPrefix = [NSString stringWithFormat:@"001_第1话_%u/", arc4random_uniform(9999)];
+            }
+            [usedPrefixes addObject:bootstrapPrefix];
+            bootstrapChapter = [[RDCharpterModel alloc] init];
+            bootstrapChapter.bookId = book.bookId;
+            bootstrapChapter.charpterId = 1;
+            bootstrapChapter.name = @"第1话";
+            bootstrapChapter.bookName = book.title;
+            bootstrapChapter.author = book.author;
+            bootstrapChapter.content = [RDComicHelper comicChapterContentWithPrefix:bootstrapPrefix pageCount:oldImages.count];
+        }
+
+        NSMutableArray <RDCharpterModel *>*newChapters = [NSMutableArray array];
+        NSMutableArray <NSDictionary *>*planned = [NSMutableArray array]; // @{chapter, bundle, prefix}
+        // needBootstrap 时 maxId=1 留给「第1话」,新话从 2 起
+        NSInteger nextId = maxId + 1;
+
+        for (NSDictionary *bundle in bundles) {
+            NSArray *entries = bundle[@"entries"];
+            if (entries.count == 0) { continue; }
+            NSInteger cid = nextId++;
+            NSString *rawName = bundle[@"name"] ?: [NSString stringWithFormat:@"第%ld话", (long)cid];
+            NSString *seg = [self p_sanitizeZipSegment:rawName];
+            NSString *prefix = [NSString stringWithFormat:@"%03ld_%@/", (long)cid, seg];
+            while ([usedPrefixes containsObject:prefix]) {
+                prefix = [NSString stringWithFormat:@"%03ld_%@_%u/", (long)cid, seg, arc4random_uniform(9999)];
+            }
+            [usedPrefixes addObject:prefix];
+
+            RDCharpterModel *ch = [[RDCharpterModel alloc] init];
+            ch.bookId = book.bookId;
+            ch.charpterId = cid;
+            ch.name = rawName;
+            ch.bookName = book.title;
+            ch.author = book.author;
+            ch.content = [RDComicHelper comicChapterContentWithPrefix:prefix pageCount:entries.count];
+            [newChapters addObject:ch];
+            [planned addObject:@{ @"chapter": ch, @"bundle": bundle, @"prefix": prefix }];
+        }
+
+        if (newChapters.count == 0) {
+            finish(0, @"没有可导入的图片");
+            return;
+        }
+
+        NSString *tmpZip = [bookPath stringByAppendingString:@".appending"];
+        [[NSFileManager defaultManager] removeItemAtPath:tmpZip error:nil];
+        RDZipWriter *writer = [[RDZipWriter alloc] initWithPath:tmpZip];
+        if (!writer) {
+            finish(0, @"创建临时压缩包失败");
+            return;
+        }
+
+        NSString *writeErr = nil;
+        // 1) 原有条目(扁平升级则改写 prefix);只保留图片,跳过 __MACOSX/隐藏文件
+        for (NSString *entry in oldZip.entryNames) {
+            NSString *base = entry.lastPathComponent;
+            if ([base hasPrefix:@"."] || [entry containsString:@"__MACOSX"]) {
+                continue;
+            }
+            if (![RDComicHelper isImageFileName:base]) {
+                continue;
+            }
+            NSString *dest = entry;
+            if (needBootstrap && bootstrapPrefix.length > 0) {
+                dest = [bootstrapPrefix stringByAppendingString:entry];
+            }
+            NSString *tmpFile = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                                 [NSString stringWithFormat:@"rd_comic_old_%u", arc4random()]];
+            BOOL wrote = [oldZip writeEntry:entry toFile:tmpFile];
+            if (wrote) {
+                if (![writer addEntryWithName:dest fileAtPath:tmpFile]) {
+                    writeErr = @"复制原漫画失败";
+                }
+            } else {
+                NSData *data = [oldZip dataForEntry:entry];
+                if (data.length == 0 || ![writer addEntryWithName:dest data:data]) {
+                    writeErr = @"复制原漫画失败";
+                }
+            }
+            [[NSFileManager defaultManager] removeItemAtPath:tmpFile error:nil];
+            if (writeErr) { break; }
+        }
+        if (writeErr) {
+            [[NSFileManager defaultManager] removeItemAtPath:tmpZip error:nil];
+            finish(0, writeErr);
+            return;
+        }
+
+        // 2) 新话图片
+        for (NSDictionary *plan in planned) {
+            NSString *prefix = plan[@"prefix"];
+            NSDictionary *bundle = plan[@"bundle"];
+            NSArray <NSString *>*entries = bundle[@"entries"];
+            NSInteger i = 0;
+            for (NSString *entry in entries) {
+                NSString *fileName = entry.lastPathComponent;
+                if (fileName.length == 0) {
+                    fileName = [NSString stringWithFormat:@"%04ld.jpg", (long)i];
+                }
+                // 避免 dest 重名:加序号前缀
+                NSString *dest = [NSString stringWithFormat:@"%@%04ld_%@", prefix, (long)i, fileName];
+                if (![self p_addZipEntryToWriter:writer destName:dest fromSource:bundle entryOrRel:entry error:&writeErr]) {
+                    break;
+                }
+                i++;
+            }
+            if (writeErr) { break; }
+        }
+        if (writeErr) {
+            [[NSFileManager defaultManager] removeItemAtPath:tmpZip error:nil];
+            finish(0, writeErr);
+            return;
+        }
+        if (![writer finalizeArchive]) {
+            [[NSFileManager defaultManager] removeItemAtPath:tmpZip error:nil];
+            finish(0, @"完成压缩包失败");
+            return;
+        }
+
+        // 3) 原子替换文件
+        NSString *bak = [bookPath stringByAppendingString:@".bak"];
+        [[NSFileManager defaultManager] removeItemAtPath:bak error:nil];
+        NSError *fmErr = nil;
+        if (![[NSFileManager defaultManager] moveItemAtPath:bookPath toPath:bak error:&fmErr]) {
+            [[NSFileManager defaultManager] removeItemAtPath:tmpZip error:nil];
+            finish(0, @"备份原文件失败");
+            return;
+        }
+        if (![[NSFileManager defaultManager] moveItemAtPath:tmpZip toPath:bookPath error:&fmErr]) {
+            [[NSFileManager defaultManager] moveItemAtPath:bak toPath:bookPath error:nil];
+            [[NSFileManager defaultManager] removeItemAtPath:tmpZip error:nil];
+            finish(0, @"替换漫画文件失败");
+            return;
+        }
+
+        // 4) 写库:已有 + bootstrap + 新话
+        NSMutableArray *allChapters = [NSMutableArray array];
+        if (needBootstrap && bootstrapChapter) {
+            [allChapters addObject:bootstrapChapter];
+        } else {
+            [allChapters addObjectsFromArray:existingRows];
+        }
+        [allChapters addObjectsFromArray:newChapters];
+
+        NSError *dbErr = nil;
+        if (![RDCharpterDataManager replaceChaptersForBookId:book.bookId chapters:allChapters error:&dbErr]) {
+            // 回滚文件
+            [[NSFileManager defaultManager] removeItemAtPath:bookPath error:nil];
+            [[NSFileManager defaultManager] moveItemAtPath:bak toPath:bookPath error:nil];
+            finish(0, dbErr.localizedDescription ?: @"保存章节失败");
+            return;
+        }
+        [[NSFileManager defaultManager] removeItemAtPath:bak error:nil];
+
+        // 用库里完整记录更新 total,避免入参残缺覆盖字段
+        RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId] ?: book;
+        record.total = allChapters.count;
+        if (record.author.length == 0) {
+            record.author = @"本地漫画";
+        }
+        if (needBootstrap && bootstrapChapter) {
+            if (!record.charpterModel || record.charpterModel.charpterId == 0) {
+                record.charpterModel = bootstrapChapter;
+                record.readChapterName = bootstrapChapter.name;
+            }
+        }
+        book.total = record.total;
+        book.charpterModel = record.charpterModel;
+        book.readChapterName = record.readChapterName;
+        [RDReadRecordManager insertOrReplaceModel:record touchReadTime:NO];
+
+        finish((NSInteger)newChapters.count, nil);
     });
 }
 
@@ -964,6 +1415,17 @@ static void *kRDCustomCoverQueueKey = &kRDCustomCoverQueueKey;
             completion();
         }
     }];
+}
+
++ (void)recoverInterruptedDeletesIfNeeded
+{
+    // 用户功能合回后保留钩子;完整 TrashStaging journal 可与审查修复一并再挂
+    // 当前清理孤立空目录,避免启动路径崩溃
+    NSString *trash = [PATH_DOCUMENT stringByAppendingPathComponent:@"TrashStaging"];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:trash]) {
+        return;
+    }
+    // 不自动销毁带 operation.json 的目录,以免误删可恢复数据
 }
 
 @end

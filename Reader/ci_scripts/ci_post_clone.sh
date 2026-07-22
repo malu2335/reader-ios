@@ -77,8 +77,9 @@ if [ "$missing" -ne 0 ]; then
     exit 1
 fi
 
-# Optional: static harness gate (set CI_RUN_HARNESSES=1 on Xcode Cloud custom step)
-if [ "${CI_RUN_HARNESSES:-0}" = "1" ]; then
+# Static harness gate: default ON (set CI_RUN_HARNESSES=0 to skip explicitly).
+# Makes resource/import/AI invariants part of the repository-visible CI path (P2-DEP-02).
+if [ "${CI_RUN_HARNESSES:-1}" = "1" ]; then
     echo "=== CI_RUN_HARNESSES: run_all_harnesses ==="
     bash "$READER_DIR/Tests/run_all_harnesses.sh"
 fi

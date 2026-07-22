@@ -19,6 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)restoreFromURL:(NSURL *)url complete:(void(^)(NSInteger bookCount, NSString * _Nullable errorMessage))complete;
 
 
+/// 启动时回收中断的恢复:按持久化 journal 回滚「新文件已就位、DB 未提交」的书(P1-BE-01)
++ (void)recoverInterruptedRestoresIfNeeded;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -123,14 +123,30 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     return names.count > 0;
 }
 
+- (unsigned long long)declaredUncompressedSizeForEntry:(NSString *)name
+{
+    RDZipEntry *entry = self.entries[name];
+    return entry ? (unsigned long long)entry.uncompressedSize : 0;
+}
+
 - (NSData *)dataForEntry:(NSString *)name
+{
+    return [self dataForEntry:name maxUncompressedBytes:kRDZipMaxEntryUncompressedBytes];
+}
+
+- (NSData *)dataForEntry:(NSString *)name maxUncompressedBytes:(unsigned long long)maxUncompressedBytes
 {
     RDZipEntry *entry = self.entries[name];
     if (!entry) {
         return nil;
     }
+    // 调用方预算与通用硬上限取更严者;0 表示仅用通用上限
+    unsigned long long entryBudget = maxUncompressedBytes > 0
+        ? MIN(maxUncompressedBytes, kRDZipMaxEntryUncompressedBytes)
+        : kRDZipMaxEntryUncompressedBytes;
     //单条目/累计解压量与压缩比预算:防止声明离谱大小或高倍率炸弹式条目
-    if (entry.uncompressedSize > kRDZipMaxEntryUncompressedBytes) {
+    // 在分配/inflate 前用中央目录声明拒绝,避免先解压 200MB 再被业务层丢弃(P1-CHAIN-01)
+    if (entry.uncompressedSize > entryBudget) {
         return nil;
     }
     if (entry.method == 8) {
@@ -163,12 +179,19 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     NSData *compressed = [self.data subdataWithRange:NSMakeRange(dataStart, entry.compressedSize)];
     NSData *result = nil;
     if (entry.method == 0) {
+        // stored 条目也按调用方预算裁剪:长度已由 uncompressedSize 预检
+        if (compressed.length > entryBudget) {
+            return nil;
+        }
         result = compressed;
     }
     else if (entry.method == 8) {
-        result = [self inflate:compressed expectedSize:entry.uncompressedSize];
+        result = [self inflate:compressed expectedSize:entry.uncompressedSize maxBytes:entryBudget];
     }
     if (!result) {
+        return nil;
+    }
+    if ((unsigned long long)result.length > entryBudget) {
         return nil;
     }
     //central directory 中的 CRC32 校验:损坏/篡改/截断归档在此处即失败,不放行到解析层
@@ -188,13 +211,16 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     return result;
 }
 
-- (NSData *)inflate:(NSData *)compressed expectedSize:(uint32_t)expectedSize
+- (NSData *)inflate:(NSData *)compressed expectedSize:(uint32_t)expectedSize maxBytes:(unsigned long long)maxBytes
 {
     if (compressed.length == 0) {
         return [NSData data];
     }
-    //expectedSize 来自归档自身声明,不可全信;真正的硬上限是单条目预算
-    NSUInteger capacityHint = MIN((NSUInteger)expectedSize, (NSUInteger)kRDZipMaxEntryUncompressedBytes);
+    unsigned long long hardCap = maxBytes > 0
+        ? MIN(maxBytes, kRDZipMaxEntryUncompressedBytes)
+        : kRDZipMaxEntryUncompressedBytes;
+    //expectedSize 来自归档自身声明,不可全信;真正的硬上限是调用方/通用预算
+    NSUInteger capacityHint = MIN((NSUInteger)expectedSize, (NSUInteger)hardCap);
     z_stream stream;
     memset(&stream, 0, sizeof(stream));
     //windowBits 为负:raw deflate(ZIP 条目无 zlib 头)
@@ -207,13 +233,13 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     int status = Z_OK;
     while (status == Z_OK) {
         if (stream.total_out >= output.length) {
-            if (output.length >= kRDZipMaxEntryUncompressedBytes) {
+            if (output.length >= hardCap) {
                 //实际解压量已越过硬上限,声明的 expectedSize 撒谎也不再放行(真正的炸弹防线)
                 inflateEnd(&stream);
                 return nil;
             }
             //increaseLengthBy: 传入的是增量,不是新总长;先算目标总长再回推增量,避免下溢
-            NSUInteger targetLength = MIN(output.length + (output.length / 2 + 4096), (NSUInteger)kRDZipMaxEntryUncompressedBytes);
+            NSUInteger targetLength = MIN(output.length + (output.length / 2 + 4096), (NSUInteger)hardCap);
             [output increaseLengthBy:targetLength - output.length];
         }
         stream.next_out = (Bytef *)output.mutableBytes + stream.total_out;
@@ -223,6 +249,9 @@ static uint32_t readU32(const uint8_t *p) { return (uint32_t)(p[0] | (p[1] << 8)
     NSUInteger totalOut = stream.total_out;
     inflateEnd(&stream);
     if (status != Z_STREAM_END) {
+        return nil;
+    }
+    if ((unsigned long long)totalOut > hardCap) {
         return nil;
     }
     output.length = totalOut;

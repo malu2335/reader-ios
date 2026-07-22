@@ -14,6 +14,8 @@
 #import "RDLocalBookManager.h"
 #import "RDBookshelfPrefetch.h"
 #import "RDAppAppearance.h"
+#import "RDBookCollectionManager.h"
+#import "RDPaperAlert.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <PhotosUI/PhotosUI.h>
 #import <ImageIO/ImageIO.h>
@@ -34,6 +36,10 @@
 @property (nonatomic,assign) BOOL skipNextAppearReload;
 @property (nonatomic,strong) RDBookDetailModel *pendingCoverBook;
 @property (nonatomic,assign) NSUInteger pendingCoverRequestVersion;
+/// 合并合集多选
+@property (nonatomic,assign) BOOL mergeSelectMode;
+@property (nonatomic,strong) NSMutableSet <NSNumber *>*mergeSelectedIds;
+@property (nonatomic,strong) UIButton *mergeBarButton;
 @end
 
 @implementation RDBookshelfController
@@ -47,8 +53,12 @@
                                                  name:RDLocalBookImportedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(importAction)
                                                  name:RDLocalBookImportRequestNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_beginMergeFromSettings)
+                                                 name:RDBookshelfMergeRequestNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_onAppearanceChanged)
                                                  name:RDAppAppearanceDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(p_reload)
+                                                 name:RDBookCollectionDidChangeNotification object:nil];
 
     // 启动页已预加载:立刻灌入缓存,首帧不空白
     if ([RDBookshelfPrefetch ready]) {
@@ -230,15 +240,179 @@
         _topView = [[RDTopView alloc] init];
         _topView.titleLabel.text = @"书架";
         _topView.titleLabel.font = RDTitleFont19;
-        UIButton *importBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [importBtn setTitle:@"导入" forState:UIControlStateNormal];
-        importBtn.titleLabel.font = RDFont16;
-        [importBtn setTitleColor:RDAccentColor forState:UIControlStateNormal];
-        [importBtn addTarget:self action:@selector(importAction) forControlEvents:UIControlEventTouchUpInside];
-        [_topView addRightBtn:importBtn];
+        // 导入 / 合并 统一到设置;合并多选进行中才临时显示「完成」
     }
-    
     return _topView;
+}
+
+/// 合并多选时临时顶栏「完成」按钮(平时不显示)
+- (void)p_ensureMergeDoneButton
+{
+    if (self.mergeBarButton) {
+        return;
+    }
+    UIButton *mergeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [mergeBtn setTitle:@"完成" forState:UIControlStateNormal];
+    mergeBtn.titleLabel.font = RDFont16;
+    [mergeBtn setTitleColor:RDAccentColor forState:UIControlStateNormal];
+    [mergeBtn addTarget:self action:@selector(p_toggleMergeMode) forControlEvents:UIControlEventTouchUpInside];
+    [self.topView addRightBtn:mergeBtn];
+    self.mergeBarButton = mergeBtn;
+    self.mergeBarButton.hidden = YES;
+}
+
+- (void)p_setMergeModeChromeActive:(BOOL)active
+{
+    [self p_ensureMergeDoneButton];
+    self.mergeBarButton.hidden = !active;
+    if (active) {
+        NSInteger n = self.mergeSelectedIds.count;
+        [self.mergeBarButton setTitle:(n >= 2 ? [NSString stringWithFormat:@"完成(%ld)", (long)n] : @"完成")
+                             forState:UIControlStateNormal];
+    } else {
+        [self.mergeBarButton setTitle:@"完成" forState:UIControlStateNormal];
+    }
+    [self.topView refresh];
+}
+
+- (NSMutableSet <NSNumber *>*)mergeSelectedIds
+{
+    if (!_mergeSelectedIds) {
+        _mergeSelectedIds = [NSMutableSet set];
+    }
+    return _mergeSelectedIds;
+}
+
+#pragma mark - 合集合并
+
+- (void)p_beginMergeFromSettings
+{
+    // 设置页切入合并:清空旧勾选并进入多选
+    self.mergeSelectMode = YES;
+    [self.mergeSelectedIds removeAllObjects];
+    [self p_setMergeModeChromeActive:YES];
+    [self showText:@"点选至少两本书,再点「完成」合并"];
+    [self.tableView reloadData];
+}
+
+- (void)p_toggleMergeMode
+{
+    if (self.mergeSelectMode) {
+        // 结束或执行合并
+        if (self.mergeSelectedIds.count >= 2) {
+            [self p_confirmCreateCollectionFromSelection];
+            return;
+        }
+        self.mergeSelectMode = NO;
+        [self.mergeSelectedIds removeAllObjects];
+        [self p_setMergeModeChromeActive:NO];
+        [self.tableView reloadData];
+        return;
+    }
+    self.mergeSelectMode = YES;
+    [self.mergeSelectedIds removeAllObjects];
+    [self p_setMergeModeChromeActive:YES];
+    [self showText:@"点选至少两本书,再点「完成」合并"];
+    [self.tableView reloadData];
+}
+
+- (void)p_confirmCreateCollectionFromSelection
+{
+    NSMutableArray <RDBookDetailModel *>*books = [NSMutableArray array];
+    for (NSNumber *bid in self.mergeSelectedIds) {
+        RDBookDetailModel *b = [RDReadRecordManager getReadRecordWithBookId:bid.integerValue];
+        if (b && !b.isCollection) {
+            [books addObject:b];
+        }
+    }
+    if (books.count < 2) {
+        [self showText:@"请至少选择两本书"];
+        return;
+    }
+    NSString *defaultName = books.firstObject.title ?: @"合集";
+    __weak typeof(self) weakSelf = self;
+    [RDPaperAlert showTextFieldsWithTitle:@"合并为合集"
+                                  message:[NSString stringWithFormat:@"将 %ld 本书合成一项,点开后可像话列表一样浏览", (long)books.count]
+                               fieldSpecs:@[@{@"placeholder": @"合集名称", @"text": defaultName}]
+                              cancelTitle:@"取消"
+                             confirmTitle:@"合并"
+                                  confirm:^(NSArray<NSString *> *values) {
+        NSString *title = values.firstObject ?: defaultName;
+        NSString *err = nil;
+        RDBookDetailModel *hub = [RDBookCollectionManager createCollectionWithTitle:title books:books errorMessage:&err];
+        weakSelf.mergeSelectMode = NO;
+        [weakSelf.mergeSelectedIds removeAllObjects];
+        [weakSelf p_setMergeModeChromeActive:NO];
+        [RDBookshelfPrefetch invalidate];
+        [weakSelf p_reload];
+        if (hub) {
+            [weakSelf showText:[NSString stringWithFormat:@"已创建合集《%@》", hub.title ?: @""]];
+        } else {
+            [weakSelf showText:err ?: @"合并失败"];
+        }
+    }];
+}
+
+- (void)p_createCollectionStartingWithBook:(RDBookDetailModel *)book
+{
+    if (!book || book.isCollection) {
+        return;
+    }
+    // 进入多选并把当前书勾上
+    self.mergeSelectMode = YES;
+    [self.mergeSelectedIds removeAllObjects];
+    [self.mergeSelectedIds addObject:@(book.bookId)];
+    [self p_setMergeModeChromeActive:YES];
+    [self showText:@"再选至少一本,点「完成」创建合集"];
+    [self.tableView reloadData];
+}
+
+- (void)p_addBookToExistingCollection:(RDBookDetailModel *)book
+{
+    if (!book || book.isCollection) {
+        return;
+    }
+    NSArray <RDBookDetailModel *>*cols = [RDBookCollectionManager allCollections];
+    if (cols.count == 0) {
+        [self showText:@"还没有合集,请先长按书籍「创建合集」或点顶栏「合并」"];
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    NSMutableArray *actions = [NSMutableArray array];
+    for (RDBookDetailModel *c in cols) {
+        NSString *name = c.title.length ? c.title : @"未命名合集";
+        [actions addObject:[RDPaperAlertAction actionWithTitle:name
+                                                      subtitle:c.author
+                                                         style:RDPaperAlertActionStyleDefault
+                                                       handler:^{
+            NSString *err = nil;
+            BOOL ok = [RDBookCollectionManager addBookId:book.bookId toCollectionId:c.bookId errorMessage:&err];
+            [RDBookshelfPrefetch invalidate];
+            [weakSelf p_reload];
+            [weakSelf showText:ok ? @"已加入合集" : (err ?: @"加入失败")];
+        }]];
+    }
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"取消" style:RDPaperAlertActionStyleCancel handler:nil]];
+    [RDPaperAlert showActionSheetWithTitle:@"加入合集" message:book.title actions:actions];
+}
+
+- (void)p_dissolveCollection:(RDBookDetailModel *)book
+{
+    if (!book.isCollection) {
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    [RDPaperAlert showConfirmWithTitle:@"解散合集"
+                               message:[NSString stringWithFormat:@"解散《%@》后,成员书会回到书架顶层", book.title ?: @""]
+                           cancelTitle:@"取消"
+                          confirmTitle:@"解散"
+                           destructive:NO
+                               confirm:^{
+        [RDBookCollectionManager dissolveCollectionId:book.bookId];
+        [RDBookshelfPrefetch invalidate];
+        [weakSelf p_reload];
+        [weakSelf showText:@"已解散合集"];
+    }];
 }
 #pragma mark - delegate
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
@@ -271,7 +445,29 @@
             cell.resetCover = ^(RDBookDetailModel *book) {
                 [weakSelf p_resetCoverForBook:book];
             };
+            cell.createCollection = ^(RDBookDetailModel *book) {
+                [weakSelf p_createCollectionStartingWithBook:book];
+            };
+            cell.addToCollection = ^(RDBookDetailModel *book) {
+                [weakSelf p_addBookToExistingCollection:book];
+            };
+            cell.dissolveCollection = ^(RDBookDetailModel *book) {
+                [weakSelf p_dissolveCollection:book];
+            };
+            cell.toggleSelect = ^(RDBookDetailModel *book) {
+                if (!book) { return; }
+                NSNumber *key = @(book.bookId);
+                if ([weakSelf.mergeSelectedIds containsObject:key]) {
+                    [weakSelf.mergeSelectedIds removeObject:key];
+                } else {
+                    [weakSelf.mergeSelectedIds addObject:key];
+                }
+                [weakSelf p_setMergeModeChromeActive:YES];
+                [weakSelf.tableView reloadData];
+            };
         }
+        cell.selectionMode = self.mergeSelectMode;
+        cell.selectedBookIds = self.mergeSelectedIds;
         cell.books = model;
         return cell;
     }
@@ -318,7 +514,11 @@
     UILabel *lab = [[UILabel alloc] initWithFrame:CGRectMake(22, 4, tableView.width - 44, 28)];
     lab.font = RDFont13;
     lab.textColor = RDLightGrayColor;
-    lab.text = [NSString stringWithFormat:@"共 %@ 本 · 长按书籍可分享、改名、换封面", @(count)];
+    if (self.mergeSelectMode) {
+        lab.text = [NSString stringWithFormat:@"合并中 · 已选 %ld 本 · 点右上角「完成」", (long)self.mergeSelectedIds.count];
+    } else {
+        lab.text = [NSString stringWithFormat:@"共 %@ 项 · 长按管理 · 设置里导入/合并", @(count)];
+    }
     [header addSubview:lab];
     return header;
 }

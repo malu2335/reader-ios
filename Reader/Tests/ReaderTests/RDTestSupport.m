@@ -37,6 +37,20 @@
     for (NSString *name in [fm contentsOfDirectoryAtPath:dir error:nil]) {
         [fm removeItemAtPath:[dir stringByAppendingPathComponent:name] error:nil];
     }
+    // 删除 kill/journal 用例可能留下 TrashStaging 子目录;必须清干净避免后续 empty 断言 flaky
+    NSString *trash = [PATH_DOCUMENT stringByAppendingPathComponent:@"TrashStaging"];
+    if ([fm fileExistsAtPath:trash]) {
+        for (NSString *name in [fm contentsOfDirectoryAtPath:trash error:nil]) {
+            [fm removeItemAtPath:[trash stringByAppendingPathComponent:name] error:nil];
+        }
+    }
+    // RestoreJournal 同理(恢复 kill 注入残留)
+    NSString *restoreJournal = [PATH_DOCUMENT stringByAppendingPathComponent:@"RestoreJournal"];
+    if ([fm fileExistsAtPath:restoreJournal]) {
+        for (NSString *name in [fm contentsOfDirectoryAtPath:restoreJournal error:nil]) {
+            [fm removeItemAtPath:[restoreJournal stringByAppendingPathComponent:name] error:nil];
+        }
+    }
 }
 
 + (void)waitForLibraryQueue

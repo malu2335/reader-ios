@@ -29,10 +29,13 @@ WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, readTime, "readTime")
 WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, onBookshelf, "onBookshelf")
 WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, localPath, "localPath")
 WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, fileType, "fileType")
+WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, collectionId, "collectionId")
+WCDB_SYNTHESIZE_COLUMN(RDBookDetailModel, collectionOrder, "collectionOrder")
 
 WCDB_PRIMARY(RDBookDetailModel, bookId)
 
 WCDB_INDEX(RDBookDetailModel, "_onBookshelf_index", onBookshelf)
+WCDB_INDEX(RDBookDetailModel, "_collectionId_index", collectionId)
 
 + (NSDictionary *)modelCustomPropertyMapper {
     return @{
@@ -67,6 +70,11 @@ WCDB_INDEX(RDBookDetailModel, "_onBookshelf_index", onBookshelf)
     return self.bookId < 0;
 }
 
+-(BOOL)isCollection
+{
+    return [self.fileType.lowercaseString isEqualToString:@"collection"];
+}
+
 -(BOOL)isEqual:(id)object
 {
     if (object == self) {
@@ -80,6 +88,15 @@ WCDB_INDEX(RDBookDetailModel, "_onBookshelf_index", onBookshelf)
     }
    
     return NO;
+}
+
+- (NSUInteger)hash
+{
+    // 与 isEqual: 契约一致:非零 bookId 作为相等性依据(Phase E)
+    if (self.bookId != 0) {
+        return (NSUInteger)self.bookId;
+    }
+    return [super hash];
 }
 
 @end
