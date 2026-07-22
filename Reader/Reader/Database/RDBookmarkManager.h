@@ -25,10 +25,10 @@ extern NSString * const RDBookmarkChangedNotification;
 + (NSInteger)countForBookId:(NSInteger)bookId;
 
 /// 原样落库(备份恢复用,保留原 bookmarkId/createTime,不做临近去重)
-+ (void)insertOrReplaceBookmark:(RDBookmarkModel *)bookmark;
++ (BOOL)insertOrReplaceBookmark:(RDBookmarkModel *)bookmark;
 
-+ (void)deleteBookmark:(RDBookmarkModel *)bookmark;
-+ (void)deleteAllForBookId:(NSInteger)bookId;
++ (BOOL)deleteBookmark:(RDBookmarkModel *)bookmark;
++ (BOOL)deleteAllForBookId:(NSInteger)bookId;
 
 /// 是否已在当前位置附近存在书签
 + (BOOL)hasBookmarkNearBookId:(NSInteger)bookId

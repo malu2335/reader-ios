@@ -17,6 +17,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 进后台/退出时尽量同步 checkpoint(有超时)
 + (void)checkpointWALSync;
 
+/// 建表/迁移失败时非空;书架错误态用(P2-DB-01 / Issue 8)。不暴露 WCDB 头。
++ (nullable NSError *)databaseInitializationError;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -9,6 +9,8 @@
 @interface RDHttpTTSClient ()
 @property (nonatomic, strong) NSURLSession *session;
 @property (nonatomic, strong, nullable) NSURLSessionDataTask *task;
+/// 会话代次:旧 task 的迟到回调不得清掉新 task / 播放(P2-BE-03)
+@property (nonatomic, assign) NSUInteger taskGeneration;
 @end
 
 @implementation RDHttpTTSClient
@@ -38,8 +40,10 @@
 
 - (void)cancel
 {
-    [self.task cancel];
+    self.taskGeneration += 1;
+    NSURLSessionDataTask *task = self.task;
     self.task = nil;
+    [task cancel];
 }
 
 + (NSString *)resolveURLTemplate:(NSString *)template
@@ -102,6 +106,24 @@
     if (speak.length > 500) {
         speak = [speak substringToIndex:500];
     }
+    // 朗读时再校验 URL 策略,拒绝历史库中的公网 HTTP(Issue 10)
+    NSError *policyErr = nil;
+    if (![RDHttpTTS validateURLTemplate:engine.url error:&policyErr]) {
+        if (completion) {
+            completion(nil, policyErr);
+        }
+        return;
+    }
+    if ([RDHttpTTS isLANHTTPURLTemplate:engine.url]) {
+        static NSString * const kRDHttpTTSLANWarnedKey = @"RDHttpTTS.lanHTTPOutboundWarned";
+        if (![[NSUserDefaults standardUserDefaults] boolForKey:kRDHttpTTSLANWarnedKey]) {
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kRDHttpTTSLANWarnedKey];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [RDToastView showText:@"提示:局域网 HTTP TTS 将明文发送朗读正文" delay:2.0
+                               inView:[RDUtilities applicationKeyWindow]];
+            });
+        }
+    }
     NSString *urlString = [[self class] resolveURLTemplate:engine.url text:speak speakSpeed:speakSpeed];
     // 去掉 AnalyzeUrl 尾部的附加规则(legado 用 ,{"method":...});MVP 只取逗号前的 URL
     NSRange brace = [urlString rangeOfString:@",{"];
@@ -127,12 +149,19 @@
     }
 
     __weak typeof(self) weakSelf = self;
-    self.task = [self.session dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    NSUInteger gen = ++self.taskGeneration;
+    NSURLSessionDataTask *task = [self.session dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) {
             return;
         }
-        self.task = nil;
+        // 仅清掉仍是自己这一代的 task 引用,避免快速停启时清掉新 task(P2-BE-03)
+        if (gen == self.taskGeneration && self.task) {
+            self.task = nil;
+        }
+        if (gen != self.taskGeneration) {
+            return; // 已启动更新请求,丢弃迟到回调
+        }
         if (error) {
             if (error.code == NSURLErrorCancelled) {
                 return;
@@ -196,7 +225,8 @@
             dispatch_async(dispatch_get_main_queue(), ^{ completion(data, nil); });
         }
     }];
-    [self.task resume];
+    self.task = task;
+    [task resume];
 }
 
 @end

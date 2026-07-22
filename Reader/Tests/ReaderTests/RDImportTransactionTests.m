@@ -112,7 +112,8 @@
 
     __block BOOL completed = NO;
     BOOL finished = [RDTestSupport waitFor:^(dispatch_block_t done) {
-        [RDLocalBookManager removeLocalBook:record completion:^{
+        [RDLocalBookManager removeLocalBook:record completion:^(BOOL success, NSError *error) {
+            XCTAssertTrue(success, @"delete should succeed: %@", error);
             completed = YES;
             done();
         }];

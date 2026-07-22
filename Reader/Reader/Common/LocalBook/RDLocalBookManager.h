@@ -13,8 +13,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 //导入完成后发出,书架监听刷新
 extern NSString * const RDLocalBookImportedNotification;
-//请求打开导入文件选择器(空书架等入口发出,书架控制器响应)
+//请求打开导入文件选择器(设置/空书架等入口发出,书架控制器响应)
 extern NSString * const RDLocalBookImportRequestNotification;
+//请求进入书架「合并合集」多选模式(设置页入口)
+extern NSString * const RDBookshelfMergeRequestNotification;
 
 /// book:成功或重复时返回书籍; errorMessage:失败原因; isDuplicate:内容哈希已存在于书架
 typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, NSString * _Nullable errorMessage, BOOL isDuplicate);
@@ -28,6 +30,13 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 /// 异步导入(后台解析,主线程回调)。按文件内容 MD5 去重:同一文件不重复入库。
 /// 支持 zip/cbz 图集与「含图片的文件夹」(文件夹会打包为 cbz 再入库)。
 + (void)importBookAtURL:(NSURL *)url complete:(nullable RDLocalBookImportCompletion)complete;
+
+/// 向已有本地漫画追加「新话」:ZIP/CBZ/图片文件夹。
+/// 扁平图集会先把原有图片归为第 1 话再追加。成功时 book.total 更新为话数。
+/// addedCount:新增话数; errorMessage:失败原因(主线程回调)。
++ (void)appendComicChaptersToBook:(RDBookDetailModel *)book
+                          fromURL:(NSURL *)url
+                         complete:(nullable void(^)(NSInteger addedCount, NSString * _Nullable errorMessage))complete;
 
 /// 本地书的绝对文件路径
 + (nullable NSString *)absolutePathForBook:(RDBookDetailModel *)book;
@@ -59,6 +68,9 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
 /// 在变更队列上回调,调用方据此判断"删干净了"(P2-17)
 + (void)removeLocalBook:(RDBookDetailModel *)book completion:(nullable dispatch_block_t)completion;
 
+/// 启动时回收中断删除(TrashStaging journal);无 journal 时为 no-op
++ (void)recoverInterruptedDeletesIfNeeded;
+
 /// 重新解析书籍文件得到章节(恢复备份用),同步执行,在后台队列调用。
 /// 只解析不写库:章节与读记录由 RDLibraryTransaction 一次性原子提交;
 /// 同时把 book.charpterModel 归位到解析结果里的对应章节。
@@ -71,6 +83,9 @@ typedef void(^RDLocalBookImportCompletion)(RDBookDetailModel * _Nullable book, N
                               errorMessage:(NSString * _Nullable * _Nullable)errorMessage;
 
 + (NSString *)booksDirectory;
+
+/// 将 localPath/封面相对名解析为 Documents/LocalBooks 下绝对路径;拒绝 .. 与越界
++ (nullable NSString *)safeAbsolutePathForLocalPath:(nullable NSString *)localPath;
 
 @end
 

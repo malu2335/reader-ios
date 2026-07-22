@@ -22,6 +22,8 @@ static NSArray <RDBookDetailModel *>*s_books = nil;
 static NSArray *s_rows = nil;
 static NSArray *s_groups = nil;
 static BOOL s_running = NO;
+/// running 期间收到 force 时置位,本轮结束后自动再跑一轮(P2-CON-01)
+static BOOL s_forcePending = NO;
 static NSMutableArray <dispatch_block_t>*s_waiters = nil;
 // 刷新代次:多个调用方(启动预取、场景恢复的 refreshAsync、书架自身 p_reload)可能
 // 并发发起各自独立的"后台读 DB → 组装 → 写回静态缓存"流程;没有代次时,较慢完成的
@@ -131,6 +133,10 @@ static NSUInteger s_generation = 0;
             return;
         }
         if (s_running) {
+            // force 请求在 running 时不得降级为 waiter-only(P2-CON-01)
+            if (forceReload) {
+                s_forcePending = YES;
+            }
             if (complete) {
                 if (!s_waiters) {
                     s_waiters = [NSMutableArray array];
@@ -140,6 +146,7 @@ static NSUInteger s_generation = 0;
             return;
         }
         s_running = YES;
+        s_forcePending = NO;
     }
 
     NSInteger columns = [RDUtilities iPad] ? 5 : 3;
@@ -162,10 +169,13 @@ static NSUInteger s_generation = 0;
             }
         }
         NSArray <dispatch_block_t>*waiters = nil;
+        BOOL rerunForce = NO;
         @synchronized (self) {
             s_running = NO;
             waiters = s_waiters.copy;
             [s_waiters removeAllObjects];
+            rerunForce = s_forcePending;
+            s_forcePending = NO;
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             [[NSNotificationCenter defaultCenter] postNotificationName:RDBookshelfPrefetchDidFinishNotification object:nil];
@@ -174,6 +184,10 @@ static NSUInteger s_generation = 0;
             }
             for (dispatch_block_t waiter in waiters) {
                 waiter();
+            }
+            if (rerunForce) {
+                // 本轮结束后再强制刷新一次,保证 force 语义不被 single-flight 吞掉
+                [self p_startLoadForce:YES complete:nil splashMinShow:NO];
             }
         });
     });

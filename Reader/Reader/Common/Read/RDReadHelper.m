@@ -12,10 +12,12 @@
 #import "RDReadRecordManager.h"
 #import "RDCharpterManager.h"
 #import "RDCharpterDataManager.h"
+#import "RDBookshelfCollectionController.h"
 #import "AppDelegate.h"
 #import "RDMainController.h"
 #import "RDPdfReadController.h"
 #import "RDComicReadController.h"
+#import "RDComicChapterListController.h"
 #import "RDComicHelper.h"
 #import "RDLocalBookManager.h"
 
@@ -73,6 +75,17 @@ static NSInteger sRDOpeningBookId = 0;
     if (![self p_beginOpeningBookId:book.bookId]) {
         return;
     }
+    // 合集壳:进成员目录,不进阅读器
+    if (book.isLocalBook && book.isCollection) {
+        RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId] ?: book;
+        [RDReadRecordManager updateReadTime:record];
+        RDBookshelfCollectionController *list = [[RDBookshelfCollectionController alloc] init];
+        list.collection = record;
+        [RDAppDelegate.mainController.navigationController pushViewController:list animated:animation];
+        [self p_endOpening];
+        return;
+    }
+
     // 本地 PDF / 漫画图集使用专用阅读器(无文字章节库)
     if (book.isLocalBook && ([book.fileType isEqualToString:@"pdf"] || [RDComicHelper isComicFileType:book.fileType])) {
         NSString *path = [RDLocalBookManager absolutePathForBook:book];
@@ -84,9 +97,10 @@ static NSInteger sRDOpeningBookId = 0;
         RDBookDetailModel *record = [RDReadRecordManager getReadRecordWithBookId:book.bookId] ?: book;
         [RDReadRecordManager updateReadTime:record];
         if ([RDComicHelper isComicFileType:book.fileType]) {
-            RDComicReadController *comic = [[RDComicReadController alloc] init];
-            comic.bookDetail = record;
-            [RDAppDelegate.mainController.navigationController pushViewController:comic animated:animation];
+            // 一律先目录:多话列表 / 扁平「整本阅读」+ 导入新话
+            RDComicChapterListController *list = [[RDComicChapterListController alloc] init];
+            list.bookDetail = record;
+            [RDAppDelegate.mainController.navigationController pushViewController:list animated:animation];
         } else {
             RDPdfReadController *pdfController = [[RDPdfReadController alloc] init];
             pdfController.bookDetail = record;

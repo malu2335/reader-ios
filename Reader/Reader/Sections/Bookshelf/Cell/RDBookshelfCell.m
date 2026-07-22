@@ -18,6 +18,7 @@
 #import "RDCharpterModel.h"
 #import "RDBookmarkManager.h"
 #import "RDHistoryRecordManager.h"
+#import "RDBookCollectionManager.h"
 
 #define kItemCount ([RDUtilities iPad] ? 5 : 3)
 #define kShelfTopPad 14.f
@@ -28,9 +29,12 @@
 @property (nonatomic,strong) UILabel *bookLabel;
 @property (nonatomic,strong) UILabel *authorLabel;
 @property (nonatomic,strong) UIImageView *updateTag;
-@property (nonatomic,strong) UILabel *typeTag;
+@property (nonatomic,strong) UILabel *collectionBadge;
+@property (nonatomic,strong) UIImageView *checkMark;
 @property (nonatomic,strong) UIView *shadowHost;
 @property (nonatomic,strong) RDBookDetailModel *book;
+@property (nonatomic,assign) BOOL selectionMode;
+@property (nonatomic,assign) BOOL selectedForMerge;
 @end
 
 @implementation RDBookshelfCoverView
@@ -43,7 +47,8 @@
         [self addSubview:self.bookLabel];
         [self addSubview:self.authorLabel];
         [self.cover addSubview:self.updateTag];
-        [self.cover addSubview:self.typeTag];
+        [self.cover addSubview:self.collectionBadge];
+        [self.cover addSubview:self.checkMark];
     }
     return self;
 }
@@ -52,6 +57,13 @@
 {
     _book = book;
     UIImage *cover = [RDLocalBookManager coverForBook:book];
+    if (!cover && book.isCollection) {
+        // 合集壳无自有封面时取第一本成员封面
+        NSArray *members = [RDBookCollectionManager membersOfCollectionId:book.bookId];
+        if (members.firstObject) {
+            cover = [RDLocalBookManager coverForBook:members.firstObject];
+        }
+    }
     if (cover) {
         [self.cover sd_cancelCurrentImageLoad];
         self.cover.image = cover;
@@ -62,21 +74,73 @@
         self.cover.image = [UIImage imageNamed:@"app_placeholder"];
     }
 
-    self.typeTag.hidden = !book.isLocalBook;
-    if (book.isLocalBook) {
-        self.typeTag.text = book.fileType.uppercaseString;
-        [self.typeTag sizeToFit];
-        [self setNeedsLayout];
-    }
     self.updateTag.hidden = !book.bookUpdate;
+    self.collectionBadge.hidden = !book.isCollection;
     self.bookLabel.text = book.title;
-    // 阅读记忆:优先 readChapterName(轻量列表),其次 charpterModel
-    NSString *chapter = book.readChapterName.length ? book.readChapterName : book.charpterModel.name;
-    if (chapter.length) {
-        self.authorLabel.text = [NSString stringWithFormat:@"读到 · %@", chapter];
+    if (book.isCollection) {
+        self.authorLabel.text = book.author.length ? book.author : @"合集";
+        if (book.readChapterName.length) {
+            self.authorLabel.text = [NSString stringWithFormat:@"%@ · 读到 %@", book.author.length ? book.author : @"合集", book.readChapterName];
+        }
     } else {
-        self.authorLabel.text = book.author.length ? book.author : @"未知作者";
+        // 阅读记忆:优先 readChapterName(轻量列表),其次 charpterModel
+        NSString *chapter = book.readChapterName.length ? book.readChapterName : book.charpterModel.name;
+        if (chapter.length) {
+            self.authorLabel.text = [NSString stringWithFormat:@"读到 · %@", chapter];
+        } else {
+            self.authorLabel.text = book.author.length ? book.author : @"未知作者";
+        }
     }
+    [self p_refreshSelectionChrome];
+}
+
+- (void)setSelectionMode:(BOOL)selectionMode
+{
+    _selectionMode = selectionMode;
+    [self p_refreshSelectionChrome];
+}
+
+- (void)setSelectedForMerge:(BOOL)selectedForMerge
+{
+    _selectedForMerge = selectedForMerge;
+    [self p_refreshSelectionChrome];
+}
+
+- (void)p_refreshSelectionChrome
+{
+    BOOL showCheck = self.selectionMode && self.book && !self.book.isCollection;
+    self.checkMark.hidden = !showCheck;
+    self.checkMark.alpha = self.selectedForMerge ? 1.0 : 0.35;
+    self.checkMark.tintColor = self.selectedForMerge ? RDAccentColor : [UIColor whiteColor];
+    self.cover.alpha = (self.selectionMode && self.book.isCollection) ? 0.45 : 1.0;
+}
+
+-(UILabel *)collectionBadge
+{
+    if (!_collectionBadge) {
+        _collectionBadge = [[UILabel alloc] init];
+        _collectionBadge.text = @"合集";
+        _collectionBadge.font = [UIFont systemFontOfSize:10 weight:UIFontWeightSemibold];
+        _collectionBadge.textColor = [UIColor whiteColor];
+        _collectionBadge.backgroundColor = [RDAccentColor colorWithAlphaComponent:0.92];
+        _collectionBadge.textAlignment = NSTextAlignmentCenter;
+        _collectionBadge.layer.cornerRadius = 3;
+        _collectionBadge.clipsToBounds = YES;
+        _collectionBadge.hidden = YES;
+    }
+    return _collectionBadge;
+}
+
+-(UIImageView *)checkMark
+{
+    if (!_checkMark) {
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightSemibold];
+        UIImage *img = [UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:cfg];
+        _checkMark = [[UIImageView alloc] initWithImage:[img imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+        _checkMark.tintColor = [UIColor whiteColor];
+        _checkMark.hidden = YES;
+    }
+    return _checkMark;
 }
 
 -(UIView *)shadowHost
@@ -132,21 +196,6 @@
     return _authorLabel;
 }
 
--(UILabel *)typeTag
-{
-    if (!_typeTag) {
-        _typeTag = [[UILabel alloc] init];
-        _typeTag.font = [UIFont systemFontOfSize:9 weight:UIFontWeightSemibold];
-        _typeTag.textColor = [UIColor whiteColor];
-        _typeTag.backgroundColor = [RDAccentColor colorWithAlphaComponent:0.9];
-        _typeTag.textAlignment = NSTextAlignmentCenter;
-        _typeTag.layer.cornerRadius = 3;
-        _typeTag.clipsToBounds = YES;
-        _typeTag.hidden = YES;
-    }
-    return _typeTag;
-}
-
 -(void)layoutSubviews
 {
     [super layoutSubviews];
@@ -155,7 +204,10 @@
     self.cover.frame = self.shadowHost.bounds;
     self.updateTag.frame = CGRectMake(0, 0, 28, 15);
     self.updateTag.right = self.cover.width-4;
-    self.typeTag.frame = CGRectMake(4, self.cover.height-18, self.typeTag.width+10, 14);
+    [self.collectionBadge sizeToFit];
+    CGFloat bw = MAX(28, self.collectionBadge.width + 10);
+    self.collectionBadge.frame = CGRectMake(4, 4, bw, 16);
+    self.checkMark.frame = CGRectMake(self.cover.width - 26, self.cover.height - 26, 22, 22);
     self.bookLabel.frame = CGRectMake(0, self.shadowHost.bottom+8, self.width, RDBoldFont13.lineHeight * 2);
     self.authorLabel.frame = CGRectMake(0, self.height - RDFont11.lineHeight, self.width, RDFont11.lineHeight);
 }
@@ -200,19 +252,63 @@
     return _items;
 }
 
+-(void)setSelectionMode:(BOOL)selectionMode
+{
+    _selectionMode = selectionMode;
+    [self p_applySelectionToItems];
+}
+
+-(void)setSelectedBookIds:(NSSet<NSNumber *> *)selectedBookIds
+{
+    _selectedBookIds = [selectedBookIds copy];
+    [self p_applySelectionToItems];
+}
+
+-(void)p_applySelectionToItems
+{
+    for (RDBookshelfCoverView *view in self.items) {
+        view.selectionMode = self.selectionMode;
+        view.selectedForMerge = (view.book && [self.selectedBookIds containsObject:@(view.book.bookId)]);
+    }
+}
+
+-(void)setBooks:(NSArray<RDBookDetailModel *> *)books
+{
+    _books = books;
+    for (NSInteger i = 0; i < (NSInteger)self.items.count; i++) {
+        RDBookshelfCoverView *view = self.items[i];
+        RDBookDetailModel *book = (i < (NSInteger)books.count) ? books[i] : nil;
+        view.hidden = (book == nil);
+        view.book = book;
+        view.selectionMode = self.selectionMode;
+        view.selectedForMerge = (book && [self.selectedBookIds containsObject:@(book.bookId)]);
+    }
+    [self setNeedsLayout];
+}
+
 -(void)tap:(UITapGestureRecognizer *)ges
 {
     RDBookshelfCoverView *view = (RDBookshelfCoverView *)ges.view;
     RDBookDetailModel *model = view.book;
-    if (model){
-        if (model.bookUpdate) {
-            [RDReadRecordManager updateOnBookselfUpdateWithBookId:model.bookId update:NO];
-            if (self.needReload) {
-                self.needReload();
-            }
-        }
-        [RDReadHelper beginReadWithBookDetail:model];
+    if (!model) {
+        return;
     }
+    if (self.selectionMode) {
+        if (model.isCollection) {
+            return; // 合集壳不参与合并勾选
+        }
+        if (self.toggleSelect) {
+            self.toggleSelect(model);
+        }
+        return;
+    }
+    if (model.bookUpdate) {
+        [RDReadRecordManager updateOnBookselfUpdateWithBookId:model.bookId update:NO];
+        if (self.needReload) {
+            self.needReload();
+        }
+    }
+    [RDReadHelper beginReadWithBookDetail:model];
 }
 
 #pragma mark - 长按菜单
@@ -235,27 +331,51 @@
 
     __weak typeof(self) weakSelf = self;
     NSMutableArray *actions = [NSMutableArray array];
-    [actions addObject:[RDPaperAlertAction actionWithTitle:@"分享书籍" style:RDPaperAlertActionStyleDefault handler:^{
-        [weakSelf p_shareBook:book];
-    }]];
-    [actions addObject:[RDPaperAlertAction actionWithTitle:@"修改书名" style:RDPaperAlertActionStyleDefault handler:^{
-        [weakSelf p_renameBook:book];
-    }]];
-    [actions addObject:[RDPaperAlertAction actionWithTitle:@"更换封面" style:RDPaperAlertActionStyleDefault handler:^{
-        if (weakSelf.changeCover) {
-            weakSelf.changeCover(book);
-        }
-    }]];
-    if ([RDLocalBookManager customCoverForBook:book]) {
-        [actions addObject:[RDPaperAlertAction actionWithTitle:@"恢复默认封面" style:RDPaperAlertActionStyleDefault handler:^{
-            if (weakSelf.resetCover) {
-                weakSelf.resetCover(book);
+    if (book.isCollection) {
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"修改合集名" style:RDPaperAlertActionStyleDefault handler:^{
+            [weakSelf p_renameBook:book];
+        }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"解散合集" style:RDPaperAlertActionStyleDefault handler:^{
+            if (weakSelf.dissolveCollection) {
+                weakSelf.dissolveCollection(book);
             }
         }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"删除合集" style:RDPaperAlertActionStyleDestructive handler:^{
+            [weakSelf p_confirmDelete:book];
+        }]];
+    } else {
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"分享书籍" style:RDPaperAlertActionStyleDefault handler:^{
+            [weakSelf p_shareBook:book];
+        }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"创建合集…" style:RDPaperAlertActionStyleDefault handler:^{
+            if (weakSelf.createCollection) {
+                weakSelf.createCollection(book);
+            }
+        }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"加入合集…" style:RDPaperAlertActionStyleDefault handler:^{
+            if (weakSelf.addToCollection) {
+                weakSelf.addToCollection(book);
+            }
+        }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"修改书名" style:RDPaperAlertActionStyleDefault handler:^{
+            [weakSelf p_renameBook:book];
+        }]];
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"更换封面" style:RDPaperAlertActionStyleDefault handler:^{
+            if (weakSelf.changeCover) {
+                weakSelf.changeCover(book);
+            }
+        }]];
+        if ([RDLocalBookManager customCoverForBook:book]) {
+            [actions addObject:[RDPaperAlertAction actionWithTitle:@"恢复默认封面" style:RDPaperAlertActionStyleDefault handler:^{
+                if (weakSelf.resetCover) {
+                    weakSelf.resetCover(book);
+                }
+            }]];
+        }
+        [actions addObject:[RDPaperAlertAction actionWithTitle:@"删除" style:RDPaperAlertActionStyleDestructive handler:^{
+            [weakSelf p_confirmDelete:book];
+        }]];
     }
-    [actions addObject:[RDPaperAlertAction actionWithTitle:@"删除" style:RDPaperAlertActionStyleDestructive handler:^{
-        [weakSelf p_confirmDelete:book];
-    }]];
     [RDPaperAlert showActionSheetWithTitle:nil message:nil actions:actions];
 }
 
@@ -309,6 +429,20 @@
 - (void)p_confirmDelete:(RDBookDetailModel *)book
 {
     __weak typeof(self) weakSelf = self;
+    if (book.isCollection) {
+        [RDPaperAlert showConfirmWithTitle:@"删除合集"
+                                   message:[NSString stringWithFormat:@"确定删除合集《%@》？成员书会回到书架顶层,不会删除文件。", book.title ?: @""]
+                               cancelTitle:@"取消"
+                              confirmTitle:@"删除"
+                               destructive:YES
+                                   confirm:^{
+            [RDBookCollectionManager dissolveCollectionId:book.bookId];
+            if (weakSelf.needReload) {
+                weakSelf.needReload();
+            }
+        }];
+        return;
+    }
     [RDPaperAlert showConfirmWithTitle:@"删除书籍"
                                message:[NSString stringWithFormat:@"确定删除《%@》？本地文件与章节缓存将一并清除。", book.title ?: @""]
                            cancelTitle:@"取消"
@@ -333,20 +467,6 @@
             });
         });
     }];
-}
-
--(void)setBooks:(NSArray<RDBookDetailModel *> *)books
-{
-    _books = books;
-    for (int i=0; i<books.count; i++) {
-        self.items[i].book = books[i];
-        self.items[i].hidden = NO;
-    }
-    if (self.items.count>books.count) {
-        for (NSInteger i=self.items.count-1; i>self.books.count-1; i--) {
-            self.items[i].hidden = YES;
-        }
-    }
 }
 
 -(void)layoutSubviews

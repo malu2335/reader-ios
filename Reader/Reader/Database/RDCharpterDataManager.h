@@ -15,6 +15,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 不包含章节内容的章节信息
 +(NSArray *)getBriefCharptersWithBookId:(NSInteger)bookid;
 
+/// 漫画话列表:id/name/content(小 JSON),一次查出,避免 N 次 getCharpter
++(NSArray *)getComicChapterRowsWithBookId:(NSInteger)bookid;
+
 /// 有正文的章节 id 集合。只读 charpterId 列,不反序列化 content,
 /// 供目录一次性判定"已下载"状态,避免每个可见 cell 各查一次全文(P2-03)。
 +(NSSet<NSNumber *> *)charpterIdsWithContentForBookId:(NSInteger)bookid;

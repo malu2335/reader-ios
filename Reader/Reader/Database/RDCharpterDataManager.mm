@@ -19,6 +19,21 @@
     return result;
 }
 
++(NSArray *)getComicChapterRowsWithBookId:(NSInteger)bookid
+{
+    __block NSArray *result = nil;
+    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        result = [db getObjectsOnResults:{RDCharpterModel.charpterId,
+                                          RDCharpterModel.name,
+                                          RDCharpterModel.content,
+                                          RDCharpterModel.bookId}
+                               fromTable:kCharpterTable
+                                   where:RDCharpterModel.bookId.is(bookid)
+                                 orderBy:RDCharpterModel.charpterId.order(WCTOrderedAscending)];
+    }];
+    return result;
+}
+
 +(NSSet<NSNumber *> *)charpterIdsWithContentForBookId:(NSInteger)bookid
 {
     NSMutableSet <NSNumber *>*ids = [NSMutableSet set];

@@ -27,15 +27,17 @@ NSString * const RDBookmarkChangedNotification = @"RDBookmarkChangedNotification
     __block RDBookmarkModel *result = nil;
     __block BOOL inserted = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        NSArray *list = [db getObjectsOfClass:RDBookmarkModel.class
-                                    fromTable:kBookmarkTable
-                                        where:RDBookmarkModel.bookId.is(book.bookId) && RDBookmarkModel.charpterId.is(chapter.charpterId)
-                                      orderBy:RDBookmarkModel.createTime.order(WCTOrderedDescending)];
-        for (RDBookmarkModel *m in list) {
-            if (llabs(m.charOffset - charOffset) <= 40) {
-                result = m;
-                return;
-            }
+        // 附近 offset 下推 SQL,避免单章海量书签全表反序列化(P2-DB-04)
+        NSInteger lo = MAX(0, charOffset - 40);
+        NSInteger hi = charOffset + 40;
+        RDBookmarkModel *near = [db getOneObjectOfClass:RDBookmarkModel.class
+                                              fromTable:kBookmarkTable
+                                                  where:RDBookmarkModel.bookId.is(book.bookId)
+                                                        && RDBookmarkModel.charpterId.is(chapter.charpterId)
+                                                        && RDBookmarkModel.charOffset.between(lo, hi)];
+        if (near) {
+            result = near;
+            return;
         }
         RDBookmarkModel *bm = [[RDBookmarkModel alloc] init];
         bm.bookmarkId = [[NSUUID UUID] UUIDString];
@@ -58,14 +60,16 @@ NSString * const RDBookmarkChangedNotification = @"RDBookmarkChangedNotification
     return result;
 }
 
-+ (void)insertOrReplaceBookmark:(RDBookmarkModel *)bookmark
++ (BOOL)insertOrReplaceBookmark:(RDBookmarkModel *)bookmark
 {
     if (bookmark.bookmarkId.length == 0 || bookmark.bookId == 0) {
-        return;
+        return NO;
     }
+    __block BOOL ok = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db insertOrReplaceObject:bookmark into:kBookmarkTable];
+        ok = [db insertOrReplaceObject:bookmark into:kBookmarkTable];
     }];
+    return ok;
 }
 
 + (NSArray <RDBookmarkModel *>*)bookmarksForBookId:(NSInteger)bookId
@@ -91,39 +95,46 @@ NSString * const RDBookmarkChangedNotification = @"RDBookmarkChangedNotification
     return count;
 }
 
-+ (void)deleteBookmark:(RDBookmarkModel *)bookmark
++ (BOOL)deleteBookmark:(RDBookmarkModel *)bookmark
 {
     if (!bookmark.bookmarkId.length) {
-        return;
+        return NO;
     }
     NSInteger bookId = bookmark.bookId;
+    __block BOOL ok = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db deleteObjectsFromTable:kBookmarkTable where:RDBookmarkModel.bookmarkId.is(bookmark.bookmarkId)];
+        ok = [db deleteObjectsFromTable:kBookmarkTable where:RDBookmarkModel.bookmarkId.is(bookmark.bookmarkId)];
     }];
-    [[NSNotificationCenter defaultCenter] postNotificationName:RDBookmarkChangedNotification object:@(bookId)];
+    if (ok) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:RDBookmarkChangedNotification object:@(bookId)];
+    }
+    return ok;
 }
 
-+ (void)deleteAllForBookId:(NSInteger)bookId
++ (BOOL)deleteAllForBookId:(NSInteger)bookId
 {
+    __block BOOL ok = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        [db deleteObjectsFromTable:kBookmarkTable where:RDBookmarkModel.bookId.is(bookId)];
+        ok = [db deleteObjectsFromTable:kBookmarkTable where:RDBookmarkModel.bookId.is(bookId)];
     }];
-    [[NSNotificationCenter defaultCenter] postNotificationName:RDBookmarkChangedNotification object:@(bookId)];
+    if (ok) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:RDBookmarkChangedNotification object:@(bookId)];
+    }
+    return ok;
 }
 
 + (BOOL)hasBookmarkNearBookId:(NSInteger)bookId charpterId:(NSInteger)charpterId charOffset:(NSInteger)charOffset
 {
     __block BOOL found = NO;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        NSArray *list = [db getObjectsOfClass:RDBookmarkModel.class
-                                    fromTable:kBookmarkTable
-                                        where:RDBookmarkModel.bookId.is(bookId) && RDBookmarkModel.charpterId.is(charpterId)];
-        for (RDBookmarkModel *m in list) {
-            if (llabs(m.charOffset - charOffset) <= 40) {
-                found = YES;
-                break;
-            }
-        }
+        NSInteger lo = MAX(0, charOffset - 40);
+        NSInteger hi = charOffset + 40;
+        RDBookmarkModel *near = [db getOneObjectOfClass:RDBookmarkModel.class
+                                              fromTable:kBookmarkTable
+                                                  where:RDBookmarkModel.bookId.is(bookId)
+                                                        && RDBookmarkModel.charpterId.is(charpterId)
+                                                        && RDBookmarkModel.charOffset.between(lo, hi)];
+        found = (near != nil);
     }];
     return found;
 }

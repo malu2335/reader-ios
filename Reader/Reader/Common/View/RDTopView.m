@@ -112,24 +112,7 @@
 - (void)addRightBtn:(UIButton *)button {
     [self.rights addObjectSafely:button];
     [self addSubview:button];
-    __block UIButton *temp;
-    [self.rights enumerateObjectsUsingBlock:^(UIButton *obj, NSUInteger idx, BOOL *stop) {
-        obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
-        obj.height = [UIView navigationBar];
-        obj.width = kBackBtnWidth;
-        if (obj.titleLabel.text.length != 0) {
-            CGFloat width = [obj.titleLabel.text sizeWithFont:obj.titleLabel.font maxWidth:CGFLOAT_MAX].width;
-            obj.width = width < kBackBtnWidth ? kBackBtnWidth : width;
-        }
-        obj.top = [UIView statusBar];
-        if (temp) {
-            obj.right = temp.left;
-        } else {
-            obj.right = ScreenWidth - [UIView margins];
-        }
-        temp = obj;
-    }];
-    self.titleLabel.frame = CGRectMake(kBackBtnWidth, [UIView statusBar], temp.left - kBackBtnWidth, [UIView navigationBar]);
+    [self refresh];
 }
 
 - (void)refresh {
@@ -140,9 +123,17 @@
         }
     }];
 
-    if (self.rights.count > 0) {
+    // 跳过 hidden 按钮,避免占位
+    NSMutableArray <UIButton *>*visible = [NSMutableArray array];
+    for (UIButton *obj in self.rights) {
+        if (!obj.hidden) {
+            [visible addObject:obj];
+        }
+    }
+
+    if (visible.count > 0) {
         __block UIButton *temp;
-        [self.rights enumerateObjectsUsingBlock:^(UIButton *obj, NSUInteger idx, BOOL *stop) {
+        [visible enumerateObjectsUsingBlock:^(UIButton *obj, NSUInteger idx, BOOL *stop) {
             obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
             obj.height = [UIView navigationBar];
             obj.width = kBackBtnWidth;
