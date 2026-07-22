@@ -34,6 +34,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 从已打开的 zip 读取并恢复 AI 配置(条目可缺省)
 + (void)restoreAIConfigFromZip:(id)zip;
 
+/// 启动时回收中断的恢复:按持久化 journal 回滚「新文件已就位、DB 未提交」的书(P1-BE-01)
++ (void)recoverInterruptedRestoresIfNeeded;
+
 @end
 
 NS_ASSUME_NONNULL_END

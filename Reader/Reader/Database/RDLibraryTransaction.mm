@@ -8,6 +8,11 @@
 #import "RDCharpterDataManager+DBInternal.h"
 #import "RDReadRecordManager+DBInternal.h"
 #import "RDBookDetailModel.h"
+#import "RDBookDetailModel+WCTTableCoding.h"
+#import "RDCharpterModel.h"
+#import "RDCharpterModel+WCTTableCoding.h"
+#import "RDBookmarkModel.h"
+#import "RDBookmarkModel+WCTTableCoding.h"
 
 @implementation RDLibraryTransaction
 
@@ -32,6 +37,33 @@
             return NO;
         }
         return [RDReadRecordManager db_insertOrReplaceModel:book touchReadTime:touchReadTime inDatabase:db];
+    } error:error];
+}
+
++ (BOOL)deleteAllRecordsForBookId:(NSInteger)bookId error:(NSError **)error
+{
+    if (bookId == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:RDDatabaseErrorDomain
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"书籍 ID 无效"}];
+        }
+        return NO;
+    }
+    return [[RDDatabaseManager sharedInstance] performTransactionSync:^BOOL(WCTInterface *db) {
+        if (![db deleteObjectsFromTable:kReadRecordTable where:RDBookDetailModel.bookId.is(bookId)]) {
+            return NO;
+        }
+        if (![db deleteObjectsFromTable:kCharpterTable where:RDCharpterModel.bookId.is(bookId)]) {
+            return NO;
+        }
+        if (![db deleteObjectsFromTable:kBookmarkTable where:RDBookmarkModel.bookId.is(bookId)]) {
+            return NO;
+        }
+        if (![db deleteObjectsFromTable:kHistoryRecordTable where:RDBookDetailModel.bookId.is(bookId)]) {
+            return NO;
+        }
+        return YES;
     } error:error];
 }
 

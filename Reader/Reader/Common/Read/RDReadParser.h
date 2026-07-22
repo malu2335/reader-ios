@@ -26,6 +26,16 @@ NS_ASSUME_NONNULL_BEGIN
           preferBackground:(BOOL)preferBackground
                   complete:(void(^)(NSAttributedString *content,NSArray *pages))complete;
 
+/// 完整分页 API:可指定串行队列与 cancelCheck(分页循环内检查,真正停止 work)(P2-FE-02)
+/// allowTruncate=YES 时超长章截断(仅同步兜底路径);后台预分页传 NO。
++(void)paginateWithContent:(NSString *)content
+                  charpter:(NSString *)charpter
+                    bounds:(CGRect)bounds
+                     queue:(nullable dispatch_queue_t)queue
+              allowTruncate:(BOOL)allowTruncate
+               cancelCheck:(nullable BOOL(^)(void))cancelCheck
+                  complete:(void(^)(NSAttributedString *content,NSArray *pages))complete;
+
 
 +(NSString *)getShowContent:(NSString *)content charpter:(NSString *)charpter;
 

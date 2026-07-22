@@ -131,34 +131,55 @@ IMP_SINGLETON(RDFontManager)
         finish(nil, @"仅支持 ttf / otf 字体文件");
         return;
     }
+    // 资源预算 + 后台复制/注册,避免设置页主线程同步读超大字体(P2-BE-05)
+    static const unsigned long long kRDMaxFontFileBytes = 48ull * 1024 * 1024;
     BOOL scoped = [url startAccessingSecurityScopedResource];
-    NSData *data = [NSData dataWithContentsOfURL:url];
-    if (scoped) {
-        [url stopAccessingSecurityScopedResource];
-    }
-    if (data.length == 0) {
-        finish(nil, @"字体文件无法读取");
-        return;
-    }
-    NSString *path = [[RDFontManager fontsDirectory] stringByAppendingPathComponent:url.lastPathComponent];
-    if (![data writeToFile:path atomically:YES]) {
-        finish(nil, @"保存字体失败");
-        return;
-    }
-    RDFontOption *option = [self registerFontFileAtPath:path];
-    if (!option || ![UIFont fontWithName:option.fontName size:12]) {
-        [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
-        finish(nil, @"无法识别该字体文件");
-        return;
-    }
-    //去重:同名字体覆盖旧选项
-    for (RDFontOption *exist in self.customOptions.copy) {
-        if ([exist.fontName isEqualToString:option.fontName]) {
-            [self.customOptions removeObject:exist];
+    NSNumber *fileSize = nil;
+    NSError *attrError = nil;
+    [url getResourceValue:&fileSize forKey:NSURLFileSizeKey error:&attrError];
+    if (fileSize && fileSize.unsignedLongLongValue > kRDMaxFontFileBytes) {
+        if (scoped) {
+            [url stopAccessingSecurityScopedResource];
         }
+        finish(nil, [NSString stringWithFormat:@"字体文件过大(上限 %llu MB)", kRDMaxFontFileBytes / (1024ull * 1024ull)]);
+        return;
     }
-    [self.customOptions addObject:option];
-    finish(option, nil);
+    NSString *destName = url.lastPathComponent;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSData *data = [NSData dataWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:nil];
+        if (scoped) {
+            [url stopAccessingSecurityScopedResource];
+        }
+        if (data.length == 0) {
+            finish(nil, @"字体文件无法读取");
+            return;
+        }
+        if ((unsigned long long)data.length > kRDMaxFontFileBytes) {
+            finish(nil, [NSString stringWithFormat:@"字体文件过大(上限 %llu MB)", kRDMaxFontFileBytes / (1024ull * 1024ull)]);
+            return;
+        }
+        NSString *path = [[RDFontManager fontsDirectory] stringByAppendingPathComponent:destName];
+        if (![data writeToFile:path atomically:YES]) {
+            finish(nil, @"保存字体失败");
+            return;
+        }
+        RDFontOption *option = [self registerFontFileAtPath:path];
+        if (!option || ![UIFont fontWithName:option.fontName size:12]) {
+            [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+            finish(nil, @"无法识别该字体文件");
+            return;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            //去重:同名字体覆盖旧选项(主线程改数组 + 通知)
+            for (RDFontOption *exist in self.customOptions.copy) {
+                if ([exist.fontName isEqualToString:option.fontName]) {
+                    [self.customOptions removeObject:exist];
+                }
+            }
+            [self.customOptions addObject:option];
+            finish(option, nil);
+        });
+    });
 }
 
 - (void)removeCustomFont:(RDFontOption *)option

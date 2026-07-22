@@ -24,9 +24,12 @@
 #import "AppDelegate.h"
 #import "RDMainController.h"
 #import "RDAppAppearance.h"
+#import "RDComicHelper.h"
+#import "RDLocalBookManager.h"
 
 typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowImport = 0,
+    RDSettingRowMergeCollection,
     RDSettingRowImportFont,
     RDSettingRowStorage,
     RDSettingRowClear,
@@ -34,6 +37,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     RDSettingRowAIConfig,
     RDSettingRowPurify,
     RDSettingRowTTSVoice,
+    RDSettingRowComicMode,
     RDSettingRowBackup,
     RDSettingRowRestore,
     RDSettingRowPrivacy,
@@ -47,6 +51,7 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 @property (nonatomic,copy) NSString *storageText;
 @property (nonatomic,copy) NSString *aiDetailText;
 @property (nonatomic,copy) NSString *voiceDetailText;
+@property (nonatomic,copy) NSString *comicModeDetailText;
 @property (nonatomic,assign) BOOL storageRefreshing;
 @property (nonatomic,assign) BOOL storageRefreshPending;
 @property (nonatomic,assign) BOOL detailsLoadedOnce;
@@ -58,14 +63,15 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
 {
     [super viewDidLoad];
     // 书籍 / 显示 / 阅读增强 / 备份 / 关于
-    self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
+    self.sections = @[@[@(RDSettingRowImport), @(RDSettingRowMergeCollection), @(RDSettingRowImportFont), @(RDSettingRowStorage), @(RDSettingRowClear)],
                       @[@(RDSettingRowDarkMode)],
-                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowTTSVoice)],
+                      @[@(RDSettingRowAIConfig), @(RDSettingRowPurify), @(RDSettingRowTTSVoice), @(RDSettingRowComicMode)],
                       @[@(RDSettingRowBackup), @(RDSettingRowRestore)],
                       @[@(RDSettingRowPrivacy), @(RDSettingRowOpenSource), @(RDSettingRowVersion)]];
     self.storageText = @"…";
     self.aiDetailText = @"OpenAI · Anthropic · Gemini";
     self.voiceDetailText = @"自动(中文)";
+    self.comicModeDetailText = [RDComicHelper detailForReadMode:[RDComicHelper defaultReadMode]];
     [self.view addSubview:self.topView];
     [self.view addSubview:self.tableView];
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -88,6 +94,11 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     [super viewWillAppear:animated];
     // 从阅读返回时夜读可能已变,同步开关与界面色
     [self p_applyAppearanceChrome];
+    NSString *comic = [RDComicHelper detailForReadMode:[RDComicHelper defaultReadMode]];
+    if (![self.comicModeDetailText isEqualToString:comic]) {
+        self.comicModeDetailText = comic;
+        [self p_reloadRow:RDSettingRowComicMode];
+    }
     // 首次已在 viewDidLoad 排队刷新;之后返回再刷
     if (!self.detailsLoadedOnce) {
         return;
@@ -313,7 +324,12 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
     switch (row) {
         case RDSettingRowImport:
             cell.textLabel.text = @"导入本地书籍";
-            cell.detailTextLabel.text = @"txt · epub · mobi · pdf · zip/cbz · 图片文件夹";
+            cell.detailTextLabel.text = @"txt/epub/mobi/pdf/zip/cbz · 也可从其它 App 分享到本应用";
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
+        case RDSettingRowMergeCollection:
+            cell.textLabel.text = @"合并为合集";
+            cell.detailTextLabel.text = @"多选书架书籍合成一项";
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         case RDSettingRowImportFont:
@@ -357,6 +373,11 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             cell.detailTextLabel.text = self.voiceDetailText;
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
+        case RDSettingRowComicMode:
+            cell.textLabel.text = @"漫画阅读方式";
+            cell.detailTextLabel.text = self.comicModeDetailText ?: [RDComicHelper detailForReadMode:[RDComicHelper defaultReadMode]];
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            break;
         case RDSettingRowBackup:
             cell.textLabel.text = @"备份到文件";
             cell.detailTextLabel.text = @"书籍 · 进度 · 书签 · 字体 · 规则 · AI";
@@ -397,6 +418,12 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportRequestNotification object:nil];
         });
     }
+    else if (row == RDSettingRowMergeCollection) {
+        [RDAppDelegate.mainController setSelectedIndex:RDMainBookShelf];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:RDBookshelfMergeRequestNotification object:nil];
+        });
+    }
     else if (row == RDSettingRowImportFont) {
         [self p_pickFont];
     }
@@ -422,6 +449,9 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [self.navigationController pushViewController:vc animated:YES];
         });
     }
+    else if (row == RDSettingRowComicMode) {
+        [self p_pickComicDefaultMode];
+    }
     else if (row == RDSettingRowBackup) {
         [self p_backup];
     }
@@ -442,6 +472,34 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
             [self.navigationController pushViewController:vc animated:YES];
         });
     }
+}
+
+#pragma mark - 漫画阅读方式(全局默认)
+
+- (void)p_pickComicDefaultMode
+{
+    __weak typeof(self) weakSelf = self;
+    RDComicReadMode current = [RDComicHelper defaultReadMode];
+    NSMutableArray *actions = [NSMutableArray array];
+    for (NSNumber *n in @[@(RDComicReadModePageLTR), @(RDComicReadModePageRTL), @(RDComicReadModeWebtoon)]) {
+        RDComicReadMode m = n.integerValue;
+        NSString *name = [RDComicHelper displayNameForReadMode:m];
+        NSString *title = (m == current) ? [NSString stringWithFormat:@"✓ %@", name] : name;
+        [actions addObject:[RDPaperAlertAction actionWithTitle:title
+                                                     subtitle:[RDComicHelper detailForReadMode:m]
+                                                        style:RDPaperAlertActionStyleDefault
+                                                      handler:^{
+            [RDComicHelper setDefaultReadMode:m];
+            weakSelf.comicModeDetailText = [RDComicHelper detailForReadMode:m];
+            [weakSelf p_reloadRow:RDSettingRowComicMode];
+        }]];
+    }
+    [actions addObject:[RDPaperAlertAction actionWithTitle:@"取消"
+                                                    style:RDPaperAlertActionStyleCancel
+                                                  handler:nil]];
+    [RDPaperAlert showActionSheetWithTitle:@"默认漫画阅读方式"
+                                   message:@"新打开的图集/漫画使用该方式;已单独切换过的书仍记自己的选择"
+                                   actions:actions];
 }
 
 #pragma mark - 黑暗模式
@@ -518,15 +576,14 @@ typedef NS_ENUM(NSInteger, RDSettingRow) {
         [self showLoading:@"正在恢复备份..." cancel:nil];
         [RDBackupManager restoreFromURL:url complete:^(NSInteger bookCount, NSString *errorMessage) {
             [self hideLoading];
-            if (bookCount > 0) {
-                NSString *text = [NSString stringWithFormat:@"已恢复 %@ 本书", @(bookCount)];
-                if (errorMessage) {
-                    text = [text stringByAppendingFormat:@"(部分失败:%@)", errorMessage];
-                }
+            // 成功以 errorMessage 为空为准(AI-only 备份 bookCount 可为 0)
+            if (errorMessage.length == 0) {
+                NSString *text = (bookCount > 0)
+                    ? [NSString stringWithFormat:@"已恢复 %@ 本书", @(bookCount)]
+                    : @"配置已恢复,请前往 AI 配置确认";
                 [self showText:text];
                 [self p_refreshStorage];
-            }
-            else{
+            } else {
                 [self showText:errorMessage ?: @"恢复失败"];
             }
         }];

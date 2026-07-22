@@ -35,6 +35,11 @@ FOUNDATION_EXPORT NSString * const RDHttpTTSIdentifierPrefix; // @"httpTts:"
 /// 解析 legado 单对象或数组 JSON
 + (NSArray <RDHttpTTS *>*)enginesFromJSONData:(NSData *)data error:(NSError * _Nullable * _Nullable)error;
 
+/// URL 策略:HTTPS 或 LAN/loopback HTTP;朗读路径也会再校验
++ (BOOL)validateURLTemplate:(NSString *)template error:(NSError * _Nullable * _Nullable)error;
+/// 是否为允许的局域网 HTTP(用于出站正文提示)
++ (BOOL)isLANHTTPURLTemplate:(NSString *)template;
+
 @end
 
 @interface RDHttpTTSStore : NSObject

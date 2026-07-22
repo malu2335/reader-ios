@@ -192,23 +192,77 @@
 
 - (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts
 {
+    // 其它 App「分享 / 拷贝到 / 用…打开」:批量导入到书架
+    NSMutableArray <NSURL *>*urls = [NSMutableArray array];
     for (UIOpenURLContext *ctx in URLContexts) {
         NSURL *url = ctx.URL;
-        if (!url.isFileURL || ![RDLocalBookManager isSupportedFileURL:url]) {
+        if (!url.isFileURL) {
             continue;
         }
+        if ([RDLocalBookManager isSupportedFileURL:url]) {
+            [urls addObject:url];
+        }
+    }
+    if (urls.count == 0) {
+        if (URLContexts.count > 0) {
+            [RDToastView showText:@"暂不支持该文件格式" delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+        }
+        return;
+    }
+    // 切到书架,便于用户立刻看到新书
+    AppDelegate *app = (AppDelegate *)UIApplication.sharedApplication.delegate;
+    if ([app.mainController respondsToSelector:@selector(setSelectedIndex:)]) {
+        [app.mainController setSelectedIndex:RDMainBookShelf];
+    }
+    __block NSInteger pending = urls.count;
+    __block NSInteger succeed = 0;
+    __block NSInteger duplicated = 0;
+    __block NSString *lastTitle = nil;
+    __block NSString *lastError = nil;
+    __block NSString *lastDupMsg = nil;
+    for (NSURL *url in urls) {
         [RDLocalBookManager importBookAtURL:url complete:^(RDBookDetailModel *book, NSString *errorMessage, BOOL isDuplicate) {
-            [RDBookshelfPrefetch refreshAsync:nil];
-            NSString *text = nil;
             if (isDuplicate) {
-                text = errorMessage.length ? errorMessage : [NSString stringWithFormat:@"《%@》已在书架", book.title ?: @""];
+                duplicated++;
+                lastTitle = book.title;
+                lastDupMsg = errorMessage;
             } else if (book) {
-                text = [NSString stringWithFormat:@"《%@》已加入书架", book.title];
+                succeed++;
+                lastTitle = book.title;
+            } else if (errorMessage.length) {
+                lastError = errorMessage;
+            }
+            pending--;
+            if (pending > 0) {
+                return;
+            }
+            [RDBookshelfPrefetch refreshAsync:nil];
+            [[NSNotificationCenter defaultCenter] postNotificationName:RDLocalBookImportedNotification object:book];
+            NSString *text = nil;
+            if (urls.count == 1) {
+                if (duplicated > 0) {
+                    text = lastDupMsg.length ? lastDupMsg : [NSString stringWithFormat:@"《%@》已在书架", lastTitle ?: @""];
+                } else if (succeed > 0) {
+                    text = [NSString stringWithFormat:@"《%@》已加入书架", lastTitle ?: @""];
+                } else {
+                    text = lastError ?: @"导入失败";
+                }
             } else {
-                text = errorMessage;
+                NSMutableString *msg = [NSMutableString string];
+                if (succeed > 0) {
+                    [msg appendFormat:@"新导入 %ld 本", (long)succeed];
+                }
+                if (duplicated > 0) {
+                    if (msg.length) { [msg appendString:@"，"]; }
+                    [msg appendFormat:@"重复 %ld 本", (long)duplicated];
+                }
+                if (lastError.length && succeed == 0 && duplicated == 0) {
+                    [msg appendString:lastError];
+                }
+                text = msg.length ? msg : @"导入完成";
             }
             if (text.length > 0) {
-                [RDToastView showText:text delay:1.5 inView:[RDUtilities applicationKeyWindow]];
+                [RDToastView showText:text delay:1.8 inView:[RDUtilities applicationKeyWindow]];
             }
         }];
     }

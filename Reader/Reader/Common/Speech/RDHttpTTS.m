@@ -203,6 +203,87 @@ static NSString *RDHttpTTSMergeHeaderForUse(long long engineId, NSString *public
     return d;
 }
 
+/// 解析 TTS URL 模板的 scheme/host(去掉 legado 附加与占位)
++ (NSURLComponents *)p_componentsForTTSURLTemplate:(NSString *)template
+{
+    if (template.length == 0) {
+        return nil;
+    }
+    NSString *probe = template;
+    NSRange brace = [probe rangeOfString:@",{"];
+    if (brace.location != NSNotFound) {
+        probe = [probe substringToIndex:brace.location];
+    }
+    for (NSString *token in @[@"{{speakText}}", @"{{speakSpeed}}", @"{speakText}", @"{speakSpeed}"]) {
+        probe = [probe stringByReplacingOccurrencesOfString:token withString:@"x"];
+    }
+    return [NSURLComponents componentsWithString:probe];
+}
+
+/// 与 RDAIClient validateBaseURLString 同源策略:HTTPS 任意 host;HTTP 仅 loopback/LAN/.local
++ (BOOL)p_isAllowedTTSURLTemplate:(NSString *)template
+{
+    NSURLComponents *components = [self p_componentsForTTSURLTemplate:template];
+    if (!components || components.scheme.length == 0 || components.host.length == 0) {
+        return NO;
+    }
+    NSString *scheme = components.scheme.lowercaseString;
+    NSString *host = components.host.lowercaseString;
+    if ([scheme isEqualToString:@"https"]) {
+        return YES;
+    }
+    if (![scheme isEqualToString:@"http"]) {
+        return NO;
+    }
+    return [self p_isLANOrLoopbackHost:host];
+}
+
++ (BOOL)p_isLANOrLoopbackHost:(NSString *)host
+{
+    if (host.length == 0) {
+        return NO;
+    }
+    if ([host isEqualToString:@"localhost"] || [host isEqualToString:@"127.0.0.1"] || [host isEqualToString:@"::1"]) {
+        return YES;
+    }
+    if ([host hasSuffix:@".local"]) {
+        return YES;
+    }
+    NSArray <NSString *>*parts = [host componentsSeparatedByString:@"."];
+    if (parts.count == 4) {
+        int a = parts[0].intValue, b = parts[1].intValue;
+        if (a == 10) return YES;
+        if (a == 172 && b >= 16 && b <= 31) return YES;
+        if (a == 192 && b == 168) return YES;
+        if (a == 169 && b == 254) return YES;
+    }
+    return NO;
+}
+
+/// 是否为允许的 HTTP(LAN) 模板(非 HTTPS);用于出站提示(Issue 10)
++ (BOOL)isLANHTTPURLTemplate:(NSString *)template
+{
+    NSURLComponents *c = [self p_componentsForTTSURLTemplate:template];
+    if (!c) {
+        return NO;
+    }
+    return [c.scheme.lowercaseString isEqualToString:@"http"] && [self p_isLANOrLoopbackHost:c.host.lowercaseString];
+}
+
+/// 朗读/导入共用策略校验;拒绝公网 HTTP 与非法 scheme(含历史引擎)
++ (BOOL)validateURLTemplate:(NSString *)template error:(NSError **)error
+{
+    if ([self p_isAllowedTTSURLTemplate:template]) {
+        return YES;
+    }
+    if (error) {
+        *error = [NSError errorWithDomain:@"RDHttpTTS" code:20
+                                userInfo:@{NSLocalizedDescriptionKey:
+                                               @"HttpTTS 地址仅允许 HTTPS,或本机/局域网 HTTP(127.0.0.1、192.168.x、.local)"}];
+    }
+    return NO;
+}
+
 + (instancetype)engineFromDictionary:(NSDictionary *)dict
 {
     if (![dict isKindOfClass:NSDictionary.class]) {
@@ -214,6 +295,10 @@ static NSString *RDHttpTTSMergeHeaderForUse(long long engineId, NSString *public
         return nil;
     }
     if (![url isKindOfClass:NSString.class] || url.length == 0) {
+        return nil;
+    }
+    // URL 策略与 AI Base 对齐:公网仅 HTTPS,LAN/loopback 允许 HTTP(P2-BE-04)
+    if (![self p_isAllowedTTSURLTemplate:url]) {
         return nil;
     }
     RDHttpTTS *e = [[RDHttpTTS alloc] init];

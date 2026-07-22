@@ -182,9 +182,15 @@
     UIContextualAction *del = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
                                                                       title:@"删除"
                                                                     handler:^(__kindof UIContextualAction *action, __kindof UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [RDBookmarkManager deleteBookmark:bm];
-        [weakSelf reloadData];
-        completionHandler(YES);
+        BOOL ok = [RDBookmarkManager deleteBookmark:bm];
+        if (ok) {
+            [weakSelf reloadData];
+            completionHandler(YES);
+        } else {
+            // 失败时保留行,不伪装成功(Issue 9 / P2-DB-03)
+            [RDToastView showText:@"删除书签失败" delay:1.2 inView:weakSelf];
+            completionHandler(NO);
+        }
     }];
     return [UISwipeActionsConfiguration configurationWithActions:@[del]];
 }

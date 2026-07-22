@@ -83,9 +83,13 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
 @property (nonatomic, strong, nullable) id modelsToken;
 @property (nonatomic, assign, readwrite) BOOL isTranslating;
 @property (nonatomic, assign) NSUInteger translateGeneration;
-/// 后台(concurrent)请求的 token 集合与代次;两者都在 @synchronized(self) 下访问
+/// 后台翻译预取 token 集合与代次;两者都在 @synchronized(self) 下访问
 @property (nonatomic, strong) NSMutableSet *backgroundTokens;
 @property (nonatomic, assign) NSUInteger backgroundGeneration;
+/// 设置页连接测试独立于翻译预取,停止后台翻译不得误杀(P2-BE-03)
+@property (nonatomic, strong) NSMutableSet *profileTestTokens;
+/// AI TTS 朗读会话代次
+@property (nonatomic, assign) NSUInteger speechGeneration;
 @end
 
 @implementation RDAIClient
@@ -111,6 +115,16 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     }
 }
 
+- (NSMutableSet *)profileTestTokens
+{
+    @synchronized (self) {
+        if (!_profileTestTokens) {
+            _profileTestTokens = [NSMutableSet set];
+        }
+        return _profileTestTokens;
+    }
+}
+
 - (NSUInteger)backgroundTaskCount
 {
     @synchronized (self) {
@@ -122,6 +136,7 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
 {
     NSArray *tokens = nil;
     @synchronized (self) {
+        // 仅取消翻译预取,不影响 profileTest / speech(P2-BE-03)
         tokens = [self.backgroundTokens allObjects];
         [self.backgroundTokens removeAllObjects];
         // 代次递增:已在途的回调回来时会发现代次变了,直接丢弃,不写缓存
@@ -637,7 +652,18 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
            concurrent:(BOOL)concurrent
            completion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion
 {
-    if (!concurrent) {
+    [self p_translateText:text profile:profile concurrent:concurrent purpose:nil completion:completion];
+}
+
+/// purpose=@"profileTest" 时登记独立 token 集合,停止后台翻译不会取消(P2-BE-03)
+- (void)p_translateText:(NSString *)text
+                profile:(RDAIConfigProfile *)profile
+             concurrent:(BOOL)concurrent
+                purpose:(NSString *)purpose
+             completion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion
+{
+    BOOL isProfileTest = [purpose isEqualToString:@"profileTest"];
+    if (!concurrent && !isProfileTest) {
         // 前台/手动:取消上一次,避免连点乱序
         [self cancelInFlightTranslate];
     }
@@ -650,14 +676,14 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         return;
     }
     id<RDAIHTTPTransport> transport = self.transport ?: [[RDAIURLSessionTransport alloc] init];
-    NSUInteger generation = concurrent ? 0 : self.translateGeneration;
+    NSUInteger generation = (concurrent || isProfileTest) ? 0 : self.translateGeneration;
     __block NSUInteger bgGeneration = 0;
-    if (concurrent) {
+    if (concurrent && !isProfileTest) {
         @synchronized (self) {
             bgGeneration = self.backgroundGeneration;
         }
     }
-    else {
+    else if (!isProfileTest) {
         self.isTranslating = YES;
     }
     __block id sentToken = nil;
@@ -665,17 +691,28 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     __weak typeof(self) weakSelf = self;
     id token = [transport sendRequest:request completion:^(NSData *data, NSHTTPURLResponse *response, NSError *error) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!concurrent) {
+        if (!concurrent && !isProfileTest) {
             if (!self || generation != self.translateGeneration) {
                 return; // 已取消/被替换
             }
             self.inFlightToken = nil;
             self.isTranslating = NO;
+        } else if (isProfileTest) {
+            if (!self) {
+                return;
+            }
+            @synchronized (self) {
+                if (sentToken) {
+                    [self.profileTestTokens removeObject:sentToken];
+                } else {
+                    completedInline = YES;
+                }
+            }
         } else {
             if (!self) {
                 return;
             }
-            // 后台请求:先摘掉自己的 token,再确认代次没被 cancelBackgroundTranslations 顶掉
+            // 后台翻译预取:先摘掉自己的 token,再确认代次没被 cancelBackgroundTranslations 顶掉
             @synchronized (self) {
                 if (sentToken) {
                     [self.backgroundTokens removeObject:sentToken];
@@ -745,7 +782,7 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
             completion(result, result ? nil : parseError);
         }
     }];
-    if (!concurrent) {
+    if (!concurrent && !isProfileTest) {
         self.inFlightToken = token;
         return;
     }
@@ -754,7 +791,9 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         return;
     }
     @synchronized (self) {
-        if (bgGeneration == self.backgroundGeneration) {
+        if (isProfileTest) {
+            [self.profileTestTokens addObject:token];
+        } else if (bgGeneration == self.backgroundGeneration) {
             [self.backgroundTokens addObject:token];
         }
     }
@@ -1060,9 +1099,9 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         }
         return;
     }
-    // 短句探测:要求返回非空
+    // 短句探测:要求返回非空;使用独立 purpose,不被 cancelBackgroundTranslations 取消(P2-BE-03)
     NSString *sample = @"请只回复两个字:成功";
-    [self translateText:sample profile:p concurrent:YES completion:^(NSString *translated, NSError *error) {
+    [self p_translateText:sample profile:p concurrent:YES purpose:@"profileTest" completion:^(NSString *translated, NSError *error) {
         if (error) {
             if (completion) {
                 completion(nil, error);
@@ -1273,6 +1312,7 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     @synchronized (self) {
         token = self.speechToken;
         self.speechToken = nil;
+        self.speechGeneration += 1; // 迟到音频不得进入新会话(P2-BE-03)
     }
     if (token) {
         [self.transport cancelToken:token];
@@ -1295,6 +1335,10 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
     BOOL mimoPath = profile.usesMiMoSpeechAPI;
     __weak typeof(self) weakSelf = self;
     __block id token = nil;
+    __block NSUInteger speechGen = 0;
+    @synchronized (self) {
+        speechGen = self.speechGeneration;
+    }
     token = [self.transport sendRequest:req completion:^(NSData *data, NSHTTPURLResponse *response, NSError *error) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) {
@@ -1303,6 +1347,9 @@ static NSString * const kRDAIErrorDomain = @"RDAIClient";
         @synchronized (self) {
             if (self.speechToken == token) {
                 self.speechToken = nil;
+            }
+            if (speechGen != self.speechGeneration) {
+                return; // 已取消/新会话
             }
         }
         if (error) {

@@ -12,6 +12,7 @@
 #import "RDCharpterDataManager.h"
 #import "RDCharpterModel.h"
 #import "RDLibraryTransaction.h"
+#import "RDHistoryRecordManager.h"
 
 @interface RDDatabaseLayerTests : XCTestCase
 @end
@@ -70,6 +71,42 @@
                    @"8 章必须全部写入同一个事务");
 
     [RDCharpterDataManager deleteAllCharpterWithBookId:book.bookId];
+    [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
+}
+
+/// history 插入/删除返回 BOOL,调用方可感知失败(P2-DB-03)
+- (void)testHistoryInsertDeleteReturnBOOL
+{
+    RDBookDetailModel *row = [[RDBookDetailModel alloc] init];
+    row.bookId = -909001;
+    row.title = @"history BOOL";
+    row.onBookshelf = NO;
+    row.readTime = [NSDate date].timeIntervalSince1970;
+
+    XCTAssertTrue([RDHistoryRecordManager insertOrReplaceModel:row], @"history 插入应成功");
+    XCTAssertGreaterThanOrEqual([RDHistoryRecordManager getHisoryCount], 1);
+    XCTAssertTrue([RDHistoryRecordManager deleteHistoryWithBookId:row.bookId], @"history 按书删除应成功");
+    XCTAssertFalse([RDHistoryRecordManager insertOrReplaceModel:nil], @"空 model 应返回 NO");
+    XCTAssertFalse([RDHistoryRecordManager deleteHistoryWithBookId:0], @"bookId=0 应返回 NO");
+}
+
+/// 进度写失败重试后成功路径(正常 DB 至少一次成功)
+- (void)testProgressUpdateReturnsBOOL
+{
+    RDBookDetailModel *book = [[RDBookDetailModel alloc] init];
+    book.bookId = -909002;
+    book.title = @"progress BOOL";
+    book.localPath = @"progress.txt";
+    book.fileType = @"txt";
+    book.onBookshelf = YES;
+    book.page = 0;
+    NSError *error = nil;
+    XCTAssertTrue([RDLibraryTransaction commitBook:book chapters:@[] touchReadTime:YES error:&error], @"%@", error);
+    book.page = 3;
+    book.charOffset = 12;
+    XCTAssertTrue([RDReadRecordManager updateProgressWithModel:book], @"进度更新应返回 YES");
+    RDBookDetailModel *back = [RDReadRecordManager getReadRecordWithBookId:book.bookId];
+    XCTAssertEqual(back.page, 3);
     [RDReadRecordManager removeBookFromBookShelfWithBookId:book.bookId];
 }
 

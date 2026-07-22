@@ -27,5 +27,7 @@ WCDB_PROPERTY(readTime)
 WCDB_PROPERTY(onBookshelf)
 WCDB_PROPERTY(localPath)
 WCDB_PROPERTY(fileType)
+WCDB_PROPERTY(collectionId)
+WCDB_PROPERTY(collectionOrder)
 
 @end

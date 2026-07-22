@@ -43,7 +43,13 @@
 
 //本地导入书籍(bookId 为负数,不参与任何网络请求)
 @property (nonatomic,strong) NSString *localPath;   //Documents/LocalBooks 下的相对文件名
-@property (nonatomic,strong) NSString *fileType;    //txt / epub / mobi / pdf / cbz(zip 图集·图片文件夹)
+@property (nonatomic,strong) NSString *fileType;    //txt / epub / mobi / pdf / cbz / collection(合集壳)
+/// 所属合集 bookId;0 表示顶层独立书或合集壳本身
+@property (nonatomic,assign) NSInteger collectionId;
+/// 合集内排序
+@property (nonatomic,assign) NSInteger collectionOrder;
 
 -(BOOL)isLocalBook;
+/// 书架合集壳(fileType=collection),点开进成员目录而非阅读器
+-(BOOL)isCollection;
 @end

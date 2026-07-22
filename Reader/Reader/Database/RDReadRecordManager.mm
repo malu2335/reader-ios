@@ -82,25 +82,32 @@
     }
     __block BOOL exists = NO;
     __block BOOL success = NO;
-    [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
-        RDBookDetailModel *row = [db getOneObjectOnResults:{RDBookDetailModel.bookId}
-                                                 fromTable:kReadRecordTable
-                                                     where:RDBookDetailModel.bookId.is(model.bookId)];
-        exists = row != nil;
-        if (exists) {
-            success = [db updateRowsInTable:kReadRecordTable
-                     onProperties:{RDBookDetailModel.charpterModel,
-                                   RDBookDetailModel.page,
-                                   RDBookDetailModel.charOffset,
-                                   RDBookDetailModel.readChapterName,
-                                   RDBookDetailModel.readTime}
-                       withObject:model
-                            where:RDBookDetailModel.bookId.is(model.bookId)];
-        }
-        else {
-            success = [db insertOrReplaceObject:model into:kReadRecordTable];
-        }
-    }];
+    void (^attempt)(void) = ^{
+        [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+            RDBookDetailModel *row = [db getOneObjectOnResults:{RDBookDetailModel.bookId}
+                                                     fromTable:kReadRecordTable
+                                                         where:RDBookDetailModel.bookId.is(model.bookId)];
+            exists = row != nil;
+            if (exists) {
+                success = [db updateRowsInTable:kReadRecordTable
+                         onProperties:{RDBookDetailModel.charpterModel,
+                                       RDBookDetailModel.page,
+                                       RDBookDetailModel.charOffset,
+                                       RDBookDetailModel.readChapterName,
+                                       RDBookDetailModel.readTime}
+                           withObject:model
+                                where:RDBookDetailModel.bookId.is(model.bookId)];
+            }
+            else {
+                success = [db insertOrReplaceObject:model into:kReadRecordTable];
+            }
+        }];
+    };
+    // 次级写路径:失败重试一次,避免 busy 瞬时导致进度静默丢失(P2-DB-03)
+    attempt();
+    if (!success) {
+        attempt();
+    }
     if (light) {
         model.charpterModel = original;
     }
@@ -151,10 +158,17 @@
     patch.page = page;
     patch.readTime = [NSDate date].timeIntervalSince1970;
     [[RDDatabaseManager sharedInstance] performAsync:^(WCTDatabase *db) {
-        [db updateRowsInTable:kReadRecordTable
-                 onProperties:{RDBookDetailModel.page, RDBookDetailModel.readTime}
-                   withObject:patch
-                        where:RDBookDetailModel.bookId.is(bookId)];
+        BOOL ok = [db updateRowsInTable:kReadRecordTable
+                           onProperties:{RDBookDetailModel.page, RDBookDetailModel.readTime}
+                             withObject:patch
+                                  where:RDBookDetailModel.bookId.is(bookId)];
+        // 异步路径也重试一次;仍失败则下一次翻页/离开页会再写(P2-DB-03)
+        if (!ok) {
+            [db updateRowsInTable:kReadRecordTable
+                     onProperties:{RDBookDetailModel.page, RDBookDetailModel.readTime}
+                       withObject:patch
+                            where:RDBookDetailModel.bookId.is(bookId)];
+        }
     }];
 }
 
@@ -221,9 +235,12 @@
 {
     __block NSInteger count = 0;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
+        // 与展示列表一致:不含合集成员(collectionId!=0)
         count = [[db getOneValueOnResult:RDBookDetailModel.AnyProperty.count()
                                fromTable:kReadRecordTable
-                                   where:RDBookDetailModel.onBookshelf.is(YES) && RDBookDetailModel.bookId < 0] integerValue];
+                                   where:RDBookDetailModel.onBookshelf.is(YES)
+                                         && RDBookDetailModel.bookId < 0
+                                         && RDBookDetailModel.collectionId == 0] integerValue];
     }];
     return count;
 }
@@ -233,6 +250,7 @@
     __block NSArray *result = nil;
     [[RDDatabaseManager sharedInstance] performSync:^(WCTDatabase *db) {
         // 故意不取 charpterModel:章节正文可能极大,拖垮启动/书架首帧
+        // 合集成员(collectionId!=0)不展示在顶层,只显示合集壳与独立书
         result = [db getObjectsOnResults:{
             RDBookDetailModel.bookId,
             RDBookDetailModel.coverImg,
@@ -247,8 +265,12 @@
             RDBookDetailModel.onBookshelf,
             RDBookDetailModel.localPath,
             RDBookDetailModel.fileType,
+            RDBookDetailModel.collectionId,
+            RDBookDetailModel.collectionOrder,
         } fromTable:kReadRecordTable
-             where:RDBookDetailModel.onBookshelf.is(YES) && RDBookDetailModel.bookId < 0
+             where:RDBookDetailModel.onBookshelf.is(YES)
+                   && RDBookDetailModel.bookId < 0
+                   && RDBookDetailModel.collectionId == 0
            orderBy:RDBookDetailModel.readTime.order(WCTOrderedDescending)];
     }];
     // 查询失败返回 nil,与"确实没有书"的空数组区分开:

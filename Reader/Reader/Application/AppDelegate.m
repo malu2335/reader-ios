@@ -14,6 +14,7 @@
 #import "RDBookDetailModel.h"
 #import "RDDatabaseLifecycle.h"
 #import "RDBookshelfPrefetch.h"
+#import "RDBackupManager.h"
 
 @interface AppDelegate ()
 @property (nonatomic, strong, readwrite) RDMainController *mainController;
@@ -30,6 +31,10 @@
             [[SDImageCodersManager sharedManager] addCoder:webPCoder];
         });
     });
+    // 恢复中断回收:新文件已就位但 DB 未提交时回滚到旧状态(P1-BE-01)
+    [RDBackupManager recoverInterruptedRestoresIfNeeded];
+    // 删除中断回收:TrashStaging 有 journal 时完成销毁或移回正式路径(P1-BE-02 residual)
+    [RDLocalBookManager recoverInterruptedDeletesIfNeeded];
     return YES;
 }
 

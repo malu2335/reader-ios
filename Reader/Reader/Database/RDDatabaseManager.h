@@ -21,6 +21,8 @@ extern NSString * const RDDatabaseErrorDomain;
 
 @interface RDDatabaseManager : NSObject
 @property (nonatomic, strong, readonly) WCTDatabase *database;
+/// 建表/补列失败时非空;书架可据此展示可重试错误而非空列表(P2-DB-01)
+@property (nonatomic, strong, readonly, nullable) NSError *initializationError;
 
 + (RDDatabaseManager *)sharedInstance;
 

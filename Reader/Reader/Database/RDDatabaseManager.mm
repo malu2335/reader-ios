@@ -31,6 +31,7 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
 
 @interface RDDatabaseManager ()
 @property (nonatomic, strong, readwrite) WCTDatabase *database;
+@property (nonatomic, strong, readwrite, nullable) NSError *initializationError;
 @property (nonatomic, strong) dispatch_queue_t dbQueue;
 @property (nonatomic, copy) NSString *dbPath;
 @end
@@ -50,15 +51,23 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         NSString *dbPath = [PATH_DOCUMENT stringByAppendingPathComponent:kBookDatabase];
         sharedInstance.dbPath = dbPath;
         sharedInstance.database = [[WCTDatabase alloc] initWithPath:dbPath];
-        [sharedInstance.database createTableAndIndexesOfName:kCharpterTable withClass:RDCharpterModel.class];
-        [sharedInstance.database createTableAndIndexesOfName:kReadRecordTable withClass:RDBookDetailModel.class];
-        [sharedInstance.database createTableAndIndexesOfName:kHistoryRecordTable withClass:RDBookDetailModel.class];
-        [sharedInstance.database createTableAndIndexesOfName:kBookmarkTable withClass:RDBookmarkModel.class];
+        BOOL t1 = [sharedInstance.database createTableAndIndexesOfName:kCharpterTable withClass:RDCharpterModel.class];
+        BOOL t2 = [sharedInstance.database createTableAndIndexesOfName:kReadRecordTable withClass:RDBookDetailModel.class];
+        BOOL t3 = [sharedInstance.database createTableAndIndexesOfName:kHistoryRecordTable withClass:RDBookDetailModel.class];
+        BOOL t4 = [sharedInstance.database createTableAndIndexesOfName:kBookmarkTable withClass:RDBookmarkModel.class];
         // 兼容旧库:补阅读记忆 / 书架轻量字段
-        [sharedInstance p_ensureColumn:@"charOffset" table:kReadRecordTable type:@"INTEGER"];
-        [sharedInstance p_ensureColumn:@"charOffset" table:kHistoryRecordTable type:@"INTEGER"];
-        [sharedInstance p_ensureColumn:@"readChapterName" table:kReadRecordTable type:@"TEXT"];
-        [sharedInstance p_ensureColumn:@"readChapterName" table:kHistoryRecordTable type:@"TEXT"];
+        BOOL c1 = [sharedInstance p_ensureColumn:@"charOffset" table:kReadRecordTable type:@"INTEGER"];
+        BOOL c2 = [sharedInstance p_ensureColumn:@"charOffset" table:kHistoryRecordTable type:@"INTEGER"];
+        BOOL c3 = [sharedInstance p_ensureColumn:@"readChapterName" table:kReadRecordTable type:@"TEXT"];
+        BOOL c4 = [sharedInstance p_ensureColumn:@"readChapterName" table:kHistoryRecordTable type:@"TEXT"];
+        BOOL c5 = [sharedInstance p_ensureColumn:@"collectionId" table:kReadRecordTable type:@"INTEGER"];
+        BOOL c6 = [sharedInstance p_ensureColumn:@"collectionOrder" table:kReadRecordTable type:@"INTEGER"];
+        (void)c5; (void)c6;
+        if (!t1 || !t2 || !t3 || !t4 || !c1 || !c2 || !c3 || !c4) {
+            sharedInstance.initializationError =
+                [NSError errorWithDomain:RDDatabaseErrorDomain code:-100
+                                userInfo:@{NSLocalizedDescriptionKey: @"数据库初始化或迁移失败"}];
+        }
 
         NSDictionary *attrs = @{NSFileProtectionKey: NSFileProtectionCompleteUntilFirstUserAuthentication};
         [[NSFileManager defaultManager] setAttributes:attrs ofItemAtPath:dbPath error:nil];
@@ -255,14 +264,17 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
 
 - (void)p_migratePrimaryIdsIfNeeded
 {
-    // 一次性接管旧的 NSUserDefaults 标志:老用户已迁移过的库直接补写 user_version
+    // 旧 defaults 标志只能触发"快速复查",不得盲信跳过(P2-DB-02)
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if ([defaults boolForKey:kLegacyPrimaryIdMigratedKey]) {
-        if ([self p_schemaVersion] < kRDSchemaVersionPrimaryId) {
-            [self p_setSchemaVersion:kRDSchemaVersionPrimaryId];
-        }
+    BOOL hadLegacyFlag = [defaults boolForKey:kLegacyPrimaryIdMigratedKey];
+    if (hadLegacyFlag) {
         [defaults removeObjectForKey:kLegacyPrimaryIdMigratedKey];
-        return;
+        if ([self p_schemaVersion] < kRDSchemaVersionPrimaryId &&
+            [self p_primaryIdMigrationIsComplete]) {
+            [self p_setSchemaVersion:kRDSchemaVersionPrimaryId];
+            return;
+        }
+        // 标志为真但库仍未迁移 → 继续走正常迁移
     }
     if ([self p_schemaVersion] >= kRDSchemaVersionPrimaryId) {
         return;
@@ -350,11 +362,11 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
     return YES;
 }
 
-/// 旧库缺列时 ALTER TABLE 补齐(幂等)
-- (void)p_ensureColumn:(NSString *)column table:(NSString *)table type:(NSString *)type
+/// 旧库缺列时 ALTER TABLE 补齐(幂等);返回是否成功(P2-DB-01)
+- (BOOL)p_ensureColumn:(NSString *)column table:(NSString *)table type:(NSString *)type
 {
     if (column.length == 0 || table.length == 0 || self.dbPath.length == 0) {
-        return;
+        return NO;
     }
     sqlite3 *db = NULL;
     int rc = sqlite3_open_v2(self.dbPath.fileSystemRepresentation, &db,
@@ -363,10 +375,11 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
         if (db) {
             sqlite3_close(db);
         }
-        return;
+        return NO;
     }
     sqlite3_busy_timeout(db, kRDSQLiteBusyTimeoutMs);
     BOOL exists = NO;
+    BOOL ok = YES;
     NSString *pragma = [NSString stringWithFormat:@"PRAGMA table_info(%@);", table];
     sqlite3_stmt *stmt = NULL;
     if (sqlite3_prepare_v2(db, pragma.UTF8String, -1, &stmt, NULL) == SQLITE_OK) {
@@ -378,12 +391,17 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
             }
         }
         sqlite3_finalize(stmt);
+    } else {
+        ok = NO;
     }
-    if (!exists) {
+    if (ok && !exists) {
         NSString *sql = [NSString stringWithFormat:@"ALTER TABLE %@ ADD COLUMN %@ %@;", table, column, type ?: @"INTEGER"];
-        sqlite3_exec(db, sql.UTF8String, NULL, NULL, NULL);
+        if (sqlite3_exec(db, sql.UTF8String, NULL, NULL, NULL) != SQLITE_OK) {
+            ok = NO;
+        }
     }
     sqlite3_close(db);
+    return ok;
 }
 
 @end
@@ -398,6 +416,11 @@ static void *kRDBQueueSpecificKey = &kRDBQueueSpecificKey;
 + (void)checkpointWALSync
 {
     [[RDDatabaseManager sharedInstance] checkpointWALSync];
+}
+
++ (NSError *)databaseInitializationError
+{
+    return [RDDatabaseManager sharedInstance].initializationError;
 }
 
 @end

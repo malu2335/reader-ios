@@ -72,20 +72,57 @@
           preferBackground:(BOOL)preferBackground
                   complete:(void(^)(NSAttributedString *content,NSArray *pages))complete
 {
+    if (preferBackground) {
+        [self paginateWithContent:content
+                         charpter:charpter
+                           bounds:bounds
+                            queue:dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0)
+                    allowTruncate:NO
+                      cancelCheck:nil
+                         complete:complete];
+    } else {
+        [self paginateWithContent:content
+                         charpter:charpter
+                           bounds:bounds
+                            queue:nil
+                    allowTruncate:YES
+                      cancelCheck:nil
+                         complete:complete];
+    }
+}
+
++(void)paginateWithContent:(NSString *)content
+                  charpter:(NSString *)charpter
+                    bounds:(CGRect)bounds
+                     queue:(dispatch_queue_t)queue
+             allowTruncate:(BOOL)allowTruncate
+               cancelCheck:(BOOL(^)(void))cancelCheck
+                  complete:(void(^)(NSAttributedString *content,NSArray *pages))complete
+{
     void (^work)(void) = ^{
+        if (cancelCheck && cancelCheck()) {
+            return;
+        }
         // legado 风格净化:分页前应用启用中的替换规则(正文 + 标题各自 scope)
         NSString *cleaned = [[RDReplaceRuleStore sharedInstance] applyToText:content ?: @""];
+        if (cancelCheck && cancelCheck()) {
+            return;
+        }
         NSString *cleanTitle = [[RDReplaceRuleStore sharedInstance] applyToTitle:charpter ?: @""];
         cleaned = [self p_stripLeadingTitle:cleanTitle fromContent:cleaned];
         if (charpter.length && ![charpter isEqualToString:cleanTitle]) {
             cleaned = [self p_stripLeadingTitle:charpter fromContent:cleaned];
         }
 
-        // 后台全量排版不截断;仅同步主线程路径保留保护性上限,避免 dataSource 卡死(P1-03)
+        // 仅同步兜底路径允许保护性截断;邻章预分页与后台路径永不截断(P1-FE-01)
         static const NSUInteger kMaxSyncPaginateCharacters = 500000;
-        if (!preferBackground && cleaned.length > kMaxSyncPaginateCharacters) {
+        if (allowTruncate && cleaned.length > kMaxSyncPaginateCharacters) {
             NSRange safe = [cleaned rangeOfComposedCharacterSequencesForRange:NSMakeRange(0, kMaxSyncPaginateCharacters)];
             cleaned = [[cleaned substringWithRange:safe] stringByAppendingString:@"\n\n(内容过长,本章已在此截断;可尝试拆章或缩小字号后重开)"];
+        }
+
+        if (cancelCheck && cancelCheck()) {
+            return;
         }
 
         NSMutableArray *pageArray = [NSMutableArray array];
@@ -112,8 +149,15 @@
         BOOL hasMorePages = YES;
         int preventDeadLoopSign = currentOffset;
         int samePlaceRepeatCount = 0;
+        NSUInteger loopCount = 0;
 
         while (hasMorePages) {
+            // 每 8 页检查一次 cancel,使快速改字号能真正停掉旧 work(P2-FE-02)
+            if ((loopCount++ & 0x7) == 0 && cancelCheck && cancelCheck()) {
+                CGPathRelease(path);
+                CFRelease(frameSetter);
+                return;
+            }
             if (preventDeadLoopSign == currentOffset) {
                 ++samePlaceRepeatCount;
             } else {
@@ -146,10 +190,16 @@
 
         CGPathRelease(path);
         CFRelease(frameSetter);
+        if (cancelCheck && cancelCheck()) {
+            return;
+        }
         NSAttributedString *outAttr = attrString.copy;
         NSArray *outPages = pageArray.copy;
-        if (preferBackground) {
+        if (queue) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                if (cancelCheck && cancelCheck()) {
+                    return;
+                }
                 if (complete) {
                     complete(outAttr, outPages);
                 }
@@ -159,8 +209,8 @@
         }
     };
 
-    if (preferBackground) {
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), work);
+    if (queue) {
+        dispatch_async(queue, work);
     } else {
         work();
     }
